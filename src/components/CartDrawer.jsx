@@ -40,7 +40,9 @@ export default function CartDrawer({
   merchantUpi = '8248651695-3@ybl',
   onPlaceOrder,
   couponsList = COUPONS,
-  prefilledCoupon = ''
+  prefilledCoupon = '',
+  savedAddresses = [],
+  onOpenAddressBook
 }) {
   const [customCoupon, setCustomCoupon] = useState(null);
   const couponCode = customCoupon !== null ? customCoupon : (prefilledCoupon || '');
@@ -72,6 +74,16 @@ export default function CartDrawer({
     }
     setLocationDetectedNotice(`📍 Pin confirmed: ${street || suburb?.name} (${distanceKm} km from restaurant)`);
     setTimeout(() => setLocationDetectedNotice(''), 5000);
+  };
+
+  const handleSelectSavedAddress = (addr) => {
+    if (addr.doorNo) setDoorNo(addr.doorNo);
+    if (addr.streetAddress) setStreetAddress(addr.streetAddress);
+    if (addr.landmark) setLandmark(addr.landmark);
+    if (addr.coords) setDeliveryCoords(addr.coords);
+    if (addr.suburb && onSelectCity) onSelectCity(addr.suburb);
+    setLocationDetectedNotice(`📍 Selected ${addr.tag}: ${addr.doorNo ? `Door ${addr.doorNo}, ` : ''}${addr.streetAddress || addr.locality}`);
+    setTimeout(() => setLocationDetectedNotice(''), 4500);
   };
 
   const handleAutoDetectLocation = async () => {
@@ -212,6 +224,9 @@ export default function CartDrawer({
         className="cart-drawer-panel animate-slide-in"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Drag Sheet Indicator */}
+        <div className="mobile-sheet-pull-handle" />
+
         {/* Header */}
         <div className="cart-drawer-header">
           <div className="cart-header-title">
@@ -252,6 +267,38 @@ export default function CartDrawer({
                   <p className="delivery-locality">{selectedCity?.locality}</p>
                 </div>
               </div>
+
+              {/* Quick Saved Addresses Selection Strip */}
+              {savedAddresses && savedAddresses.length > 0 && (
+                <div className="cart-saved-addresses-strip">
+                  <div className="saved-strip-top">
+                    <span className="saved-strip-label">Choose Saved Address:</span>
+                    {onOpenAddressBook && (
+                      <button 
+                        type="button" 
+                        className="btn-manage-addr-link"
+                        onClick={onOpenAddressBook}
+                      >
+                        + Manage
+                      </button>
+                    )}
+                  </div>
+                  <div className="saved-addr-chips-row">
+                    {savedAddresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        className="saved-addr-chip"
+                        onClick={() => handleSelectSavedAddress(addr)}
+                        title={addr.formattedAddress}
+                      >
+                        <span>{addr.tag === 'Home' ? '🏠' : addr.tag === 'Work' ? '🏢' : addr.tag === 'Campus' ? '🎓' : '📍'} {addr.tag}</span>
+                        {addr.doorNo && <small className="chip-sub">#{addr.doorNo}</small>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Location Action Buttons: Auto-Detect GPS & Interactive Map Pin Drop */}
               <div className="cart-location-actions-grid">

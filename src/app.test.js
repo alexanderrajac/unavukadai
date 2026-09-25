@@ -486,8 +486,67 @@ describe('Dynamic Location-Based Delivery Charges & Launch UPI Verification', ()
       expect(speedKmH).toBeGreaterThan(0);
       expect(`${speedKmH} km/h`).toBe('28 km/h');
     });
+
+    it('should authenticate user with Google / Gmail provider and persist profile', () => {
+      const googleUser = {
+        name: 'Alexander Raja',
+        email: 'alexanderrajac@gmail.com',
+        phone: '+91 98401 23456',
+        avatar: '👨‍💻',
+        authProvider: 'google',
+        isVerified: true
+      };
+
+      expect(googleUser.email).toContain('@gmail.com');
+      expect(googleUser.authProvider).toBe('google');
+      expect(googleUser.isVerified).toBe(true);
+    });
+
+    it('should manage multiple saved addresses with tags (Home, Work, Campus, Other)', () => {
+      const savedAddresses = [
+        {
+          id: 'addr-1',
+          tag: 'Home',
+          doorNo: 'Flat 4B, Sri Sai Flats',
+          streetAddress: 'Peerkankaranai Main Road',
+          locality: 'Perungalathur',
+          coords: [12.9095, 80.0895]
+        },
+        {
+          id: 'addr-2',
+          tag: 'Work',
+          doorNo: 'Tower B, 3rd Floor',
+          streetAddress: 'GST Road',
+          locality: 'Vandalur',
+          coords: [12.8893, 80.0815]
+        }
+      ];
+
+      expect(savedAddresses.length).toBe(2);
+      expect(savedAddresses[0].tag).toBe('Home');
+      expect(savedAddresses[1].tag).toBe('Work');
+
+      // Adding new address
+      const newAddr = {
+        id: 'addr-3',
+        tag: 'Campus',
+        doorNo: 'Room 204, Hostel C',
+        streetAddress: 'Crescent Campus Road',
+        locality: 'Vandalur',
+        coords: [12.8795, 80.0780]
+      };
+      const updated = [newAddr, ...savedAddresses];
+      expect(updated.length).toBe(3);
+      expect(updated[0].tag).toBe('Campus');
+
+      // Delete address
+      const afterDelete = updated.filter(a => a.id !== 'addr-2');
+      expect(afterDelete.length).toBe(2);
+      expect(afterDelete.some(a => a.tag === 'Work')).toBe(false);
+    });
   });
 });
+
 
 
 

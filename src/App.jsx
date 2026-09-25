@@ -12,6 +12,8 @@ import OrderSuccessModal from './components/OrderSuccessModal';
 import MyOrdersModal from './components/MyOrdersModal';
 import ActiveOrderFloatingBar from './components/ActiveOrderFloatingBar';
 import AuthModal from './components/AuthModal';
+import AddressBookModal from './components/AddressBookModal';
+import MobileBottomNav from './components/MobileBottomNav';
 import Footer from './components/Footer';
 
 import HotelPortal from './components/HotelPortal';
@@ -238,11 +240,113 @@ export default function App() {
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [prefilledCoupon, setPrefilledCoupon] = useState('');
 
-  const [user, setUser] = useState({
-    name: 'Priya Sundaram',
-    phone: '+91 98401 23456',
-    avatar: '🍲'
+  // User Authentication State (Persistent with Google Gmail support)
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_user');
+      return saved ? JSON.parse(saved) : {
+        name: 'Alexander Raja',
+        email: 'alexanderrajac@gmail.com',
+        phone: '+91 98401 23456',
+        avatar: '👨‍💻',
+        authProvider: 'google',
+        isVerified: true
+      };
+    } catch {
+      return {
+        name: 'Alexander Raja',
+        email: 'alexanderrajac@gmail.com',
+        phone: '+91 98401 23456',
+        avatar: '👨‍💻',
+        authProvider: 'google',
+        isVerified: true
+      };
+    }
   });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('unavu_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('unavu_user');
+    }
+  }, [user]);
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('unavu_user');
+  };
+
+  // Saved Addresses State & Settings
+  const INITIAL_SAVED_ADDRESSES = [
+    {
+      id: 'addr-1',
+      tag: 'Home',
+      doorNo: 'Flat 4B, Sri Sai Flats',
+      streetAddress: 'Peerkankaranai Main Road',
+      landmark: 'Near Peerkankaranai Lake',
+      locality: 'Perungalathur',
+      city: 'Chennai',
+      coords: [12.9095, 80.0895],
+      suburb: CITIES[0],
+      formattedAddress: 'Door 4B, Peerkankaranai Main Road, Near Lake, Perungalathur Hub'
+    },
+    {
+      id: 'addr-2',
+      tag: 'Work',
+      doorNo: 'Tower B, 3rd Floor',
+      streetAddress: 'GST Road',
+      landmark: 'Opp. Vandalur Zoo Gate',
+      locality: 'Vandalur',
+      city: 'Chennai',
+      coords: [12.8893, 80.0815],
+      suburb: CITIES[1],
+      formattedAddress: 'Tower B, GST Road, Opp. Zoo Gate, Vandalur Hub'
+    }
+  ];
+
+  const [savedAddresses, setSavedAddresses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_saved_addresses');
+      return saved ? JSON.parse(saved) : INITIAL_SAVED_ADDRESSES;
+    } catch {
+      return INITIAL_SAVED_ADDRESSES;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('unavu_saved_addresses', JSON.stringify(savedAddresses));
+  }, [savedAddresses]);
+
+  const [activeAddressId, setActiveAddressId] = useState('addr-1');
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+
+  const handleSaveAddress = (newAddr) => {
+    setSavedAddresses(prev => {
+      const existsIndex = prev.findIndex(a => a.id === newAddr.id);
+      if (existsIndex >= 0) {
+        const copy = [...prev];
+        copy[existsIndex] = newAddr;
+        return copy;
+      }
+      return [newAddr, ...prev];
+    });
+    setActiveAddressId(newAddr.id);
+    if (newAddr.suburb) {
+      setSelectedCity(newAddr.suburb);
+    }
+  };
+
+  const handleDeleteAddress = (id) => {
+    setSavedAddresses(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleSelectAddress = (addr) => {
+    setActiveAddressId(addr.id);
+    if (addr.suburb) {
+      setSelectedCity(addr.suburb);
+    }
+  };
 
   const handleCancelOrder = (orderId) => {
     setOrders(prev => prev.filter(o => o.orderId !== orderId));
@@ -537,6 +641,8 @@ export default function App() {
             user={user}
             onOpenMyOrders={() => setIsMyOrdersOpen(true)}
             activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
+            onOpenAddressBook={() => setIsAddressBookOpen(true)}
+            onLogout={handleLogout}
           />
 
           <main className="main-content">
@@ -652,6 +758,8 @@ export default function App() {
             onPlaceOrder={handlePlaceOrder}
             couponsList={couponsList}
             prefilledCoupon={prefilledCoupon}
+            savedAddresses={savedAddresses}
+            onOpenAddressBook={() => setIsAddressBookOpen(true)}
           />
 
           {/* Active Order Floating Tracker Bar */}
@@ -682,11 +790,42 @@ export default function App() {
             />
           )}
 
-          {/* Auth Modal */}
+          {/* Auth Modal (Google / Gmail & Mobile OTP) */}
           <AuthModal
             isOpen={isAuthOpen}
             onClose={() => setIsAuthOpen(false)}
             onLoginSuccess={setUser}
+          />
+
+          {/* Saved Address Book & Settings Modal */}
+          <AddressBookModal
+            isOpen={isAddressBookOpen}
+            onClose={() => setIsAddressBookOpen(false)}
+            addresses={savedAddresses}
+            activeAddressId={activeAddressId}
+            onSelectAddress={handleSelectAddress}
+            onSaveAddress={handleSaveAddress}
+            onDeleteAddress={handleDeleteAddress}
+          />
+
+          {/* Mobile-Native Bottom Navigation Bar */}
+          <MobileBottomNav
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            onOpenSearch={() => {
+              const searchInput = document.querySelector('.search-input-box input');
+              if (searchInput) {
+                searchInput.focus();
+                searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            onOpenAddresses={() => setIsAddressBookOpen(true)}
+            onOpenMyOrders={() => setIsMyOrdersOpen(true)}
+            onOpenCart={() => setIsCartOpen(true)}
+            cartCount={totalCartCount}
+            cartTotal={totalCartAmount}
+            activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
+            currentAddressTag={savedAddresses.find(a => a.id === activeAddressId)?.tag || 'Home'}
           />
         </>
       )}

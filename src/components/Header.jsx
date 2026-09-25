@@ -13,7 +13,11 @@ import {
   Truck,
   ReceiptText,
   Crosshair,
-  Loader2
+  Loader2,
+  LogOut,
+  Home,
+  Check,
+  Mail
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
@@ -33,13 +37,17 @@ export default function Header({
   setIsAuthOpen,
   user,
   onOpenMyOrders,
-  activeOrdersCount = 0
+  activeOrdersCount = 0,
+  onOpenAddressBook,
+  onLogout
 }) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [gpsNotice, setGpsNotice] = useState('');
   const cityRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const handleDetectGps = async () => {
     setIsDetectingGps(true);
@@ -64,6 +72,9 @@ export default function Header({
     function handleClickOutside(e) {
       if (cityRef.current && !cityRef.current.contains(e.target)) {
         setIsCityDropdownOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -168,6 +179,23 @@ export default function Header({
                       </div>
                     ))}
                   </div>
+
+                  {onOpenAddressBook && (
+                    <div className="city-dropdown-footer">
+                      <button 
+                        type="button" 
+                        className="btn-open-addr-book-header"
+                        onClick={() => {
+                          setIsCityDropdownOpen(false);
+                          onOpenAddressBook();
+                        }}
+                      >
+                        <Home size={14} className="icon-crimson" />
+                        <span>Manage Saved Addresses</span>
+                        <ChevronDown size={13} style={{ transform: 'rotate(-90deg)' }} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -236,9 +264,71 @@ export default function Header({
 
             {/* Auth / Profile */}
             {user ? (
-              <div className="user-profile-chip" onClick={() => setIsAuthOpen(true)}>
-                <div className="user-avatar">{user.name.charAt(0)}</div>
-                <span className="user-name">{user.name.split(' ')[0]}</span>
+              <div className="user-profile-wrapper" ref={userMenuRef}>
+                <div 
+                  className="user-profile-chip" 
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                >
+                  <div className="user-avatar">{user.avatar || user.name.charAt(0)}</div>
+                  <span className="user-name">{user.name.split(' ')[0]}</span>
+                  <ChevronDown size={13} className={`chevron-mini ${isUserMenuOpen ? 'rotated' : ''}`} />
+                </div>
+
+                {isUserMenuOpen && (
+                  <div className="user-profile-dropdown-menu animate-scale">
+                    <div className="user-dropdown-header">
+                      <div className="dropdown-user-avatar">{user.avatar || '🍲'}</div>
+                      <div className="dropdown-user-info">
+                        <strong>{user.name}</strong>
+                        <span className="dropdown-email">{user.email || user.phone}</span>
+                        {user.authProvider === 'google' && (
+                          <span className="google-verified-tag">✓ Google Verified</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="user-dropdown-divider" />
+
+                    <button 
+                      type="button" 
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onOpenAddressBook) onOpenAddressBook();
+                      }}
+                    >
+                      <Home size={15} className="icon-crimson" />
+                      <span>Saved Addresses</span>
+                    </button>
+
+                    <button 
+                      type="button" 
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onOpenMyOrders) onOpenMyOrders();
+                      }}
+                    >
+                      <ReceiptText size={15} />
+                      <span>My Orders</span>
+                      {activeOrdersCount > 0 && <span className="active-dot-mini" />}
+                    </button>
+
+                    <div className="user-dropdown-divider" />
+
+                    <button 
+                      type="button" 
+                      className="user-dropdown-item logout-item"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onLogout) onLogout();
+                      }}
+                    >
+                      <LogOut size={15} />
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button className="auth-btn-pill" onClick={() => setIsAuthOpen(true)}>
