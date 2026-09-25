@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle2, 
   Clock, 
@@ -10,9 +10,11 @@ import {
   PackageCheck,
   AlertCircle,
   KeyRound,
-  ShieldCheck
+  ShieldCheck,
+  MessageSquare
 } from 'lucide-react';
 import LiveDeliveryMap from './LiveDeliveryMap';
+import { sendOrderWhatsAppNotificationApi } from '../services/api';
 
 export default function OrderSuccessModal({ 
   order, 
@@ -22,6 +24,10 @@ export default function OrderSuccessModal({
   riderLiveLocation
 }) {
   if (!order) return null;
+
+  const [resendingWa, setResendingWa] = useState(false);
+  const [waNotice, setWaNotice] = useState('');
+
 
   // Retrieve the latest reactive order state from the shared orders store
   const liveOrder = orders.find(o => o.orderId === order.orderId) || order;
@@ -167,6 +173,41 @@ export default function OrderSuccessModal({
               <p className="otp-explainer-text">
                 Share this 4-digit code with delivery partner <strong>{liveOrder.riderName || 'Partner'}</strong> at your doorstep to verify order handoff.
               </p>
+
+              {/* WhatsApp Notification Badge & Resend Action */}
+              <div className="whatsapp-otp-notice-card">
+                <div className="whatsapp-otp-notice-left">
+                  <MessageSquare size={15} className="text-whatsapp-green" />
+                  <span>
+                    Sent to WhatsApp <strong>+{liveOrder.customerPhone || '91 82486 51695'}</strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn-resend-whatsapp"
+                  disabled={resendingWa}
+                  onClick={async () => {
+                    setResendingWa(true);
+                    setWaNotice('');
+                    try {
+                      await sendOrderWhatsAppNotificationApi(liveOrder);
+                      setWaNotice('Delivery PIN sent to WhatsApp!');
+                      setTimeout(() => setWaNotice(''), 4000);
+                    } catch (e) {
+                      setWaNotice('Failed to send WhatsApp message');
+                    } finally {
+                      setResendingWa(false);
+                    }
+                  }}
+                >
+                  {resendingWa ? 'Sending...' : 'Resend PIN'}
+                </button>
+              </div>
+              {waNotice && (
+                <div className="whatsapp-notice-toast animate-fade">
+                  {waNotice}
+                </div>
+              )}
             </div>
           ) : (
             <div className="delivery-verified-banner animate-fade">

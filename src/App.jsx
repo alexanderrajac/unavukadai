@@ -32,7 +32,8 @@ import {
   fetchSettingsApi,
   updateSettingsApi,
   resetOrdersApi,
-  subscribeToLiveUpdates
+  subscribeToLiveUpdates,
+  sendOrderWhatsAppNotificationApi
 } from './services/api';
 import './App.css';
 
@@ -466,6 +467,7 @@ export default function App() {
     setCartItems([]);
     setIsCartOpen(false);
     createOrderApi(newOrderObj);
+    sendOrderWhatsAppNotificationApi(newOrderObj);
   };
 
   const handleUpdateOrderStatus = (orderId, newStatus) => {

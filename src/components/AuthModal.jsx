@@ -1,22 +1,63 @@
-import React, { useState } from 'react';
-import { X, CheckCircle, Mail, Phone, ArrowRight, ShieldCheck, Sparkles, User, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  X, 
+  CheckCircle, 
+  Mail, 
+  Phone, 
+  ArrowRight, 
+  ShieldCheck, 
+  Sparkles, 
+  User, 
+  Lock,
+  MessageSquare,
+  RefreshCw,
+  AlertCircle,
+  Check
+} from 'lucide-react';
+import { 
+  sendWhatsAppOtpApi, 
+  verifyWhatsAppOtpApi, 
+  getWhatsAppStatusApi 
+} from '../services/api';
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [authMethod, setAuthMethod] = useState('google'); // 'google' | 'phone' | 'email'
   const [tab, setTab] = useState('login'); // 'login' | 'signup'
 
-  // Phone states
+  // Phone & WhatsApp OTP states
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [simulatedOtp, setSimulatedOtp] = useState('4821');
+  const [simulatedOtp, setSimulatedOtp] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
+  const [sentViaWhatsApp, setSentViaWhatsApp] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
+  const [whatsAppGatewayStatus, setWhatsAppGatewayStatus] = useState(null);
 
   // Email / Gmail states
   const [customEmail, setCustomEmail] = useState('');
   const [emailName, setEmailName] = useState('');
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
+
+  // Check WhatsApp gateway status when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      getWhatsAppStatusApi().then(st => {
+        if (st) setWhatsAppGatewayStatus(st);
+      });
+    }
+  }, [isOpen]);
+
+  // Resend countdown timer
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const timer = setInterval(() => {
+      setResendTimer(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendTimer]);
 
   if (!isOpen) return null;
 
@@ -69,44 +110,82 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     }, 450);
   };
 
-  const handleSendOtp = (e) => {
-    e.preventDefault();
+  const handleSendOtp = async (e) => {
+    if (e) e.preventDefault();
     if (!phone || phone.length < 10) return;
     setIsLoading(true);
-    const generated = String(Math.floor(1000 + Math.random() * 9000));
-    setSimulatedOtp(generated);
-    setTimeout(() => {
+    setOtpError('');
+    try {
+      const res = await sendWhatsAppOtpApi(phone, tab === 'signup' ? 'SIGNUP' : 'LOGIN');
       setIsLoading(false);
       setOtpSent(true);
-    }, 400);
+      setSentViaWhatsApp(Boolean(res.sentViaWhatsApp));
+      if (res.previewOtp) {
+        setSimulatedOtp(res.previewOtp);
+      }
+      setResendTimer(30);
+    } catch (err) {
+      setIsLoading(false);
+      setOtpError(err.message || 'Failed to send WhatsApp OTP. Please try again.');
+    }
   };
 
   const handleOtpChange = (index, value) => {
-    if (value.length > 1) return;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
+    // If user pastes multiple digits
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length > 1) {
+      const chars = cleaned.slice(0, 4).split('');
+      const updated = ['', '', '', ''];
+      chars.forEach((c, idx) => { updated[idx] = c; });
+      setOtp(updated);
+      setOtpError('');
+      const lastIdx = Math.min(3, chars.length - 1);
+      const nextInput = document.getElementById(`otp-input-${lastIdx}`);
+      if (nextInput) nextInput.focus();
+      return;
+    }
 
-    if (value && index < 3) {
+    const newOtp = [...otp];
+    newOtp[index] = cleaned;
+    setOtp(newOtp);
+    setOtpError('');
+
+    if (cleaned && index < 3) {
       const nextInput = document.getElementById(`otp-input-${index + 1}`);
       if (nextInput) nextInput.focus();
     }
   };
 
-  const handleVerifyOtp = (e) => {
-    e.preventDefault();
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
+    const enteredOtp = otp.join('');
+    if (enteredOtp.length < 4) {
+      setOtpError('Please enter all 4 digits of the OTP.');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    setOtpError('');
+
+    try {
+      const res = await verifyWhatsAppOtpApi(phone, enteredOtp);
       setIsLoading(false);
-      onLoginSuccess({
-        name: name || 'Gourmet Foodie',
-        phone: '+91 ' + phone,
-        avatar: '🍲',
-        authProvider: 'phone',
-        isVerified: true
-      });
-      onClose();
-    }, 600);
+      if (res.success && res.verified) {
+        onLoginSuccess({
+          name: name || 'Gourmet Foodie',
+          phone: '+91 ' + phone,
+          avatar: '🍲',
+          authProvider: 'whatsapp',
+          isVerified: true
+        });
+        onClose();
+      } else {
+        setOtpError(res.error || 'Incorrect OTP code. Please check your WhatsApp.');
+      }
+    } catch (err) {
+      setIsLoading(false);
+      setOtpError(err.message || 'Verification failed. Please try again.');
+    }
   };
 
   return (
@@ -126,7 +205,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
             <span className="auth-brand-name">unavukadai</span>
           </div>
           <h3>{tab === 'login' ? 'Welcome Back!' : 'Create an Account'}</h3>
-          <p className="auth-subtext">Order from top restaurants in South Chennai with 1-click delivery</p>
+          <p className="auth-subtext">Instant WhatsApp verification & 1-click delivery in South Chennai</p>
         </div>
 
         {/* Tab Switcher: Log In / Sign Up */}
@@ -134,14 +213,14 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           <button 
             type="button"
             className={`auth-tab-btn ${tab === 'login' ? 'active' : ''}`}
-            onClick={() => { setTab('login'); setOtpSent(false); setShowGoogleChooser(false); }}
+            onClick={() => { setTab('login'); setOtpSent(false); setShowGoogleChooser(false); setOtpError(''); }}
           >
             Log In
           </button>
           <button 
             type="button"
             className={`auth-tab-btn ${tab === 'signup' ? 'active' : ''}`}
-            onClick={() => { setTab('signup'); setOtpSent(false); setShowGoogleChooser(false); }}
+            onClick={() => { setTab('signup'); setOtpSent(false); setShowGoogleChooser(false); setOtpError(''); }}
           >
             Sign Up
           </button>
@@ -231,10 +310,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         )}
 
         <div className="auth-divider">
-          <span>or continue with mobile OTP</span>
+          <span>or continue with WhatsApp OTP</span>
         </div>
 
-        {/* 2. Mobile Phone Number & In-App OTP */}
+        {/* 2. Mobile Phone Number & Real WhatsApp OTP */}
         {!otpSent ? (
           <form className="auth-form" onSubmit={handleSendOtp}>
             {tab === 'signup' && (
@@ -252,7 +331,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
             )}
 
             <div className="auth-input-group">
-              <label>Mobile Number</label>
+              <div className="flex-between-label">
+                <label>WhatsApp Number</label>
+                <span className="whatsapp-gateway-badge">
+                  <span className="whatsapp-dot-live"></span>
+                  <span>WhatsApp Verified</span>
+                </span>
+              </div>
               <div className="phone-prefix-input">
                 <span className="country-code">+91</span>
                 <input 
@@ -267,44 +352,73 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               </div>
             </div>
 
+            {otpError && (
+              <div className="auth-error-banner animate-fade">
+                <AlertCircle size={15} />
+                <span>{otpError}</span>
+              </div>
+            )}
+
             <button 
               type="submit" 
-              className="btn-primary w-full"
+              className="btn-primary w-full btn-whatsapp-otp-send"
               disabled={isLoading || phone.length < 10}
             >
-              {isLoading ? 'Sending OTP...' : 'Send OTP via Mobile'}
+              <MessageSquare size={17} />
+              <span>{isLoading ? 'Sending to WhatsApp...' : 'Send OTP via WhatsApp'}</span>
             </button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleVerifyOtp}>
-            <div className="otp-sent-indicator">
+            <div className="otp-sent-indicator whatsapp-indicator">
               <CheckCircle size={16} className="icon-success" />
-              <span>Mobile: +91 {phone}</span>
+              <span>Sent to WhatsApp: <strong>+91 {phone}</strong></span>
               <button 
                 type="button" 
                 className="edit-phone-link"
-                onClick={() => setOtpSent(false)}
+                onClick={() => { setOtpSent(false); setOtpError(''); }}
               >
                 Change
               </button>
             </div>
 
-            {/* Instant verification PIN */}
-            <div className="simulated-sms-box animate-fade">
-              <div className="sms-box-header">
-                <span>📲 Verification Code:</span>
-                <strong className="sms-otp-code">{simulatedOtp}</strong>
+            {/* WhatsApp notification info card */}
+            <div className="whatsapp-otp-notice-card animate-fade">
+              <div className="notice-icon-box">💬</div>
+              <div className="notice-text-content">
+                <strong>Check your WhatsApp message</strong>
+                <p>We've dispatched a 4-digit verification code to your WhatsApp number.</p>
               </div>
-              <p className="sms-box-sub">Secure instant PIN for your suburban food account.</p>
-              <button 
-                type="button" 
-                className="btn-autofill-otp"
-                onClick={() => setOtp(simulatedOtp.split(''))}
-              >
-                ⚡ Auto-fill {simulatedOtp}
-              </button>
             </div>
 
+            {/* Development auto-fill preview (if available) */}
+            {simulatedOtp && (
+              <div className="simulated-sms-box animate-fade">
+                <div className="sms-box-header">
+                  <span>📲 Code Preview:</span>
+                  <strong className="sms-otp-code">{simulatedOtp}</strong>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-autofill-otp"
+                  onClick={() => {
+                    setOtp(simulatedOtp.split(''));
+                    setOtpError('');
+                  }}
+                >
+                  ⚡ Auto-fill {simulatedOtp}
+                </button>
+              </div>
+            )}
+
+            {otpError && (
+              <div className="auth-error-banner animate-fade">
+                <AlertCircle size={15} />
+                <span>{otpError}</span>
+              </div>
+            )}
+
+            {/* Interactive 4-digit OTP Validator */}
             <div className="otp-inputs-row">
               {otp.map((digit, idx) => (
                 <input 
@@ -314,10 +428,28 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                   maxLength={1}
                   value={digit}
                   onChange={(e) => handleOtpChange(idx, e.target.value)}
-                  className="otp-digit-box"
+                  className={`otp-digit-box ${digit ? 'filled' : ''} ${otpError ? 'error-ring' : ''}`}
                   autoFocus={idx === 0}
                 />
               ))}
+            </div>
+
+            <div className="resend-otp-row">
+              {resendTimer > 0 ? (
+                <span className="resend-countdown-text">
+                  Resend code via WhatsApp in <strong>{resendTimer}s</strong>
+                </span>
+              ) : (
+                <button 
+                  type="button"
+                  className="btn-resend-whatsapp"
+                  onClick={handleSendOtp}
+                  disabled={isLoading}
+                >
+                  <RefreshCw size={13} />
+                  <span>Resend WhatsApp OTP</span>
+                </button>
+              )}
             </div>
 
             <button 
@@ -325,7 +457,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               className="btn-primary w-full"
               disabled={isLoading || otp.some(d => !d)}
             >
-              {isLoading ? 'Verifying...' : 'Verify & Continue'}
+              {isLoading ? 'Verifying with System...' : 'Verify OTP & Continue'}
             </button>
           </form>
         )}
