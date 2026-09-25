@@ -1,0 +1,732 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import PortalSwitcher from './components/PortalSwitcher';
+import Header from './components/Header';
+import RegionalOffersStrip from './components/RegionalOffersStrip';
+import CategoryCarousel from './components/CategoryCarousel';
+import Collections from './components/Collections';
+import FilterBar from './components/FilterBar';
+import RestaurantCard from './components/RestaurantCard';
+import RestaurantModal from './components/RestaurantModal';
+import CartDrawer from './components/CartDrawer';
+import OrderSuccessModal from './components/OrderSuccessModal';
+import MyOrdersModal from './components/MyOrdersModal';
+import ActiveOrderFloatingBar from './components/ActiveOrderFloatingBar';
+import AuthModal from './components/AuthModal';
+import Footer from './components/Footer';
+
+import HotelPortal from './components/HotelPortal';
+import RiderPortal from './components/RiderPortal';
+import AdminPortal from './components/AdminPortal';
+
+import { CITIES, RESTAURANTS, INITIAL_ORDERS, COUPONS } from './data/mockData';
+import {
+  fetchOrdersFromApi,
+  createOrderApi,
+  updateOrderStatusApi,
+  cancelOrderApi,
+  toggleItemStockApi,
+  addCouponApi,
+  updateRiderLocationApi,
+  fetchSettingsApi,
+  updateSettingsApi,
+  resetOrdersApi,
+  subscribeToLiveUpdates
+} from './services/api';
+import './App.css';
+
+export default function App() {
+  // Helper to determine portal from URL
+  const getPortalFromUrl = () => {
+    const hash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
+    const params = new URLSearchParams(window.location.search);
+    const queryPortal = params.get('portal');
+    const target = queryPortal || hash;
+    if (['hotel', 'rider', 'admin', 'customer'].includes(target)) {
+      return target;
+    }
+    return 'customer';
+  };
+
+  // Current active role portal: 'customer' | 'hotel' | 'rider' | 'admin'
+  const [currentPortal, setCurrentPortalState] = useState(getPortalFromUrl);
+
+  const setCurrentPortal = (portal) => {
+    setCurrentPortalState(portal);
+    window.location.hash = `#/${portal}`;
+  };
+
+  // Listen to browser hash changes (direct link clicks, back/forward buttons)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const detected = getPortalFromUrl();
+      setCurrentPortalState(detected);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Shared Orders Across Ecosystem
+  const [orders, setOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_ecosystem_orders');
+      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    } catch {
+      return INITIAL_ORDERS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  // Restaurant Menu Stock State (dishId -> boolean)
+  const [restaurantStock, setRestaurantStock] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_stock');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleToggleItemStock = (itemId) => {
+    setRestaurantStock(prev => ({
+      ...prev,
+      [itemId]: prev[itemId] === false ? true : false
+    }));
+    toggleItemStockApi(itemId);
+  };
+
+  // Platform Settings (Merchant UPI ID & Name)
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.merchantUpi === 'unavukadai@upi' || !parsed.merchantUpi) {
+          parsed.merchantUpi = '8248651695-3@ybl';
+        }
+        return parsed;
+      }
+      return { merchantUpi: '8248651695-3@ybl', merchantName: 'Unavukadai Express' };
+    } catch {
+      return { merchantUpi: '8248651695-3@ybl', merchantName: 'Unavukadai Express' };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('unavu_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  const handleUpdateSettings = (newSettings) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+    updateSettingsApi(newSettings);
+  };
+
+  const handleResetOrders = () => {
+    setOrders([]);
+    setCompletedOrder(null);
+    localStorage.removeItem('unavu_ecosystem_orders');
+    resetOrdersApi();
+  };
+
+  // Coupons State (allows Admin to add new promo codes)
+  const [couponsList, setCouponsList] = useState(COUPONS);
+
+  const handleAddCoupon = (newCoupon) => {
+    setCouponsList(prev => [newCoupon, ...prev]);
+    addCouponApi(newCoupon);
+    alert(`🎉 Promo Code ${newCoupon.code} launched for ${newCoupon.region}!`);
+  };
+
+  // Live Rider GPS Locations Across Suburban Fleet
+  const [riderLocations, setRiderLocations] = useState({
+    'rider-1': { riderId: 'rider-1', riderName: 'Murugan S.', lat: 12.9056, lng: 80.0832, speed: 28, heading: 195, locality: 'Perungalathur' },
+    'rider-2': { riderId: 'rider-2', riderName: 'Anand Kumar', lat: 12.8893, lng: 80.0815, speed: 22, heading: 170, locality: 'Vandalur' }
+  });
+
+  const handleUpdateRiderLocation = (locData) => {
+    setRiderLocations(prev => ({
+      ...prev,
+      [locData.riderId]: locData
+    }));
+    updateRiderLocationApi(locData);
+  };
+
+  // Sync with Server (Initial fetch + Live Cross-Device SSE Stream)
+  useEffect(() => {
+    fetchOrdersFromApi().then(remoteOrders => {
+      if (remoteOrders && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+        setOrders(remoteOrders);
+      }
+    });
+
+    fetchSettingsApi().then(remSettings => {
+      if (remSettings) setSettings(remSettings);
+    });
+
+    const unsubscribe = subscribeToLiveUpdates((payload) => {
+      if (payload.type === 'INIT') {
+        if (payload.data?.orders?.length > 0) setOrders(payload.data.orders);
+        if (payload.data?.stock) setRestaurantStock(payload.data.stock);
+        if (payload.data?.coupons?.length > 0) setCouponsList(payload.data.coupons);
+        if (payload.data?.riderLocations) setRiderLocations(payload.data.riderLocations);
+        if (payload.data?.settings) setSettings(payload.data.settings);
+      } else if (payload.type === 'ORDERS_UPDATED') {
+        if (payload.data) setOrders(payload.data);
+      } else if (payload.type === 'STOCK_UPDATED') {
+        if (payload.data) setRestaurantStock(payload.data);
+      } else if (payload.type === 'COUPONS_UPDATED') {
+        if (payload.data) setCouponsList(payload.data);
+      } else if (payload.type === 'SETTINGS_UPDATED') {
+        if (payload.data) setSettings(payload.data);
+      } else if (payload.type === 'RIDER_LOCATION_UPDATED') {
+        if (payload.data?.riderId) {
+          setRiderLocations(prev => ({
+            ...prev,
+            [payload.data.riderId]: payload.data
+          }));
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Customer Navigation & Location (Defaults to Perungalathur Hub)
+  const [activeTab, setActiveTab] = useState('delivery');
+  const [selectedCity, setSelectedCity] = useState(CITIES[0]); // Perungalathur
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // Filters
+  const [filters, setFilters] = useState({
+    pureVeg: false,
+    rating4Plus: false,
+    fastDelivery: false,
+    hasOffer: false,
+    priceRange: 'all'
+  });
+  const [sortBy, setSortBy] = useState('relevance');
+
+  // Favorites
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_favs');
+      return saved ? JSON.parse(saved) : ['res-perungalathur-1', 'res-vandalur-1'];
+    } catch {
+      return ['res-perungalathur-1', 'res-vandalur-1'];
+    }
+  });
+
+  // Cart
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Modals & User state
+  const [activeRestaurantModal, setActiveRestaurantModal] = useState(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState(null);
+  const [trackingOrder, setTrackingOrder] = useState(null);
+  const [prefilledCoupon, setPrefilledCoupon] = useState('');
+
+  const [user, setUser] = useState({
+    name: 'Priya Sundaram',
+    phone: '+91 98401 23456',
+    avatar: '🍲'
+  });
+
+  const handleCancelOrder = (orderId) => {
+    setOrders(prev => prev.filter(o => o.orderId !== orderId));
+    setTrackingOrder(null);
+    setCompletedOrder(null);
+    cancelOrderApi(orderId);
+  };
+
+  // Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('unavu_theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('unavu_theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('unavu_theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  // Persist Favorites & Cart
+  useEffect(() => {
+    localStorage.setItem('unavu_favs', JSON.stringify(favorites));
+  }, [favorites]);
+
+  useEffect(() => {
+    localStorage.setItem('unavu_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  const toggleFavorite = (resId) => {
+    setFavorites(prev => 
+      prev.includes(resId) ? prev.filter(id => id !== resId) : [...prev, resId]
+    );
+  };
+
+  // Cart Operations
+  const handleAddToCart = (dish, restaurant) => {
+    setCartItems(prev => {
+      const exists = prev.find(i => i.id === dish.id);
+      if (exists) {
+        return prev.map(i => i.id === dish.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [
+        ...prev,
+        {
+          id: dish.id,
+          name: dish.name,
+          price: dish.price,
+          isVeg: dish.isVeg,
+          restaurantId: restaurant.id,
+          restaurantName: restaurant.name,
+          quantity: 1
+        }
+      ];
+    });
+  };
+
+  const handleUpdateQuantity = (dishId, delta) => {
+    setCartItems(prev => {
+      return prev
+        .map(i => {
+          if (i.id === dishId) {
+            const nextQty = i.quantity + delta;
+            return nextQty > 0 ? { ...i, quantity: nextQty } : null;
+          }
+          return i;
+        })
+        .filter(Boolean);
+    });
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+  };
+
+  const handlePlaceOrder = (orderSummary) => {
+    const newOrderId = orderSummary?.orderId || ('UNV-' + Math.floor(100000 + Math.random() * 900000));
+    const newOrderObj = {
+      orderId: newOrderId,
+      customerName: user ? user.name : 'Suburban Foodie',
+      customerPhone: orderSummary?.customerPhone || (user ? user.phone : '+91 98401 23456'),
+      restaurantId: cartItems[0]?.restaurantId || 'res-perungalathur-1',
+      restaurantName: cartItems[0]?.restaurantName || 'SS Hyderabad Biryani',
+      restaurantAddress: 'GST Road Hub',
+      customerAddress: orderSummary?.customerAddress || orderSummary?.address || `${selectedCity?.name || 'Perungalathur'} Hub, Chennai`,
+      locality: selectedCity?.name || 'Perungalathur',
+      doorNo: orderSummary?.doorNo || '',
+      streetAddress: orderSummary?.streetAddress || '',
+      landmark: orderSummary?.landmark || '',
+      deliveryCoords: orderSummary?.deliveryCoords || null,
+      items: [...cartItems],
+      itemTotal: cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0),
+      deliveryFee: orderSummary?.deliveryFee !== undefined ? orderSummary.deliveryFee : 35,
+      deliveryDistanceKm: orderSummary?.deliveryDistanceKm || null,
+      platformFee: 5,
+      taxes: Math.round(cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0) * 0.05),
+      discount: orderSummary?.discount || 0,
+      grandTotal: orderSummary?.grandTotal,
+      status: 'PLACED', // Hotel sees this as new KOT
+      paymentMethod: orderSummary?.paymentMethod || 'UPI',
+      paymentStatus: orderSummary?.paymentStatus || 'PAID',
+      deliveryOtp: orderSummary?.deliveryOtp || String(Math.floor(1000 + Math.random() * 9000)),
+      riderId: null,
+      riderName: null,
+      riderPhone: null,
+      riderEarnings: 60,
+      placedAt: 'Just now',
+      etaMins: 24,
+      cookingNote: orderSummary?.cookingNote || ''
+    };
+
+    setOrders(prev => [newOrderObj, ...prev]);
+    setCompletedOrder(newOrderObj);
+    setCartItems([]);
+    setIsCartOpen(false);
+    createOrderApi(newOrderObj);
+  };
+
+  const handleUpdateOrderStatus = (orderId, newStatus) => {
+    setOrders(prev => prev.map(o => {
+      if (o.orderId === orderId) {
+        return { ...o, status: newStatus };
+      }
+      return o;
+    }));
+    updateOrderStatusApi(orderId, newStatus);
+  };
+
+  const handleAcceptTrip = (orderId) => {
+    const riderDetails = {
+      riderId: 'rider-1',
+      riderName: 'Murugan S.',
+      riderPhone: '+91 98765 43210'
+    };
+    setOrders(prev => prev.map(o => {
+      if (o.orderId === orderId) {
+        return {
+          ...o,
+          ...riderDetails
+        };
+      }
+      return o;
+    }));
+    updateOrderStatusApi(orderId, undefined, riderDetails);
+  };
+
+  const handleSimulateNewOrder = (hotel) => {
+    const simulatedItem = hotel.menu[0];
+    const newId = 'UNV-' + Math.floor(100000 + Math.random() * 900000);
+    const simulated = {
+      orderId: newId,
+      customerName: 'Ashwin Raman',
+      customerPhone: '+91 98410 77654',
+      restaurantId: hotel.id,
+      restaurantName: hotel.name,
+      restaurantAddress: hotel.address,
+      customerAddress: `Near ${hotel.region} Junction`,
+      locality: hotel.region,
+      items: [{ id: simulatedItem.id, name: simulatedItem.name, price: simulatedItem.price, quantity: 2 }],
+      itemTotal: simulatedItem.price * 2,
+      deliveryFee: 35,
+      platformFee: 5,
+      taxes: Math.round(simulatedItem.price * 2 * 0.05),
+      discount: 100,
+      grandTotal: (simulatedItem.price * 2) + 35 + 5 + Math.round(simulatedItem.price * 2 * 0.05) - 100,
+      status: 'PLACED',
+      deliveryOtp: String(Math.floor(1000 + Math.random() * 9000)),
+      riderId: null,
+      riderName: null,
+      riderPhone: null,
+      riderEarnings: 65,
+      placedAt: 'Just now',
+      etaMins: 20,
+      cookingNote: 'Less spicy please'
+    };
+    setOrders(prev => [simulated, ...prev]);
+    createOrderApi(simulated);
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      pureVeg: false,
+      rating4Plus: false,
+      fastDelivery: false,
+      hasOffer: false,
+      priceRange: 'all'
+    });
+    setSortBy('relevance');
+    setSelectedCategory(null);
+    setSearchQuery('');
+  };
+
+  // Filter & Sort Logic for Customer App
+  const filteredRestaurants = useMemo(() => {
+    return RESTAURANTS.filter(res => {
+      // Filter by suburban locality if a suburban city is selected
+      if (selectedCity?.isSuburban) {
+        if (res.region && !res.region.toLowerCase().includes(selectedCity.name.toLowerCase())) {
+          // If searching or user clicked a category, allow cross-suburb items
+          if (!searchQuery && !selectedCategory) return false;
+        }
+      }
+
+      // Service Tab filtering
+      if (activeTab === 'delivery' && !res.delivery) return false;
+      if (activeTab === 'dining' && !res.diningOut) return false;
+      if (activeTab === 'nightlife' && !res.nightlife) return false;
+
+      // Pure Veg Filter
+      if (filters.pureVeg && !res.pureVeg) return false;
+
+      // Rating 4.0+
+      if (filters.rating4Plus && res.rating < 4.0) return false;
+
+      // Fast Delivery (< 30 mins)
+      if (filters.fastDelivery && res.deliveryTimeMins > 30) return false;
+
+      // Has Offer
+      if (filters.hasOffer && !res.offer) return false;
+
+      // Price Range Filter
+      if (filters.priceRange === 'under400' && res.costForTwo >= 400) return false;
+      if (filters.priceRange === '400to700' && (res.costForTwo < 400 || res.costForTwo > 700)) return false;
+      if (filters.priceRange === 'above700' && res.costForTwo <= 700) return false;
+
+      // Category filter
+      if (selectedCategory) {
+        const catLower = selectedCategory.toLowerCase();
+        const hasCuisine = res.cuisines.some(c => c.toLowerCase().includes(catLower));
+        const hasDish = res.menu.some(m => m.name.toLowerCase().includes(catLower) || m.category.toLowerCase().includes(catLower));
+        if (!hasCuisine && !hasDish) return false;
+      }
+
+      // Universal search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = res.name.toLowerCase().includes(q);
+        const matchRegion = res.region && res.region.toLowerCase().includes(q);
+        const matchCuisine = res.cuisines.some(c => c.toLowerCase().includes(q));
+        const matchDish = res.menu.some(m => m.name.toLowerCase().includes(q) || m.description.toLowerCase().includes(q));
+        if (!matchName && !matchRegion && !matchCuisine && !matchDish) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'rating') return b.rating - a.rating;
+      if (sortBy === 'deliveryTime') return a.deliveryTimeMins - b.deliveryTimeMins;
+      if (sortBy === 'costAsc') return a.costForTwo - b.costForTwo;
+      if (sortBy === 'costDesc') return b.costForTwo - a.costForTwo;
+      return 0;
+    });
+  }, [activeTab, filters, sortBy, selectedCategory, searchQuery, selectedCity]);
+
+  const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+  const totalCartAmount = cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+
+  // Portal live counts
+  const pendingKitchenOrdersCount = orders.filter(o => o.status === 'PLACED' || o.status === 'PREPARING').length;
+  const availableRiderTripsCount = orders.filter(o => o.status === 'READY_FOR_PICKUP' && !o.riderId).length;
+
+  return (
+    <div className="app-root">
+      {/* Universal Multi-Portal Switcher Bar */}
+      <PortalSwitcher
+        currentPortal={currentPortal}
+        setCurrentPortal={setCurrentPortal}
+        cartCount={totalCartCount}
+        pendingKitchenOrdersCount={pendingKitchenOrdersCount}
+        availableRiderTripsCount={availableRiderTripsCount}
+        totalOrdersCount={orders.length}
+      />
+
+      {/* 1. CUSTOMER PORTAL */}
+      {currentPortal === 'customer' && (
+        <>
+          <Header
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedCity={selectedCity}
+            setSelectedCity={setSelectedCity}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            cartCount={totalCartCount}
+            cartTotal={totalCartAmount}
+            setIsCartOpen={setIsCartOpen}
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
+            setIsAuthOpen={setIsAuthOpen}
+            user={user}
+            onOpenMyOrders={() => setIsMyOrdersOpen(true)}
+            activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
+          />
+
+          <main className="main-content">
+            <div className="container">
+              {/* Exclusive Regional Offers Strip for Perungalathur, Vandalur & Mannivakkam */}
+              <RegionalOffersStrip
+                selectedCity={selectedCity}
+                onSelectRegion={(reg) => {
+                  const foundCity = CITIES.find(c => c.name.toLowerCase().includes(reg.toLowerCase()));
+                  if (foundCity) setSelectedCity(foundCity);
+                  setSearchQuery('');
+                }}
+                onApplyPromoCode={(code) => {
+                  setPrefilledCoupon(code);
+                  setIsCartOpen(true);
+                }}
+              />
+
+              {/* Inspiration Category Carousel */}
+              {activeTab === 'delivery' && (
+                <CategoryCarousel
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
+                />
+              )}
+
+              {/* Curated Collections */}
+              {activeTab !== 'delivery' && (
+                <Collections 
+                  onSelectCollection={(col) => {
+                    setSearchQuery(col.tag.includes('Campus') ? 'shawarma' : 'biryani');
+                  }} 
+                />
+              )}
+            </div>
+
+            {/* Sticky Filter Bar */}
+            <FilterBar
+              filters={filters}
+              setFilters={setFilters}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              onResetFilters={resetFilters}
+            />
+
+            {/* Restaurants Grid Section */}
+            <div className="container restaurant-section">
+              <div className="results-headline-row">
+                <h2 className="results-title">
+                  {activeTab === 'delivery' && 'Suburban Food Delivery in ' + selectedCity.name}
+                  {activeTab === 'dining' && 'Best Dining Spots in ' + selectedCity.name}
+                  {activeTab === 'nightlife' && 'Nightlife & Pubs in ' + selectedCity.name}
+                  {selectedCategory && ` (${selectedCategory})`}
+                </h2>
+                <span className="results-count">
+                  {filteredRestaurants.length} restaurant{filteredRestaurants.length === 1 ? '' : 's'} available
+                </span>
+              </div>
+
+              {filteredRestaurants.length > 0 ? (
+                <div className="restaurants-grid">
+                  {filteredRestaurants.map(restaurant => (
+                    <RestaurantCard
+                      key={restaurant.id}
+                      restaurant={restaurant}
+                      onOpenModal={setActiveRestaurantModal}
+                      isFavorite={favorites.includes(restaurant.id)}
+                      onToggleFavorite={toggleFavorite}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-results-box animate-fade">
+                  <div className="empty-results-icon">🔍</div>
+                  <h3>No restaurants matched your filters in {selectedCity.name}</h3>
+                  <p>Try resetting some filters or searching for another dish or cuisine.</p>
+                  <button className="btn-primary" onClick={resetFilters}>
+                    Reset All Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          </main>
+
+          <Footer />
+
+          {/* Restaurant Detail Modal */}
+          {activeRestaurantModal && (
+            <RestaurantModal
+              restaurant={activeRestaurantModal}
+              onClose={() => setActiveRestaurantModal(null)}
+              cartItems={cartItems}
+              onAddToCart={handleAddToCart}
+              onUpdateQuantity={handleUpdateQuantity}
+              onOpenCart={() => {
+                setActiveRestaurantModal(null);
+                setIsCartOpen(true);
+              }}
+            />
+          )}
+
+          {/* Slide-over Cart Drawer */}
+          <CartDrawer
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cartItems={cartItems}
+            onUpdateQuantity={handleUpdateQuantity}
+            onClearCart={handleClearCart}
+            selectedCity={selectedCity}
+            onSelectCity={setSelectedCity}
+            user={user}
+            merchantUpi={settings?.merchantUpi || '8248651695-3@ybl'}
+            onPlaceOrder={handlePlaceOrder}
+            couponsList={couponsList}
+            prefilledCoupon={prefilledCoupon}
+          />
+
+          {/* Active Order Floating Tracker Bar */}
+          <ActiveOrderFloatingBar
+            activeOrder={orders.find(o => o.status !== 'DELIVERED')}
+            onOpenTracker={() => setTrackingOrder(orders.find(o => o.status !== 'DELIVERED'))}
+          />
+
+          {/* Customer Orders & History Modal */}
+          <MyOrdersModal
+            isOpen={isMyOrdersOpen}
+            onClose={() => setIsMyOrdersOpen(false)}
+            orders={orders}
+            onSelectOrderToTrack={(ord) => setTrackingOrder(ord)}
+          />
+
+          {/* Live Real-Time Order Tracker Modal */}
+          {(trackingOrder || completedOrder) && (
+            <OrderSuccessModal
+              order={trackingOrder || completedOrder}
+              orders={orders}
+              onClose={() => {
+                setTrackingOrder(null);
+                setCompletedOrder(null);
+              }}
+              onCancelOrder={handleCancelOrder}
+              riderLiveLocation={riderLocations[trackingOrder?.riderId || completedOrder?.riderId || 'rider-1']}
+            />
+          )}
+
+          {/* Auth Modal */}
+          <AuthModal
+            isOpen={isAuthOpen}
+            onClose={() => setIsAuthOpen(false)}
+            onLoginSuccess={setUser}
+          />
+        </>
+      )}
+
+      {/* 2. HOTEL / RESTAURANT MERCHANT PORTAL */}
+      {currentPortal === 'hotel' && (
+        <HotelPortal
+          orders={orders}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onSimulateNewOrder={handleSimulateNewOrder}
+          onToggleItemStock={handleToggleItemStock}
+          restaurantStock={restaurantStock}
+        />
+      )}
+
+      {/* 3. DELIVERY RIDER PARTNER PORTAL */}
+      {currentPortal === 'rider' && (
+        <RiderPortal
+          orders={orders}
+          onAcceptTrip={handleAcceptTrip}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          riderName="Murugan S."
+          riderLocation={riderLocations['rider-1']}
+          onUpdateLocation={handleUpdateRiderLocation}
+        />
+      )}
+
+      {/* 4. SUPER ADMIN CONSOLE */}
+      {currentPortal === 'admin' && (
+        <AdminPortal
+          orders={orders}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onAddCoupon={handleAddCoupon}
+          couponsList={couponsList}
+          riderLocations={riderLocations}
+          settings={settings}
+          onUpdateSettings={handleUpdateSettings}
+          onResetOrders={handleResetOrders}
+        />
+      )}
+    </div>
+  );
+}

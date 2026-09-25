@@ -1,0 +1,299 @@
+{
+  "orders": [
+    {
+      "orderId": "UNV-932818",
+      "customerName": "Priya Sundaram",
+      "customerPhone": "+91 98401 23456",
+      "restaurantId": "res-perungalathur-2",
+      "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+      "restaurantAddress": "GST Road Hub",
+      "customerAddress": "GST Road & Peerkankaranai",
+      "locality": "Perungalathur",
+      "items": [
+        {
+          "id": "dtp-1",
+          "name": "Thalappakatti Mutton Biryani",
+          "price": 360,
+          "isVeg": false,
+          "restaurantId": "res-perungalathur-2",
+          "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+          "quantity": 1
+        }
+      ],
+      "itemTotal": 360,
+      "deliveryFee": 35,
+      "platformFee": 5,
+      "taxes": 18,
+      "discount": 0,
+      "grandTotal": 418,
+      "status": "PLACED",
+      "paymentMethod": "UPI",
+      "paymentStatus": "PAID",
+      "deliveryOtp": "5560",
+      "riderId": null,
+      "riderName": null,
+      "riderPhone": null,
+      "riderEarnings": 60,
+      "placedAt": "Just now",
+      "etaMins": 24,
+      "cookingNote": "",
+      "createdAt": "2026-09-24T18:42:59.507Z"
+    },
+    {
+      "orderId": "UNV-525734",
+      "customerName": "Priya Sundaram",
+      "customerPhone": "+91 98401 23456",
+      "restaurantId": "res-perungalathur-2",
+      "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+      "restaurantAddress": "GST Road Hub",
+      "customerAddress": "GST Road & Peerkankaranai",
+      "locality": "Perungalathur",
+      "items": [
+        {
+          "id": "dtp-1",
+          "name": "Thalappakatti Mutton Biryani",
+          "price": 360,
+          "isVeg": false,
+          "restaurantId": "res-perungalathur-2",
+          "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+          "quantity": 1
+        }
+      ],
+      "itemTotal": 360,
+      "deliveryFee": 35,
+      "platformFee": 5,
+      "taxes": 18,
+      "discount": 0,
+      "grandTotal": 418,
+      "status": "DELIVERED",
+      "paymentMethod": "UPI",
+      "paymentStatus": "PAID",
+      "deliveryOtp": "1710",
+      "riderId": "rider-1",
+      "riderName": "Murugan S.",
+      "riderPhone": "+91 98765 43210",
+      "riderEarnings": 60,
+      "placedAt": "Just now",
+      "etaMins": 24,
+      "cookingNote": "",
+      "createdAt": "2026-09-24T18:39:56.954Z"
+    },
+    {
+      "orderId": "UNV-396953",
+      "customerName": "Priya Sundaram",
+      "customerPhone": "+91 98401 23456",
+      "restaurantId": "res-perungalathur-2",
+      "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+      "restaurantAddress": "GST Road Hub",
+      "customerAddress": "GST Road & Peerkankaranai",
+      "locality": "Perungalathur",
+      "items": [
+        {
+          "id": "dtp-1",
+          "name": "Thalappakatti Mutton Biryani",
+          "price": 360,
+          "isVeg": false,
+          "restaurantId": "res-perungalathur-2",
+          "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+          "quantity": 1
+        },
+        {
+          "id": "ssh-1",
+          "name": "Special Chicken Dum Biryani",
+          "price": 280,
+          "isVeg": false,
+          "restaurantId": "res-perungalathur-1",
+          "restaurantName": "SS Hyderabad Biryani",
+          "quantity": 1
+        }
+      ],
+      "itemTotal": 640,
+      "deliveryFee": 35,
+      "platformFee": 5,
+      "taxes": 32,
+      "discount": 0,
+      "grandTotal": 712,
+      "status": "READY_FOR_PICKUP",
+      "paymentMethod": "UPI",
+      "paymentStatus": "PAID",
+      "deliveryOtp": "1075",
+      "riderId": "rider-1",
+      "riderName": "Murugan S.",
+      "riderPhone": "+91 98765 43210",
+      "riderEarnings": 60,
+      "placedAt": "Just now",
+      "etaMins": 24,
+      "cookingNote": "",
+      "createdAt": "2026-09-24T18:25:36.088Z"
+    },
+    {
+      "orderId": "UNV-120184",
+      "customerName": "Priya Sundaram",
+      "customerPhone": "+91 98401 23456",
+      "restaurantId": "res-perungalathur-1",
+      "restaurantName": "SS Hyderabad Biryani",
+      "restaurantAddress": "GST Road Hub",
+      "customerAddress": "GST Road & Peerkankaranai",
+      "locality": "Perungalathur",
+      "items": [
+        {
+          "id": "ssh-2",
+          "name": "Mutton Dum Biryani",
+          "price": 360,
+          "isVeg": false,
+          "restaurantId": "res-perungalathur-1",
+          "restaurantName": "SS Hyderabad Biryani",
+          "quantity": 1
+        },
+        {
+          "id": "dtp-1",
+          "name": "Thalappakatti Mutton Biryani",
+          "price": 360,
+          "isVeg": false,
+          "restaurantId": "res-perungalathur-2",
+          "restaurantName": "Dindigul Thalappakatti (Perungalathur)",
+          "quantity": 1
+        }
+      ],
+      "itemTotal": 720,
+      "deliveryFee": 35,
+      "platformFee": 5,
+      "taxes": 36,
+      "discount": 0,
+      "grandTotal": 796,
+      "status": "DELIVERED",
+      "paymentMethod": "UPI",
+      "paymentStatus": "PAID",
+      "riderId": "rider-1",
+      "riderName": "Murugan S.",
+      "riderPhone": "+91 98765 43210",
+      "riderEarnings": 60,
+      "placedAt": "Just now",
+      "etaMins": 24,
+      "cookingNote": "",
+      "createdAt": "2026-09-24T18:18:45.258Z"
+    },
+    {
+      "orderId": "UNV-784102",
+      "customerName": "Karthik Raja",
+      "customerPhone": "+91 98402 11223",
+      "restaurantId": "res-perungalathur-1",
+      "restaurantName": "SS Hyderabad Biryani",
+      "restaurantAddress": "GST Road, Perungalathur",
+      "customerAddress": "Peerkankaranai Main Rd, Perungalathur",
+      "locality": "Perungalathur",
+      "items": [
+        {
+          "id": "ssh-1",
+          "name": "Special Chicken Dum Biryani",
+          "price": 280,
+          "quantity": 2
+        },
+        {
+          "id": "ssh-4",
+          "name": "Chicken 65 (Boneless)",
+          "price": 210,
+          "quantity": 1
+        }
+      ],
+      "itemTotal": 770,
+      "deliveryFee": 35,
+      "platformFee": 5,
+      "taxes": 38,
+      "discount": 120,
+      "grandTotal": 728,
+      "status": "DELIVERED",
+      "paymentMethod": "UPI",
+      "paymentStatus": "PAID",
+      "riderId": "rider-1",
+      "riderName": "Murugan S.",
+      "riderPhone": "+91 98765 43210",
+      "riderEarnings": 65,
+      "placedAt": "12 mins ago",
+      "etaMins": 16
+    },
+    {
+      "orderId": "UNV-649201",
+      "customerName": "Deepa Lakshmi",
+      "customerPhone": "+91 97910 88776",
+      "restaurantId": "res-vandalur-1",
+      "restaurantName": "Hotel Vandalur Ananda Bhavan",
+      "restaurantAddress": "Opposite Zoo Gate, Vandalur",
+      "customerAddress": "Crescent Campus Staff Quarters, Vandalur",
+      "locality": "Vandalur",
+      "items": [
+        {
+          "id": "vab-1",
+          "name": "Ghee Podi Roast Dosa",
+          "price": 130,
+          "quantity": 2
+        },
+        {
+          "id": "vab-5",
+          "name": "Vandalur Filter Kaapi",
+          "price": 35,
+          "quantity": 2
+        }
+      ],
+      "itemTotal": 330,
+      "deliveryFee": 35,
+      "platformFee": 5,
+      "taxes": 16,
+      "discount": 150,
+      "grandTotal": 236,
+      "status": "DELIVERED",
+      "paymentMethod": "UPI",
+      "paymentStatus": "PAID",
+      "riderId": "rider-1",
+      "riderName": "Murugan S.",
+      "riderPhone": "+91 98765 43210",
+      "riderEarnings": 55,
+      "placedAt": "18 mins ago",
+      "etaMins": 10
+    }
+  ],
+  "stock": {},
+  "coupons": [
+    {
+      "code": "PERUNGAL50",
+      "region": "Perungalathur",
+      "discountPercent": 50,
+      "maxDiscount": 120,
+      "minOrder": 199,
+      "label": "50% OFF up to ₹120 (Perungalathur)"
+    },
+    {
+      "code": "VANDALUR60",
+      "region": "Vandalur",
+      "discountPercent": 60,
+      "maxDiscount": 150,
+      "minOrder": 199,
+      "label": "60% OFF up to ₹150 (Vandalur)"
+    },
+    {
+      "code": "MANNIVAKKAM40",
+      "region": "Mannivakkam",
+      "discountPercent": 40,
+      "maxDiscount": 100,
+      "minOrder": 149,
+      "label": "40% OFF up to ₹100 (Mannivakkam)"
+    },
+    {
+      "code": "UNAVU50",
+      "discountPercent": 50,
+      "maxDiscount": 100,
+      "minOrder": 199,
+      "label": "50% OFF up to ₹100 (All Zones)"
+    },
+    {
+      "code": "FREEDEL",
+      "discountAmount": 35,
+      "minOrder": 200,
+      "label": "Free Delivery over ₹200"
+    }
+  ],
+  "settings": {
+    "merchantUpi": "8248651695-3@ybl",
+    "merchantName": "Unavukadai Express"
+  }
+}

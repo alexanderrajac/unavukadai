@@ -1,0 +1,296 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  MapPin, 
+  Search, 
+  ShoppingBag, 
+  Moon, 
+  Sun, 
+  ChevronDown, 
+  User, 
+  X,
+  UtensilsCrossed,
+  GlassWater,
+  Truck,
+  ReceiptText,
+  Crosshair,
+  Loader2
+} from 'lucide-react';
+import { CITIES } from '../data/mockData';
+import { detectUserLocation } from '../utils/geolocation';
+
+export default function Header({
+  activeTab,
+  setActiveTab,
+  selectedCity,
+  setSelectedCity,
+  searchQuery,
+  setSearchQuery,
+  cartCount,
+  cartTotal,
+  setIsCartOpen,
+  isDarkMode,
+  setIsDarkMode,
+  setIsAuthOpen,
+  user,
+  onOpenMyOrders,
+  activeOrdersCount = 0
+}) {
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
+  const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [gpsNotice, setGpsNotice] = useState('');
+  const cityRef = useRef(null);
+
+  const handleDetectGps = async () => {
+    setIsDetectingGps(true);
+    setGpsNotice('');
+    try {
+      const loc = await detectUserLocation();
+      setSelectedCity(loc.suburb);
+      setGpsNotice(`📍 Detected: ${loc.suburb.name} Hub`);
+      setTimeout(() => {
+        setIsCityDropdownOpen(false);
+        setGpsNotice('');
+      }, 1200);
+    } catch (err) {
+      setGpsNotice(err.message || 'Could not detect location');
+      setTimeout(() => setGpsNotice(''), 3500);
+    } finally {
+      setIsDetectingGps(false);
+    }
+  };
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cityRef.current && !cityRef.current.contains(e.target)) {
+        setIsCityDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCities = CITIES.filter(c => 
+    c.name.toLowerCase().includes(citySearch.toLowerCase()) ||
+    c.locality.toLowerCase().includes(citySearch.toLowerCase())
+  );
+
+  return (
+    <header className="header-wrapper">
+      <div className="container header-container">
+        {/* Top Bar */}
+        <div className="header-top">
+          {/* Logo */}
+          <div className="logo-brand" onClick={() => { setActiveTab('delivery'); setSearchQuery(''); }}>
+            <div className="logo-icon-wrapper">
+              <span className="logo-flame">🍲</span>
+            </div>
+            <div className="logo-text-group">
+              <span className="brand-title">unavukadai</span>
+              <span className="brand-tagline">Authentic Food & Flavours</span>
+            </div>
+          </div>
+
+          {/* Search & Location Bar */}
+          <div className="omnibar-container">
+            {/* Location selector */}
+            <div className="location-picker-box" ref={cityRef}>
+              <div 
+                className="location-trigger" 
+                onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                title="Change location"
+              >
+                <MapPin size={18} className="icon-crimson" />
+                <span className="location-text">{selectedCity.locality}</span>
+                <ChevronDown size={14} className={`chevron-icon ${isCityDropdownOpen ? 'rotated' : ''}`} />
+              </div>
+
+              {isCityDropdownOpen && (
+                <div className="city-dropdown-menu animate-scale">
+                  {/* GPS Auto-Detect Button */}
+                  <button 
+                    type="button" 
+                    className="btn-detect-gps-header"
+                    onClick={handleDetectGps}
+                    disabled={isDetectingGps}
+                  >
+                    {isDetectingGps ? (
+                      <>
+                        <Loader2 size={16} className="spin-icon text-crimson" />
+                        <div className="detect-text-box">
+                          <span className="detect-title">Detecting your location...</span>
+                          <span className="detect-sub">Finding nearest suburban hub</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Crosshair size={16} className="icon-crimson" />
+                        <div className="detect-text-box">
+                          <span className="detect-title">🎯 Detect My Location</span>
+                          <span className="detect-sub">Using GPS (Perungalathur / Vandalur / Mannivakkam)</span>
+                        </div>
+                      </>
+                    )}
+                  </button>
+
+                  {gpsNotice && (
+                    <div className="gps-notice-pill animate-fade">
+                      {gpsNotice}
+                    </div>
+                  )}
+
+                  <div className="city-search-box">
+                    <Search size={14} />
+                    <input 
+                      type="text" 
+                      placeholder="Search city or locality..." 
+                      value={citySearch}
+                      onChange={(e) => setCitySearch(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="city-list">
+                    {filteredCities.map((city) => (
+                      <div 
+                        key={city.id} 
+                        className={`city-item ${selectedCity.id === city.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedCity(city);
+                          setIsCityDropdownOpen(false);
+                          setCitySearch('');
+                        }}
+                      >
+                        <MapPin size={15} />
+                        <div>
+                          <div className="city-name">{city.name}</div>
+                          <div className="city-sub">{city.locality}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="omnibar-divider"></div>
+
+            {/* Universal Search */}
+            <div className="search-input-box">
+              <Search size={18} className="search-icon-dim" />
+              <input 
+                type="text" 
+                placeholder="Search for restaurant, cuisine, or a dish..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="header-actions">
+            {/* Theme Toggle */}
+            <button 
+              className="icon-action-btn"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkMode ? <Sun size={19} className="icon-sun" /> : <Moon size={19} />}
+            </button>
+
+            {/* My Orders Button */}
+            <button 
+              className="orders-btn-trigger"
+              onClick={onOpenMyOrders}
+              title="View my orders & live tracking"
+            >
+              <ReceiptText size={17} />
+              <span>Orders</span>
+              {activeOrdersCount > 0 && (
+                <span className="live-orders-indicator-dot"></span>
+              )}
+            </button>
+
+            {/* Cart Trigger */}
+            <button 
+              className={`cart-btn-trigger ${cartCount > 0 ? 'has-items' : ''}`}
+              onClick={() => setIsCartOpen(true)}
+            >
+              <ShoppingBag size={18} />
+              <span className="cart-label">Cart</span>
+              {cartCount > 0 && (
+                <span className="cart-badge-counter">{cartCount}</span>
+              )}
+              {cartCount > 0 && (
+                <span className="cart-price-peek">₹{cartTotal}</span>
+              )}
+            </button>
+
+            {/* Auth / Profile */}
+            {user ? (
+              <div className="user-profile-chip" onClick={() => setIsAuthOpen(true)}>
+                <div className="user-avatar">{user.name.charAt(0)}</div>
+                <span className="user-name">{user.name.split(' ')[0]}</span>
+              </div>
+            ) : (
+              <button className="auth-btn-pill" onClick={() => setIsAuthOpen(true)}>
+                <User size={16} />
+                <span>Log in</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Primary Tabs (Delivery / Dining Out / Nightlife) */}
+        <nav className="service-nav-tabs">
+          <button 
+            className={`service-tab ${activeTab === 'delivery' ? 'active' : ''}`}
+            onClick={() => setActiveTab('delivery')}
+          >
+            <div className="tab-icon-frame delivery-icon">
+              <Truck size={22} />
+            </div>
+            <div className="tab-info">
+              <span className="tab-title">Delivery</span>
+              <span className="tab-subtitle">Food to your doorstep</span>
+            </div>
+          </button>
+
+          <button 
+            className={`service-tab ${activeTab === 'dining' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dining')}
+          >
+            <div className="tab-icon-frame dining-icon">
+              <UtensilsCrossed size={22} />
+            </div>
+            <div className="tab-info">
+              <span className="tab-title">Dining Out</span>
+              <span className="tab-subtitle">Explore curated restaurants</span>
+            </div>
+          </button>
+
+          <button 
+            className={`service-tab ${activeTab === 'nightlife' ? 'active' : ''}`}
+            onClick={() => setActiveTab('nightlife')}
+          >
+            <div className="tab-icon-frame nightlife-icon">
+              <GlassWater size={22} />
+            </div>
+            <div className="tab-info">
+              <span className="tab-title">Nightlife</span>
+              <span className="tab-subtitle">Pubs, bars & late night</span>
+            </div>
+          </button>
+        </nav>
+      </div>
+    </header>
+  );
+}
