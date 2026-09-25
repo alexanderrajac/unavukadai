@@ -28,7 +28,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [simulatedOtp, setSimulatedOtp] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [sentViaWhatsApp, setSentViaWhatsApp] = useState(false);
@@ -120,9 +119,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
       setIsLoading(false);
       setOtpSent(true);
       setSentViaWhatsApp(Boolean(res.sentViaWhatsApp));
-      if (res.previewOtp) {
-        setSimulatedOtp(res.previewOtp);
-      }
       setResendTimer(30);
     } catch (err) {
       setIsLoading(false);
@@ -390,26 +386,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <p>We've dispatched a 4-digit verification code to your WhatsApp number.</p>
               </div>
             </div>
-
-            {/* Development auto-fill preview (if available) */}
-            {simulatedOtp && (
-              <div className="simulated-sms-box animate-fade">
-                <div className="sms-box-header">
-                  <span>📲 Code Preview:</span>
-                  <strong className="sms-otp-code">{simulatedOtp}</strong>
-                </div>
-                <button 
-                  type="button" 
-                  className="btn-autofill-otp"
-                  onClick={() => {
-                    setOtp(simulatedOtp.split(''));
-                    setOtpError('');
-                  }}
-                >
-                  ⚡ Auto-fill {simulatedOtp}
-                </button>
-              </div>
-            )}
 
             {otpError && (
               <div className="auth-error-banner animate-fade">

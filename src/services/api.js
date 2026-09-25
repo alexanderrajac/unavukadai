@@ -195,12 +195,9 @@ export async function sendWhatsAppOtpApi(phone, purpose = 'LOGIN') {
     return await res.json();
   } catch (err) {
     console.warn('Failed to send WhatsApp OTP:', err.message);
-    // Offline simulation fallback
-    const previewOtp = String(Math.floor(1000 + Math.random() * 9000));
     return {
       success: true,
       sentViaWhatsApp: false,
-      previewOtp,
       expiresAt: Date.now() + 5 * 60 * 1000,
       offlineFallback: true
     };

@@ -424,8 +424,7 @@ app.post('/api/whatsapp/send-otp', async (req, res) => {
     phone: normalized,
     sentViaWhatsApp,
     gatewayError: sentViaWhatsApp ? null : gatewayError,
-    expiresAt,
-    previewOtp: otp // Transparent preview for local development/testing
+    expiresAt
   });
 });
 
