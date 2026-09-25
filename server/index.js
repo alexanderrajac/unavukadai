@@ -327,7 +327,9 @@ app.post('/api/orders/reset', (req, res) => {
 // -------------------------------------------------------------
 // WHATSAPP OTP VERIFICATION & NOTIFICATION GATEWAY INTEGRATION
 // -------------------------------------------------------------
-const WHATSAPP_GATEWAY_URL = process.env.WHATSAPP_GATEWAY_URL || 'http://localhost:3002';
+const LIVE_GATEWAY_URL = 'https://whatsappmarketingking-production.up.railway.app/whatsapp-gateway';
+const LOCAL_GATEWAY_URL = 'http://localhost:3002';
+const WHATSAPP_GATEWAY_URL = process.env.WHATSAPP_GATEWAY_URL || LIVE_GATEWAY_URL;
 const activeOtps = new Map(); // normalizedPhone -> { otp, expiresAt, attempts }
 
 function normalizePhone(phone) {
@@ -339,23 +341,60 @@ function normalizePhone(phone) {
   return digits;
 }
 
+// Resilient gateway dispatcher: tries Live Railway first, then Local fallback
+async function postToGateway(endpoint, body, timeoutMs = 8000) {
+  const targets = [WHATSAPP_GATEWAY_URL];
+  if (WHATSAPP_GATEWAY_URL !== LOCAL_GATEWAY_URL) {
+    targets.push(LOCAL_GATEWAY_URL);
+  }
+
+  let lastError = null;
+  for (const baseUrl of targets) {
+    try {
+      const res = await fetch(`${baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        return { success: true, data, gatewayUrl: baseUrl };
+      }
+      lastError = data.error || `HTTP ${res.status}`;
+    } catch (err) {
+      lastError = err.message;
+    }
+  }
+
+  return { success: false, error: lastError };
+}
+
 // 1. WhatsApp Gateway Live Connection Status
 app.get('/api/whatsapp/status', async (req, res) => {
-  try {
-    const gatewayRes = await fetch(`${WHATSAPP_GATEWAY_URL}/status`, {
-      signal: AbortSignal.timeout(3000)
-    });
-    if (gatewayRes.ok) {
-      const data = await gatewayRes.json();
-      return res.json({
-        success: true,
-        gatewayConnected: true,
-        gatewayUrl: WHATSAPP_GATEWAY_URL,
-        ...data
+  const targets = [WHATSAPP_GATEWAY_URL];
+  if (WHATSAPP_GATEWAY_URL !== LOCAL_GATEWAY_URL) {
+    targets.push(LOCAL_GATEWAY_URL);
+  }
+
+  for (const baseUrl of targets) {
+    try {
+      const gatewayRes = await fetch(`${baseUrl}/status`, {
+        signal: AbortSignal.timeout(4000)
       });
+      if (gatewayRes.ok) {
+        const data = await gatewayRes.json();
+        return res.json({
+          success: true,
+          gatewayConnected: Boolean(data.isConnected || data.status === 'CONNECTED'),
+          gatewayUrl: baseUrl,
+          isLiveCloud: baseUrl.includes('railway.app'),
+          ...data
+        });
+      }
+    } catch (err) {
+      // try next target
     }
-  } catch (err) {
-    // Gateway offline or starting up
   }
 
   res.json({
@@ -392,38 +431,23 @@ app.post('/api/whatsapp/send-otp', async (req, res) => {
     `🔒 Do not share this OTP with anyone for account security.\n\n` +
     `📍 _South Chennai Hyperlocal Delivery (Perungalathur • Vandalur • Mannivakkam)_`;
 
-  let sentViaWhatsApp = false;
-  let gatewayError = null;
+  const dispatchResult = await postToGateway('/send-message', {
+    phone: normalized,
+    message: otpMessage
+  });
 
-  try {
-    const gatewayRes = await fetch(`${WHATSAPP_GATEWAY_URL}/send-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone: normalized,
-        message: otpMessage
-      }),
-      signal: AbortSignal.timeout(6000)
-    });
-
-    const data = await gatewayRes.json().catch(() => ({}));
-    if (gatewayRes.ok && data.success) {
-      sentViaWhatsApp = true;
-      console.log(`[WhatsApp OTP] Successfully sent OTP ${otp} to +${normalized}`);
-    } else {
-      gatewayError = data.error || 'Gateway returned non-success';
-      console.warn(`[WhatsApp OTP] Gateway failed to deliver to +${normalized}:`, gatewayError);
-    }
-  } catch (err) {
-    gatewayError = err.message || 'WhatsApp Gateway unreachable';
-    console.warn(`[WhatsApp OTP] Gateway connection error:`, err.message);
+  if (dispatchResult.success) {
+    console.log(`[WhatsApp OTP] Successfully sent OTP via ${dispatchResult.gatewayUrl} to +${normalized}`);
+  } else {
+    console.warn(`[WhatsApp OTP] Gateway failed to deliver to +${normalized}:`, dispatchResult.error);
   }
 
   res.json({
     success: true,
     phone: normalized,
-    sentViaWhatsApp,
-    gatewayError: sentViaWhatsApp ? null : gatewayError,
+    sentViaWhatsApp: dispatchResult.success,
+    gatewayUrl: dispatchResult.gatewayUrl || WHATSAPP_GATEWAY_URL,
+    gatewayError: dispatchResult.success ? null : dispatchResult.error,
     expiresAt
   });
 });
@@ -502,21 +526,17 @@ app.post('/api/whatsapp/send-order-notification', async (req, res) => {
     `🛵 *Live Tracking:* http://localhost:5173/#/customer\n` +
     `_Thank you for supporting authentic local South Chennai eateries!_`;
 
-  try {
-    const gatewayRes = await fetch(`${WHATSAPP_GATEWAY_URL}/send-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone: normalized,
-        message
-      }),
-      signal: AbortSignal.timeout(6000)
-    });
-    const data = await gatewayRes.json().catch(() => ({}));
-    res.json({ success: gatewayRes.ok && data.success, data });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
+  const dispatchResult = await postToGateway('/send-message', {
+    phone: normalized,
+    message
+  });
+
+  res.json({
+    success: dispatchResult.success,
+    gatewayUrl: dispatchResult.gatewayUrl || WHATSAPP_GATEWAY_URL,
+    data: dispatchResult.data,
+    error: dispatchResult.success ? null : dispatchResult.error
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
