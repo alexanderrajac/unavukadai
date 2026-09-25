@@ -75,6 +75,7 @@ export default function OrderSuccessModal({
   return (
     <div className="modal-backdrop animate-fade" onClick={onClose}>
       <div className="order-success-modal animate-scale" onClick={(e) => e.stopPropagation()}>
+        <div className="mobile-sheet-pull-handle" />
         <button className="modal-close-icon" onClick={onClose} aria-label="Close">
           <X size={20} />
         </button>

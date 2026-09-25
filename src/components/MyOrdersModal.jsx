@@ -21,6 +21,7 @@ export default function MyOrdersModal({
         className="my-orders-modal-container animate-scale"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="mobile-sheet-pull-handle" />
         <div className="orders-modal-header">
           <div className="orders-header-title">
             <ShoppingBag size={22} className="icon-crimson" />

@@ -219,11 +219,12 @@ export default function CartDrawer({
   };
 
   return (
-    <div className="cart-backdrop animate-fade" onClick={onClose}>
-      <div 
-        className="cart-drawer-panel animate-slide-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <>
+      <div className="cart-backdrop animate-fade" onClick={onClose}>
+        <div 
+          className="cart-drawer-panel animate-slide-in"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Mobile Drag Sheet Indicator */}
         <div className="mobile-sheet-pull-handle" />
 
@@ -606,28 +607,30 @@ export default function CartDrawer({
             </button>
           </div>
         )}
-        {/* Dynamic UPI & COD Payment Modal */}
-        <UpiPaymentModal
-          isOpen={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
-          grandTotal={grandTotal}
-          orderItems={cartItems}
-          deliveryAddress={selectedCity?.name || 'Perungalathur'}
-          onPaymentConfirmed={handlePaymentConfirmed}
-          upiId={merchantUpi}
-        />
-
-        {/* Interactive Pin-Drop Leaflet Map Modal */}
-        <InteractiveAddressPinMap
-          isOpen={isPinMapOpen}
-          onClose={() => setIsPinMapOpen(false)}
-          initialCoords={deliveryCoords || customerCoords}
-          restaurantCoords={restaurantCoords}
-          restaurantName={primaryRestaurantName || selectedCity?.name || 'Restaurant Hub'}
-          itemTotal={itemTotal}
-          onConfirmLocation={handleConfirmPinLocation}
-        />
+        </div>
       </div>
-    </div>
+
+      {/* Dynamic UPI & COD Payment Modal */}
+      <UpiPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        grandTotal={grandTotal}
+        orderItems={cartItems}
+        deliveryAddress={selectedCity?.name || 'Perungalathur'}
+        onPaymentConfirmed={handlePaymentConfirmed}
+        upiId={merchantUpi}
+      />
+
+      {/* Interactive Pin-Drop Leaflet Map Modal */}
+      <InteractiveAddressPinMap
+        isOpen={isPinMapOpen}
+        onClose={() => setIsPinMapOpen(false)}
+        initialCoords={deliveryCoords || customerCoords}
+        restaurantCoords={restaurantCoords}
+        restaurantName={primaryRestaurantName || selectedCity?.name || 'Restaurant Hub'}
+        itemTotal={itemTotal}
+        onConfirmLocation={handleConfirmPinLocation}
+      />
+    </>
   );
 }

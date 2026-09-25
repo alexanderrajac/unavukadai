@@ -63,6 +63,7 @@ export default function RestaurantModal({
         className="restaurant-modal-container animate-scale" 
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="mobile-sheet-pull-handle" />
         {/* Close Button */}
         <button className="modal-close-icon" onClick={onClose} aria-label="Close modal">
           <X size={20} />

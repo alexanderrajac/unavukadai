@@ -69,6 +69,7 @@ export default function UpiPaymentModal({
         className="upi-modal-container animate-scale"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="mobile-sheet-pull-handle" />
         <button className="modal-close-icon" onClick={onClose} aria-label="Close">
           <X size={20} />
         </button>
