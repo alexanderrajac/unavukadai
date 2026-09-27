@@ -10,7 +10,10 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { getSupabaseClient } from './supabase.js';
+
 export const DB_ENGINE = {
+  SUPABASE: 'supabase',
   MONGO: 'mongodb',
   POSTGRES: 'postgres',
   ATOMIC_FALLBACK: 'atomic_store'
@@ -24,7 +27,22 @@ export async function initDatabaseConnection() {
   const mongoUri = process.env.MONGODB_URI;
   const postgresUrl = process.env.DATABASE_URL;
 
-  // 1. Try MongoDB if MONGODB_URI is provided
+  // 1. Try Supabase Cloud Database first if configured
+  try {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase.from('settings').select('key').limit(1);
+      if (!error) {
+        activeEngine = DB_ENGINE.SUPABASE;
+        console.log(`⚡ Connected to Supabase Cloud Database: ${process.env.SUPABASE_PROJECT_REF || 'efncxyhwgxozdzcbpgjy'}`);
+        return { engine: activeEngine };
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Supabase connection check warning:', err.message);
+  }
+
+  // 2. Try MongoDB if MONGODB_URI is provided
   if (mongoUri) {
     try {
       console.log('🔄 Connecting to MongoDB:', mongoUri.replace(/\/\/.*@/, '//***@'));
@@ -39,7 +57,7 @@ export async function initDatabaseConnection() {
     }
   }
 
-  // 2. Try PostgreSQL if DATABASE_URL is provided
+  // 3. Try PostgreSQL if DATABASE_URL is provided
   if (postgresUrl) {
     try {
       console.log('🔄 Connecting to PostgreSQL...');
@@ -57,7 +75,7 @@ export async function initDatabaseConnection() {
     }
   }
 
-  // 3. Resilient POSIX Atomic Transactional Store (Zero-Config Default)
+  // 4. Resilient POSIX Atomic Transactional Store (Zero-Config Default)
   activeEngine = DB_ENGINE.ATOMIC_FALLBACK;
   console.log('⚡ Active DB Engine: Atomic Transactional Storage with POSIX fsync & atomic file swapping (No external DB required or unconfigured)');
   return { engine: activeEngine };

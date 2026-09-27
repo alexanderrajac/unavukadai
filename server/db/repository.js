@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getActiveEngine, getPgPool, DB_ENGINE } from './connection.js';
+import { getSupabaseClient } from './supabase.js';
 import { OrderModel, RiderLocationModel, CouponModel, StockModel, SettingsModel } from './schemas.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -60,6 +61,16 @@ function loadInitialFileCache() {
 export async function getOrders() {
   const engine = getActiveEngine();
 
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      if (!error && data) return data.map(mapPgOrderToApp);
+    } catch (err) {
+      console.warn('⚠️ Supabase getOrders fallback to cache:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     return await OrderModel.find().sort({ createdAt: -1 }).lean();
   }
@@ -84,6 +95,49 @@ export async function createOrder(orderData) {
     placedAt: 'Just now',
     createdAt: new Date().toISOString()
   };
+
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const row = {
+        order_id: newOrder.orderId,
+        customer_name: newOrder.customerName,
+        customer_phone: newOrder.customerPhone,
+        restaurant_id: newOrder.restaurantId,
+        restaurant_name: newOrder.restaurantName,
+        restaurant_address: newOrder.restaurantAddress,
+        customer_address: newOrder.customerAddress,
+        locality: newOrder.locality,
+        door_no: newOrder.doorNo || '',
+        street_address: newOrder.streetAddress || '',
+        landmark: newOrder.landmark || '',
+        delivery_coords: newOrder.deliveryCoords || [],
+        items: newOrder.items || [],
+        item_total: newOrder.itemTotal,
+        delivery_fee: newOrder.deliveryFee,
+        delivery_distance_km: newOrder.deliveryDistanceKm,
+        platform_fee: newOrder.platformFee,
+        taxes: newOrder.taxes,
+        discount: newOrder.discount,
+        grand_total: newOrder.grandTotal,
+        status: newOrder.status,
+        payment_method: newOrder.paymentMethod,
+        payment_status: newOrder.paymentStatus,
+        delivery_otp: newOrder.deliveryOtp,
+        rider_id: newOrder.riderId || null,
+        rider_name: newOrder.riderName || null,
+        rider_phone: newOrder.riderPhone || null,
+        rider_earnings: newOrder.riderEarnings || 60,
+        placed_at: newOrder.placedAt,
+        eta_mins: newOrder.etaMins || 25,
+        cooking_note: newOrder.cookingNote || ''
+      };
+      const { data, error } = await supabase.from('orders').insert([row]).select().single();
+      if (!error && data) return mapPgOrderToApp(data);
+    } catch (err) {
+      console.warn('⚠️ Supabase createOrder fallback to cache:', err.message);
+    }
+  }
 
   if (engine === DB_ENGINE.MONGO) {
     const created = await OrderModel.create(newOrder);
@@ -126,6 +180,25 @@ export async function createOrder(orderData) {
 export async function updateOrder(orderId, updates) {
   const engine = getActiveEngine();
 
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const dbUpdates = {};
+      if (updates.status) dbUpdates.status = updates.status;
+      if (updates.riderId) dbUpdates.rider_id = updates.riderId;
+      if (updates.riderName) dbUpdates.rider_name = updates.riderName;
+      if (updates.riderPhone) dbUpdates.rider_phone = updates.riderPhone;
+      if (updates.etaMins) dbUpdates.eta_mins = updates.etaMins;
+      if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
+      dbUpdates.updated_at = new Date().toISOString();
+
+      const { data, error } = await supabase.from('orders').update(dbUpdates).eq('order_id', orderId).select().single();
+      if (!error && data) return mapPgOrderToApp(data);
+    } catch (err) {
+      console.warn('⚠️ Supabase updateOrder fallback to cache:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     return await OrderModel.findOneAndUpdate({ orderId }, { $set: updates }, { new: true }).lean();
   }
@@ -167,6 +240,16 @@ export async function updateOrder(orderId, updates) {
 export async function deleteOrder(orderId) {
   const engine = getActiveEngine();
 
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.from('orders').delete().eq('order_id', orderId);
+      return true;
+    } catch (err) {
+      console.warn('⚠️ Supabase deleteOrder fallback:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     await OrderModel.deleteOne({ orderId });
     return true;
@@ -186,6 +269,15 @@ export async function deleteOrder(orderId) {
 export async function resetOrders() {
   const engine = getActiveEngine();
 
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.from('orders').delete().neq('order_id', '');
+    } catch (err) {
+      console.warn('⚠️ Supabase resetOrders fallback:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     await OrderModel.deleteMany({});
   } else if (engine === DB_ENGINE.POSTGRES) {
@@ -204,6 +296,32 @@ export async function resetOrders() {
 
 export async function getRiderLocations() {
   const engine = getActiveEngine();
+
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.from('rider_locations').select('*');
+      if (!error && data && data.length > 0) {
+        const map = {};
+        data.forEach(r => {
+          map[r.rider_id] = {
+            riderId: r.rider_id,
+            riderName: r.rider_name,
+            lat: Number(r.lat),
+            lng: Number(r.lng),
+            speed: r.speed,
+            heading: r.heading,
+            locality: r.locality,
+            orderId: r.order_id,
+            updatedAt: r.updated_at
+          };
+        });
+        return map;
+      }
+    } catch (err) {
+      console.warn('⚠️ Supabase getRiderLocations fallback:', err.message);
+    }
+  }
 
   if (engine === DB_ENGINE.MONGO) {
     const riders = await RiderLocationModel.find().lean();
@@ -238,6 +356,27 @@ export async function getRiderLocations() {
 export async function updateRiderLocation(locationData) {
   const engine = getActiveEngine();
   const riderId = locationData.riderId;
+
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const row = {
+        rider_id: riderId,
+        rider_name: locationData.riderName || 'Rider',
+        lat: locationData.lat,
+        lng: locationData.lng,
+        speed: locationData.speed || 25,
+        heading: locationData.heading || 0,
+        locality: locationData.locality || '',
+        order_id: locationData.orderId || null,
+        updated_at: new Date().toISOString()
+      };
+      await supabase.from('rider_locations').upsert(row, { onConflict: 'rider_id' });
+      return locationData;
+    } catch (err) {
+      console.warn('⚠️ Supabase updateRiderLocation fallback:', err.message);
+    }
+  }
 
   if (engine === DB_ENGINE.MONGO) {
     return await RiderLocationModel.findOneAndUpdate(
@@ -309,6 +448,27 @@ export async function toggleStock(itemId) {
 
 export async function getCoupons() {
   const engine = getActiveEngine();
+
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.from('coupons').select('*');
+      if (!error && data && data.length > 0) {
+        return data.map(c => ({
+          code: c.code,
+          region: c.region,
+          discountPercent: c.discount_percent,
+          maxDiscount: c.max_discount,
+          minOrder: c.min_order,
+          discountAmount: c.discount_amount,
+          label: c.label
+        }));
+      }
+    } catch (err) {
+      console.warn('⚠️ Supabase getCoupons fallback:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     const res = await CouponModel.find().lean();
     if (res && res.length > 0) return res;
@@ -318,6 +478,24 @@ export async function getCoupons() {
 
 export async function createCoupon(coupon) {
   const engine = getActiveEngine();
+
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.from('coupons').upsert({
+        code: coupon.code,
+        region: coupon.region || 'All',
+        discount_percent: coupon.discountPercent,
+        max_discount: coupon.maxDiscount,
+        min_order: coupon.minOrder,
+        discount_amount: coupon.discountAmount,
+        label: coupon.label
+      }, { onConflict: 'code' });
+    } catch (err) {
+      console.warn('⚠️ Supabase createCoupon fallback:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     await CouponModel.create(coupon);
   }
@@ -328,6 +506,23 @@ export async function createCoupon(coupon) {
 
 export async function getSettings() {
   const engine = getActiveEngine();
+
+  if (engine === DB_ENGINE.SUPABASE) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.from('settings').select('*');
+      if (!error && data && data.length > 0) {
+        const result = {};
+        data.forEach(item => {
+          result[item.key] = item.value?.value !== undefined ? item.value.value : item.value;
+        });
+        return result;
+      }
+    } catch (err) {
+      console.warn('⚠️ Supabase getSettings fallback:', err.message);
+    }
+  }
+
   if (engine === DB_ENGINE.MONGO) {
     const doc = await SettingsModel.findOne({ key: 'platform' }).lean();
     if (doc?.value) return doc.value;
