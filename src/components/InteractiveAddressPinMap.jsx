@@ -217,10 +217,18 @@ export default function InteractiveAddressPinMap({
 
         mapInstanceRef.current = map;
         updateAddressFromCoords(coords[0], coords[1]);
-      } else {
-        mapInstanceRef.current.invalidateSize();
       }
-    }, 150);
+
+      const triggerMapResize = () => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize({ pan: false });
+        }
+      };
+
+      triggerMapResize();
+      setTimeout(triggerMapResize, 150);
+      setTimeout(triggerMapResize, 450);
+    }, 50);
 
     return () => {
       clearTimeout(timer);

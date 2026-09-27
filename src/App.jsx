@@ -156,10 +156,11 @@ export default function App() {
     updateRiderLocationApi(locData);
   };
 
-  // Sync with Server (Initial fetch + Live Cross-Device SSE Stream)
+  // Sync with Server (Initial fetch + Live Cross-Device SSE Stream: Server is SSOT)
   useEffect(() => {
     fetchOrdersFromApi().then(remoteOrders => {
-      if (remoteOrders && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+      // Server is Single Source of Truth: if API responds, it takes precedence over stale localStorage
+      if (remoteOrders && Array.isArray(remoteOrders)) {
         setOrders(remoteOrders);
       }
     });
@@ -170,13 +171,13 @@ export default function App() {
 
     const unsubscribe = subscribeToLiveUpdates((payload) => {
       if (payload.type === 'INIT') {
-        if (payload.data?.orders?.length > 0) setOrders(payload.data.orders);
+        if (Array.isArray(payload.data?.orders)) setOrders(payload.data.orders);
         if (payload.data?.stock) setRestaurantStock(payload.data.stock);
         if (payload.data?.coupons?.length > 0) setCouponsList(payload.data.coupons);
         if (payload.data?.riderLocations) setRiderLocations(payload.data.riderLocations);
         if (payload.data?.settings) setSettings(payload.data.settings);
       } else if (payload.type === 'ORDERS_UPDATED') {
-        if (payload.data) setOrders(payload.data);
+        if (Array.isArray(payload.data)) setOrders(payload.data);
       } else if (payload.type === 'STOCK_UPDATED') {
         if (payload.data) setRestaurantStock(payload.data);
       } else if (payload.type === 'COUPONS_UPDATED') {
@@ -481,10 +482,17 @@ export default function App() {
   };
 
   const handleAcceptTrip = (orderId) => {
+    const existingOrder = orders.find(o => o.orderId === orderId);
+    if (existingOrder && existingOrder.status !== 'READY_FOR_PICKUP') {
+      alert(`⚠️ Rider cannot accept order #${orderId}. Kitchen must first mark the order as READY_FOR_PICKUP (current status is: ${existingOrder.status}).`);
+      return;
+    }
+
     const riderDetails = {
       riderId: 'rider-1',
       riderName: 'Murugan S.',
-      riderPhone: '+91 98765 43210'
+      riderPhone: '+91 98765 43210',
+      status: 'OUT_FOR_DELIVERY'
     };
     setOrders(prev => prev.map(o => {
       if (o.orderId === orderId) {
@@ -495,7 +503,7 @@ export default function App() {
       }
       return o;
     }));
-    updateOrderStatusApi(orderId, undefined, riderDetails);
+    updateOrderStatusApi(orderId, 'OUT_FOR_DELIVERY', riderDetails);
   };
 
   const handleSimulateNewOrder = (hotel) => {

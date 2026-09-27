@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unavukadai Hyperlocal Delivery - Complete System Analysis & Architecture</title>
+  <style>
+    :root {
+      --primary: #e23744;
+      --primary-dark: #b82330;
+      --secondary: #2c3e50;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --code-bg: #0f172a;
+      --code-text: #f8fafc;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      padding: 30px 20px;
+    }
+    .container {
+      max-width: 1050px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      padding: 45px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .print-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+    .btn-print {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(226, 55, 68, 0.3);
+    }
+    .btn-print:hover { background: var(--primary-dark); }
+    header {
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    h1 { font-size: 28px; color: var(--secondary); margin-bottom: 8px; }
+    .subtitle { color: var(--text-muted); font-size: 14px; }
+    h2 { font-size: 20px; color: var(--primary); margin: 30px 0 15px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    h3 { font-size: 16px; color: var(--secondary); margin: 20px 0 10px; }
+    p, ul, ol { margin-bottom: 14px; font-size: 14px; }
+    ul, ol { padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+    tr:nth-child(even) { background: #fafbfc; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-danger { background: #fee2e2; color: var(--danger); }
+    .badge-warning { background: #fef3c7; color: var(--warning); }
+    .badge-success { background: #dcfce7; color: var(--success); }
+    .badge-info { background: #e0f2fe; color: #0369a1; }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #f1f5f9;
+      color: var(--primary-dark);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
+    .callout {
+      border-left: 4px solid var(--primary);
+      background: #fff5f5;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+    .callout-title { font-weight: bold; color: var(--primary); margin-bottom: 4px; }
+    @media print {
+      body { background: white; padding: 0; font-size: 12pt; }
+      .container { max-width: 100%; padding: 0; box-shadow: none; border-radius: 0; }
+      .print-actions { display: none; }
+      pre, table { page-break-inside: avoid; }
+      h2, h3 { page-break-after: avoid; }
+      @page { margin: 15mm; size: A4; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="print-actions">
+    <button class="btn-print" onclick="window.print()">
+      🖨️ Print / Save as PDF
+    </button>
+  </div>
+
+  <header>
+    <h1>🍲 Unavukadai Platform: Architecture, API Audit & Bug Analysis</h1>
+    <div class="subtitle">
+      <strong>Ecosystem:</strong> Customer App, Hotel Portal, Rider App, Admin Radar • <strong>Coverage:</strong> South Chennai (Perungalathur, Vandalur, Mannivakkam) • <strong>Generated:</strong> September 2026
+    </div>
+  </header>
+
+  <h2>1. Executive Summary & Root Bottlenecks</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Subsystem</th>
+        <th>Current State</th>
+        <th>Identified Bug / Root Cause</th>
+        <th>Severity</th>
+        <th>Target Solution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Database Architecture</strong></td>
+        <td><code>db.json</code> flat file + In-memory JS variables</td>
+        <td>Server reboots wipe rider coordinates; synchronous <code>fs.writeFileSync</code> creates write collisions</td>
+        <td><span class="badge badge-danger">Critical</span></td>
+        <td>Migrate to PostgreSQL + PostGIS (or MongoDB) + Redis for GPS pings</td>
+      </tr>
+      <tr>
+        <td><strong>Rider Live GPS Map</strong></td>
+        <td>Leaflet Map inside dynamic React Modal</td>
+        <td>Missing <code>map.invalidateSize()</code> causes map tiles to render blank/broken; mobile HTTP blocks <code>navigator.geolocation</code></td>
+        <td><span class="badge badge-danger">High</span></td>
+        <td>Add container resize observer, enable HTTPS/tunnel for mobile GPS, fix coordinates parsing</td>
+      </tr>
+      <tr>
+        <td><strong>Order Synchronization</strong></td>
+        <td>Dual-store: React <code>localStorage</code> + SSE + REST</td>
+        <td>Stale <code>localStorage</code> cache overrides fresh server state; no state machine transition validations</td>
+        <td><span class="badge badge-warning">High</span></td>
+        <td>Single Source of Truth (SSOT) from server API, remove stale localStorage overwrite logic</td>
+      </tr>
+      <tr>
+        <td><strong>Mobile Viewport & UI</strong></td>
+        <td>8,000+ line CSS stylesheet with conflicting media queries</td>
+        <td><code>MobileBottomNav</code> overlaps checkout buttons; modals exceed mobile screen height ($>650\text{px}$) with no scroll</td>
+        <td><span class="badge badge-warning">Medium</span></td>
+        <td>Bottom sheet pattern, dynamic safe-area bottom padding, $16\text{px}$ input font size for iOS</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Do You Need a Database? (Architectural Decision)</h2>
+  <div class="callout">
+    <div class="callout-title">DECISION: YES — A DATABASE IS MANDATORY</div>
+    The bugs you are experiencing (orders missing, rider location dropping or showing in the wrong place) are direct consequences of using <code>db.json</code> and volatile Node.js in-memory variables.
+  </div>
+
+  <p>Here is why the current architecture causes failures:</p>
+  <ul>
+    <li><strong>Rider Coordinates are In-Memory Only:</strong> In <code>server/index.js</code> line 135, coordinates are stored in <code>let riderLocations = {}</code>. Every time Node restarts, crashes, or reloads, all live rider positions are instantly deleted.</li>
+    <li><strong>Race Conditions in File Writes:</strong> If a customer places an order while a restaurant accepts another order, multiple concurrent calls to <code>fs.writeFileSync('server/data/db.json')</code> run simultaneously. One write overwrites the other, causing orders to disappear.</li>
+    <li><strong>No Geospatial Searching:</strong> Delivery platforms require finding nearest riders within 3–5 km. A database with spatial indexing (PostGIS or MongoDB 2dsphere) can calculate this in 1 millisecond.</li>
+  </ul>
+
+  <h2>3. Rider Location Bug Analysis</h2>
+  <ol>
+    <li>
+      <strong>Leaflet Map Size Invalidation Bug:</strong>
+      When <code>OrderSuccessModal.jsx</code> opens, CSS animations (<code>animate-scale</code>) start with a zero-dimension container. Leaflet initializes before the modal reaches full size. Without calling <code>map.invalidateSize()</code>, tiles and markers render out of bounds.
+    </li>
+    <li>
+      <strong>Mobile HTTP Security Restriction:</strong>
+      <code>navigator.geolocation.watchPosition</code> in <code>RiderPortal.jsx</code> is strictly blocked by iOS Safari and Android Chrome over non-HTTPS connections. Testing over <code>http://192.168.x.x:5173</code> results in silent permission failure.
+    </li>
+    <li>
+      <strong>Hardcoded Fallback Mismatch:</strong>
+      <code>App.jsx</code> falls back to <code>riderLocations['rider-1']</code>. If the order is unassigned or assigned to a different rider, the tracking screen shows the wrong rider or nothing.
+    </li>
+  </ol>
+
+  <h2>4. Order Flow & Synchronization Issues</h2>
+  <ul>
+    <li><strong>LocalStorage Cache Pollution:</strong> In <code>App.jsx</code>, orders are initially loaded from <code>localStorage.getItem('unavu_ecosystem_orders')</code>. If an order was modified or cancelled from another portal (e.g. Hotel or Rider), the customer device continues to display stale data until manual storage clearing.</li>
+    <li><strong>Status State Machine Absence:</strong> An order can jump from <code>PLACED</code> straight to <code>DELIVERED</code> without verifying intermediate kitchen and rider handoff stages.</li>
+    <li><strong>Doorstep Delivery OTP Validation:</strong> Delivery OTP verification must occur on the server via an atomic endpoint, not solely inside the frontend rider client.</li>
+  </ul>
+
+  <h2>5. Mobile Version Responsiveness Issues</h2>
+  <ul>
+    <li><strong>Floating Elements Collision:</strong> <code>MobileBottomNav</code> is fixed at <code>bottom: 0</code> with <code>z-index: 999</code>. On mobile screens, it covers the Cart checkout bar, active order tracker, and address selection footer.</li>
+    <li><strong>Modal Height Overflow:</strong> The order success tracking modal contains a Header + Stepper + Leaflet Map + OTP Box + WhatsApp notice totaling over $680\text{px}$. On phones with $667\text{px}$ viewport height, the bottom buttons are pushed off screen.</li>
+    <li><strong>iOS Safari Auto-Zoom:</strong> Inputs with font size under $16\text{px}$ trigger iOS auto-zoom, causing the entire layout to become horizontally misaligned.</li>
+  </ul>
+
+  <h2>6. Complete API Directory & Endpoints</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Description</th>
+        <th>Payload / Params</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/api/orders</code></td><td>Fetch all orders</td><td>None</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/orders</code></td><td>Create new order</td><td>Order object (items, total, address, locality)</td></tr>
+      <tr><td><code>PATCH</code></td><td><code>/api/orders/:id</code></td><td>Update status or assign rider</td><td><code>{ status, riderId, riderName, etaMins }</code></td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/api/orders/:id</code></td><td>Cancel order</td><td>None</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/orders/stream</code></td><td>Server-Sent Events live stream</td><td>Continuous event stream</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/riders/locations</code></td><td>Get all rider GPS coordinates</td><td>None</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/riders/location</code></td><td>Publish live GPS ping</td><td><code>{ riderId, lat, lng, speed, heading }</code></td></tr>
+      <tr><td><code>GET</code> / <code>POST</code></td><td><code>/api/stock</code></td><td>Restaurant dish inventory</td><td><code>{ itemId }</code></td></tr>
+      <tr><td><code>GET</code> / <code>POST</code></td><td><code>/api/coupons</code></td><td>Discount codes management</td><td>Coupon details</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/whatsapp/send-otp</code></td><td>Dispatch WhatsApp OTP</td><td><code>{ phone, purpose }</code></td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/whatsapp/verify-otp</code></td><td>Verify customer OTP</td><td><code>{ phone, otp }</code></td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/whatsapp/send-order-notification</code></td><td>Send order confirmation</td><td><code>{ orderId, deliveryOtp, ... }</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. Recommended Database Schema (PostgreSQL / MongoDB)</h2>
+  <pre><code>-- Orders Table with Geospatial Coordinates
+CREATE TABLE orders (
+    id VARCHAR(30) PRIMARY KEY, -- UNV-784102
+    customer_id UUID REFERENCES users(id),
+    customer_name VARCHAR(100) NOT NULL,
+    customer_phone VARCHAR(20) NOT NULL,
+    restaurant_id VARCHAR(50) NOT NULL,
+    rider_id VARCHAR(50),
+    status VARCHAR(30) DEFAULT 'PLACED', -- PLACED, PREPARING, READY_FOR_PICKUP, OUT_FOR_DELIVERY, DELIVERED
+    delivery_address TEXT NOT NULL,
+    delivery_lat NUMERIC(9, 6),
+    delivery_lng NUMERIC(9, 6),
+    delivery_otp VARCHAR(6) NOT NULL,
+    grand_total NUMERIC(10, 2) NOT NULL,
+    payment_method VARCHAR(20) DEFAULT 'UPI',
+    payment_status VARCHAR(20) DEFAULT 'PAID',
+    placed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Riders Table with Real-Time Location
+CREATE TABLE riders (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    current_lat NUMERIC(9, 6),
+    current_lng NUMERIC(9, 6),
+    is_online BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);</code></pre>
+
+  <h2>8. Step-by-Step Remediation Roadmap</h2>
+  <p>We are ready to fix each problem one by one in whatever order you prefer. Here is the recommended sequence:</p>
+  <ol>
+    <li><strong>Step 1: Fix Rider Location & Live Map</strong> — Add <code>map.invalidateSize()</code>, sanitize coordinate updates, fix Leaflet marker updates, and enable resilient simulated / real GPS fallback.</li>
+    <li><strong>Step 2: Fix Mobile Layout & Overlaps</strong> — Fix <code>MobileBottomNav</code> collision with checkout buttons, convert modals to scrollable bottom sheets, and eliminate iOS auto-zoom.</li>
+    <li><strong>Step 3: Fix Order Lifecycle & State Synchronization</strong> — Remove conflicting <code>localStorage</code> overrides, ensure real-time multi-portal order status sync, and secure OTP verification.</li>
+    <li><strong>Step 4: Database Integration</strong> — Migrate from <code>db.json</code> to a robust database (PostgreSQL with Prisma or MongoDB) with Redis caching.</li>
+  </ol>
+</div>
+
+</body>
+</html>

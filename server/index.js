@@ -131,8 +131,8 @@ function broadcastToClients(eventType, payload) {
   });
 }
 
-// Live Rider GPS Locations Registry
-let riderLocations = {
+// Live Rider GPS Locations Registry (Hydrated from persistent store if available)
+const defaultRiderLocations = {
   'rider-1': {
     riderId: 'rider-1',
     riderName: 'Murugan S.',
@@ -154,6 +154,11 @@ let riderLocations = {
     updatedAt: new Date().toISOString()
   }
 };
+
+const initialDbData = readDb();
+let riderLocations = initialDbData.riderLocations && Object.keys(initialDbData.riderLocations).length > 0
+  ? initialDbData.riderLocations
+  : defaultRiderLocations;
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -207,12 +212,47 @@ app.post('/api/orders', (req, res) => {
   res.status(201).json(newOrder);
 });
 
+// Allowed Order Status Transitions (State Machine)
+const ALLOWED_ORDER_TRANSITIONS = {
+  'PLACED': ['PREPARING', 'CANCELLED'],
+  'PREPARING': ['READY_FOR_PICKUP', 'CANCELLED'],
+  'READY_FOR_PICKUP': ['OUT_FOR_DELIVERY', 'CANCELLED'],
+  'OUT_FOR_DELIVERY': ['DELIVERED', 'CANCELLED'],
+  'DELIVERED': [],
+  'CANCELLED': []
+};
+
 // PATCH Update Order Status or Rider
 app.patch('/api/orders/:id', (req, res) => {
   const db = readDb();
   const orderId = req.params.id;
-  let updatedOrder = null;
+  const existingOrder = (db.orders || []).find(o => o.orderId === orderId);
 
+  if (!existingOrder) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  // 1. Enforce Rider Acceptance Constraint:
+  // Riders can ONLY accept orders that have reached 'READY_FOR_PICKUP'
+  if (req.body.riderId && !existingOrder.riderId) {
+    if (existingOrder.status !== 'READY_FOR_PICKUP' && req.body.status !== 'READY_FOR_PICKUP') {
+      return res.status(400).json({
+        error: `Rider cannot accept order #${orderId}. Kitchen must first mark the order as READY_FOR_PICKUP (current status is: ${existingOrder.status}).`
+      });
+    }
+  }
+
+  // 2. Enforce Order State Machine Transitions
+  if (req.body.status && req.body.status !== existingOrder.status) {
+    const allowedNext = ALLOWED_ORDER_TRANSITIONS[existingOrder.status] || [];
+    if (!allowedNext.includes(req.body.status) && !req.body.forceTransition) {
+      return res.status(400).json({
+        error: `Invalid status transition from ${existingOrder.status} to ${req.body.status}. Allowed transitions: ${allowedNext.join(', ') || 'Terminal state'}.`
+      });
+    }
+  }
+
+  let updatedOrder = null;
   db.orders = (db.orders || []).map(order => {
     if (order.orderId === orderId) {
       updatedOrder = { ...order, ...req.body };
@@ -220,10 +260,6 @@ app.patch('/api/orders/:id', (req, res) => {
     }
     return order;
   });
-
-  if (!updatedOrder) {
-    return res.status(404).json({ error: 'Order not found' });
-  }
 
   writeDb(db);
   broadcastToClients('ORDERS_UPDATED', db.orders);
@@ -281,21 +317,35 @@ app.get('/api/riders/locations', (req, res) => {
 });
 
 app.post('/api/riders/location', (req, res) => {
-  const { riderId, lat, lng, speed, heading, orderId, riderName } = req.body;
-  if (!riderId || lat === undefined || lng === undefined) {
-    return res.status(400).json({ error: 'riderId, lat and lng are required' });
+  const rawLat = lat !== undefined ? lat : req.body.latitude;
+  const rawLng = lng !== undefined ? lng : req.body.longitude;
+
+  if (!riderId || rawLat === undefined || rawLng === undefined) {
+    return res.status(400).json({ error: 'riderId, lat (or latitude), and lng (or longitude) are required' });
+  }
+
+  const parsedLat = parseFloat(rawLat);
+  const parsedLng = parseFloat(rawLng);
+
+  if (!isFinite(parsedLat) || !isFinite(parsedLng) || parsedLat === 0 || parsedLng === 0) {
+    return res.status(400).json({ error: 'Invalid coordinate numbers provided' });
   }
 
   riderLocations[riderId] = {
     riderId,
     riderName: riderName || riderLocations[riderId]?.riderName || 'Murugan S.',
-    lat: Number(lat),
-    lng: Number(lng),
-    speed: speed || 25,
-    heading: heading || 0,
+    lat: Number(parsedLat.toFixed(6)),
+    lng: Number(parsedLng.toFixed(6)),
+    speed: typeof speed === 'number' ? speed : 25,
+    heading: typeof heading === 'number' ? heading : 0,
     orderId: orderId || null,
     updatedAt: new Date().toISOString()
   };
+
+  // Persist rider location snapshots to db so server reboot does not erase them
+  const db = readDb();
+  db.riderLocations = riderLocations;
+  writeDb(db);
 
   broadcastToClients('RIDER_LOCATION_UPDATED', riderLocations[riderId]);
   res.json(riderLocations[riderId]);
@@ -342,7 +392,7 @@ function normalizePhone(phone) {
 }
 
 // Resilient gateway dispatcher: tries Live Railway first, then Local fallback
-async function postToGateway(endpoint, body, timeoutMs = 8000) {
+async function postToGateway(endpoint, body, timeoutMs = 3500) {
   const targets = [WHATSAPP_GATEWAY_URL];
   if (WHATSAPP_GATEWAY_URL !== LOCAL_GATEWAY_URL) {
     targets.push(LOCAL_GATEWAY_URL);
@@ -368,6 +418,36 @@ async function postToGateway(endpoint, body, timeoutMs = 8000) {
   }
 
   return { success: false, error: lastError };
+}
+
+// Asynchronous Non-Blocking Notification Queue
+const notificationQueue = [];
+let isProcessingQueue = false;
+
+async function processNotificationQueue() {
+  if (isProcessingQueue || notificationQueue.length === 0) return;
+  isProcessingQueue = true;
+
+  while (notificationQueue.length > 0) {
+    const job = notificationQueue.shift();
+    try {
+      const res = await postToGateway(job.endpoint, job.payload, 3500);
+      if (res.success) {
+        console.log(`[Async Queue] Notification delivered to +${job.payload?.phone}`);
+      } else {
+        console.warn(`[Async Queue] Gateway warning for +${job.payload?.phone}:`, res.error);
+      }
+    } catch (err) {
+      console.warn(`[Async Queue] Error processing notification:`, err.message);
+    }
+  }
+
+  isProcessingQueue = false;
+}
+
+function enqueueNotification(endpoint, payload) {
+  notificationQueue.push({ endpoint, payload, queuedAt: Date.now() });
+  setImmediate(processNotificationQueue);
 }
 
 // 1. WhatsApp Gateway Live Connection Status
@@ -503,8 +583,8 @@ app.post('/api/whatsapp/verify-otp', (req, res) => {
   res.json({ success: true, verified: true });
 });
 
-// 4. Send Order Confirmation with Doorstep Delivery OTP
-app.post('/api/whatsapp/send-order-notification', async (req, res) => {
+// 4. Send Order Confirmation with Doorstep Delivery OTP (Asynchronously Non-Blocking)
+app.post('/api/whatsapp/send-order-notification', (req, res) => {
   const { orderId, customerPhone, restaurantName, grandTotal, deliveryOtp, items } = req.body;
   const normalized = normalizePhone(customerPhone);
 
@@ -518,7 +598,7 @@ app.post('/api/whatsapp/send-order-notification', async (req, res) => {
 
   const message = `🍲 *UNAVUKADAI ORDER CONFIRMED!* 🍲\n\n` +
     `*Order ID:* #${orderId}\n` +
-    `*Restaurant:* ${restaurantName}\n` +
+    `*Restaurant:* ${restaurantName || 'Eatery'}\n` +
     `*Total Bill:* ₹${grandTotal}\n\n` +
     (itemsSummary ? `*Ordered Items:*\n${itemsSummary}\n\n` : '') +
     `🔑 *Doorstep Delivery OTP: ${deliveryOtp}*\n` +
@@ -526,16 +606,18 @@ app.post('/api/whatsapp/send-order-notification', async (req, res) => {
     `🛵 *Live Tracking:* http://localhost:5173/#/customer\n` +
     `_Thank you for supporting authentic local South Chennai eateries!_`;
 
-  const dispatchResult = await postToGateway('/send-message', {
+  // Asynchronously enqueue so client checkout responds in < 5ms
+  enqueueNotification('/send-message', {
     phone: normalized,
-    message
+    message,
+    orderId
   });
 
   res.json({
-    success: dispatchResult.success,
-    gatewayUrl: dispatchResult.gatewayUrl || WHATSAPP_GATEWAY_URL,
-    data: dispatchResult.data,
-    error: dispatchResult.success ? null : dispatchResult.error
+    success: true,
+    queued: true,
+    orderId,
+    message: 'Order confirmation queued for asynchronous delivery'
   });
 });
 

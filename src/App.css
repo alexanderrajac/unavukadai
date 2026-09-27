@@ -6014,8 +6014,14 @@
   }
 
   /* Add clearance so content is never hidden behind bottom nav & floating bar */
-  .main-content {
-    padding-bottom: 120px !important;
+  .main-content,
+  .footer {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body:has(.active-order-floating-bar) .main-content,
+  body:has(.active-order-floating-bar) .footer {
+    padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .mobile-nav-item {
@@ -7721,7 +7727,7 @@
     flex-shrink: 0;
   }
 
-  /* 10. Native Mobile Bottom Sheet Conversion for ALL Modals */
+  /* 10. Native Mobile Bottom Sheet Conversion for Modals (max-height: 88vh) */
   .modal-backdrop {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -7737,7 +7743,7 @@
   .auth-modal-card {
     max-width: 100% !important;
     width: 100% !important;
-    max-height: 92vh !important;
+    max-height: 88vh !important;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
     border-top-left-radius: 24px !important;
@@ -7745,7 +7751,21 @@
     margin-top: auto !important;
     animation: modalSlideUpMobile 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
     overflow-y: auto !important;
-    padding: 18px 16px calc(18px + env(safe-area-inset-bottom)) 16px !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 18px 16px calc(24px + env(safe-area-inset-bottom, 0px)) 16px !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .order-success-modal .mobile-sheet-pull-handle,
+  .restaurant-modal-container .mobile-sheet-pull-handle,
+  .cart-drawer-panel .mobile-sheet-pull-handle {
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(156, 163, 175, 0.5);
+    margin: 0 auto 12px auto;
+    display: block;
+    flex-shrink: 0;
   }
 
   @keyframes modalSlideUpMobile {
@@ -7753,20 +7773,67 @@
     100% { transform: translateY(0); }
   }
 
-  /* Cart Drawer Full-Screen Mobile Drawer */
+  /* Cart Drawer Responsive Mobile Bottom Sheet (max-height: 88vh) */
   .cart-backdrop {
     z-index: 2500 !important;
+    align-items: flex-end !important;
   }
 
   .cart-drawer-panel {
     max-width: 100% !important;
     width: 100% !important;
-    height: 100vh !important;
-    border-radius: 0 !important;
+    max-height: 88vh !important;
+    height: 88vh !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    animation: modalSlideUpMobile 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .cart-drawer-scrollable {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 24px !important;
   }
 
   .cart-drawer-footer {
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px !important;
+    position: relative !important;
+    z-index: 20 !important;
+    background: var(--bg-surface-elevated) !important;
+    border-top: 1px solid var(--border-light) !important;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px !important;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* 11. Universal iOS Input Zoom Prevention (Standardized >= 16px on screens <= 768px) */
+  input,
+  select,
+  textarea,
+  input[type="text"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  input[type="email"],
+  .cart-field-input,
+  .dish-search-input,
+  .search-input-box input,
+  .coupon-input-group input,
+  .auth-input-group input,
+  .address-form-field input,
+  .otp-digit-input,
+  .coupon-input {
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100% !important;
   }
 
   /* Restaurant Modal Mobile Specifics */

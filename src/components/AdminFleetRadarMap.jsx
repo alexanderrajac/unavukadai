@@ -32,7 +32,30 @@ export default function AdminFleetRadarMap({
       mapInstanceRef.current = map;
     }
 
+    const triggerResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize({ pan: false });
+      }
+    };
+
+    const timers = [
+      setTimeout(triggerResize, 50),
+      setTimeout(triggerResize, 300),
+      setTimeout(triggerResize, 800)
+    ];
+
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => triggerResize());
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    window.addEventListener('resize', triggerResize);
+
     return () => {
+      timers.forEach(t => clearTimeout(t));
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', triggerResize);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;

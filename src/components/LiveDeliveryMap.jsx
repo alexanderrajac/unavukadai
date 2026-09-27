@@ -20,6 +20,26 @@ const SUBURB_COORDS = {
   }
 };
 
+// Helper to parse coordinates from various formats: [lat, lng], {lat, lng}, {latitude, longitude}, or strings
+function parseCoords(input, fallback = [12.9056, 80.0832]) {
+  if (!input) return fallback;
+  if (Array.isArray(input) && input.length >= 2) {
+    const lat = parseFloat(input[0]);
+    const lng = parseFloat(input[1]);
+    if (isFinite(lat) && isFinite(lng) && lat !== 0 && lng !== 0) {
+      return [lat, lng];
+    }
+  }
+  if (typeof input === 'object') {
+    const lat = parseFloat(input.lat ?? input.latitude);
+    const lng = parseFloat(input.lng ?? input.longitude);
+    if (isFinite(lat) && isFinite(lng) && lat !== 0 && lng !== 0) {
+      return [lat, lng];
+    }
+  }
+  return fallback;
+}
+
 export default function LiveDeliveryMap({
   order,
   riderLiveLocation,
@@ -28,6 +48,8 @@ export default function LiveDeliveryMap({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const riderMarkerRef = useRef(null);
+  const restaurantMarkerRef = useRef(null);
+  const customerMarkerRef = useRef(null);
   const routeLineRef = useRef(null);
 
   // Simulation progress between 0 (restaurant) and 1 (customer) for live delivery
@@ -35,19 +57,26 @@ export default function LiveDeliveryMap({
 
   // Determine base coordinates from locality or restaurant name, using exact GPS if available
   const coords = useMemo(() => {
-    const loc = (order?.locality || '').toLowerCase();
+    const loc = (order?.locality || order?.customerAddress || '').toLowerCase();
     let base = SUBURB_COORDS['perungalathur'];
     if (loc.includes('vandalur')) base = SUBURB_COORDS['vandalur'];
     else if (loc.includes('mannivakkam')) base = SUBURB_COORDS['mannivakkam'];
 
-    if (order?.deliveryCoords && Array.isArray(order.deliveryCoords) && order.deliveryCoords.length === 2 && !isNaN(order.deliveryCoords[0])) {
-      return {
-        restaurant: base.restaurant,
-        customer: [Number(order.deliveryCoords[0]), Number(order.deliveryCoords[1])]
-      };
+    let restCoords = base.restaurant;
+    if (order?.restaurantCoords) {
+      restCoords = parseCoords(order.restaurantCoords, base.restaurant);
     }
-    return base;
-  }, [order?.locality, order?.deliveryCoords]);
+
+    let custCoords = base.customer;
+    if (order?.deliveryCoords) {
+      custCoords = parseCoords(order.deliveryCoords, base.customer);
+    }
+
+    return {
+      restaurant: restCoords,
+      customer: custCoords
+    };
+  }, [order?.locality, order?.customerAddress, order?.restaurantCoords, order?.deliveryCoords]);
 
   // Derived current rider position (live GPS, status-based, or animated along route)
   const riderPos = useMemo(() => {
@@ -61,9 +90,10 @@ export default function LiveDeliveryMap({
       return coords.customer;
     }
 
-    // If out for delivery or ready for pickup
-    if (riderLiveLocation?.lat && riderLiveLocation?.lng && !isNaN(riderLiveLocation.lat)) {
-      return [Number(riderLiveLocation.lat), Number(riderLiveLocation.lng)];
+    // Check if live GPS coordinates are available in any format
+    const parsedGps = parseCoords(riderLiveLocation, null);
+    if (parsedGps) {
+      return parsedGps;
     }
 
     // Interpolate along route based on simulation progress
@@ -78,14 +108,15 @@ export default function LiveDeliveryMap({
   // Simulated bike movement when OUT_FOR_DELIVERY and no live external GPS feed
   useEffect(() => {
     if (order?.status !== 'OUT_FOR_DELIVERY') return;
-    if (riderLiveLocation?.lat && riderLiveLocation?.lng) return;
+    const hasLiveGps = parseCoords(riderLiveLocation, null) !== null;
+    if (hasLiveGps) return;
 
     const interval = setInterval(() => {
       setSimProgress((prev) => {
-        if (prev >= 0.92) return 0.25; // Loop smoothly
-        return Math.min(0.92, prev + 0.04);
+        if (prev >= 0.94) return 0.20; // Loop smoothly
+        return Math.min(0.94, prev + 0.05);
       });
-    }, 3000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, [order?.status, riderLiveLocation]);
@@ -95,7 +126,14 @@ export default function LiveDeliveryMap({
   const riderPhone = order?.riderPhone || '+91 98765 43210';
   const cleanPhone = riderPhone.replace(/\s+/g, '');
 
-  // Initialize Leaflet Map
+  // Helper to reliably invalidate Leaflet map size across animations
+  const triggerInvalidateSize = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.invalidateSize({ pan: false });
+    }
+  };
+
+  // Initialize Leaflet Map once
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -138,11 +176,9 @@ export default function LiveDeliveryMap({
         iconAnchor: [22, 22]
       });
 
-      L.marker(coords.restaurant, { icon: restaurantIcon }).addTo(map);
-      L.marker(coords.customer, { icon: customerIcon }).addTo(map);
-
-      const riderMarker = L.marker(riderPos, { icon: bikeIcon }).addTo(map);
-      riderMarkerRef.current = riderMarker;
+      restaurantMarkerRef.current = L.marker(coords.restaurant, { icon: restaurantIcon }).addTo(map);
+      customerMarkerRef.current = L.marker(coords.customer, { icon: customerIcon }).addTo(map);
+      riderMarkerRef.current = L.marker(riderPos, { icon: bikeIcon }).addTo(map);
 
       const routeLine = L.polyline([coords.restaurant, riderPos, coords.customer], {
         color: '#e23744',
@@ -160,13 +196,50 @@ export default function LiveDeliveryMap({
       mapInstanceRef.current = map;
     }
 
+    // Schedule invalidateSize calls to accommodate modal opening animations & layout shifts
+    const timers = [
+      setTimeout(triggerInvalidateSize, 50),
+      setTimeout(triggerInvalidateSize, 250),
+      setTimeout(triggerInvalidateSize, 600),
+      setTimeout(triggerInvalidateSize, 1200)
+    ];
+
+    // ResizeObserver on the map container to fix mobile sheet expansion
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        triggerInvalidateSize();
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
+    const handleWindowResize = () => triggerInvalidateSize();
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
+      timers.forEach(t => clearTimeout(t));
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [coords, restaurantName, riderName]);
+  }, []); // Run on mount only, markers update reactively below
+
+  // Reactive updates for markers & bounds when coords or names change
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (restaurantMarkerRef.current) {
+      restaurantMarkerRef.current.setLatLng(coords.restaurant);
+    }
+    if (customerMarkerRef.current) {
+      customerMarkerRef.current.setLatLng(coords.customer);
+    }
+
+    triggerInvalidateSize();
+  }, [coords]);
 
   // Update rider marker & route polyline when position changes
   useEffect(() => {

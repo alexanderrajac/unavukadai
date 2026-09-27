@@ -25,10 +25,18 @@ export default function RiderPortal({
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState('radar'); // 'radar' | 'earnings' | 'history'
 
-  // Live GPS Broadcast State
+  // Live GPS Broadcast State & Telemetry Mode
   const [gpsActive, setGpsActive] = useState(true);
-  const [gpsLat, setGpsLat] = useState(riderLocation?.lat || 12.9056);
-  const [gpsLng, setGpsLng] = useState(riderLocation?.lng || 80.0832);
+  const [gpsMode, setGpsMode] = useState('detecting'); // 'hardware' | 'simulation'
+  const [autoDriveActive, setAutoDriveActive] = useState(false);
+  const [gpsLat, setGpsLat] = useState(() => {
+    const lat = parseFloat(riderLocation?.lat);
+    return isFinite(lat) && lat !== 0 ? lat : 12.9056;
+  });
+  const [gpsLng, setGpsLng] = useState(() => {
+    const lng = parseFloat(riderLocation?.lng);
+    return isFinite(lng) && lng !== 0 ? lng : 80.0832;
+  });
 
   // Collect OTP Verification Modal State
   const [otpModalTrip, setOtpModalTrip] = useState(null);
@@ -65,72 +73,100 @@ export default function RiderPortal({
   };
 
   // Trips currently assigned to this rider
+  const currentRiderId = 'rider-1';
   const myActiveTrips = orders.filter(
-    o => o.riderId === 'rider-1' && o.status !== 'DELIVERED'
+    o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status !== 'DELIVERED'
   );
 
-  // Background GPS Watcher
+  // Background GPS Watcher (Hardware GPS with Mobile HTTP Simulation Fallback)
   React.useEffect(() => {
     if (!gpsActive || !isOnline) return;
+
+    const isSecure = typeof window !== 'undefined' && (window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    if (!isSecure) {
+      // Mobile HTTP blocks navigator.geolocation - automatically activate simulation mode
+      setGpsMode('simulation');
+      return;
+    }
 
     if (typeof window !== 'undefined' && navigator.geolocation) {
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude, speed, heading } = pos.coords;
-          setGpsLat(latitude);
-          setGpsLng(longitude);
-          if (onUpdateLocation) {
-            onUpdateLocation({
-              riderId: 'rider-1',
-              riderName,
-              lat: latitude,
-              lng: longitude,
-              speed: speed ? Math.round(speed * 3.6) : 26,
-              heading: heading || 0,
-              orderId: myActiveTrips[0]?.orderId || null
-            });
+          if (isFinite(latitude) && isFinite(longitude)) {
+            setGpsMode('hardware');
+            setGpsLat(latitude);
+            setGpsLng(longitude);
+            if (onUpdateLocation) {
+              onUpdateLocation({
+                riderId: currentRiderId,
+                riderName,
+                lat: latitude,
+                lng: longitude,
+                speed: speed ? Math.round(speed * 3.6) : 26,
+                heading: heading || 0,
+                orderId: myActiveTrips[0]?.orderId || null
+              });
+            }
           }
         },
         (err) => {
-          console.warn('Browser GPS permission not granted:', err.message);
+          console.warn('Browser GPS permission not granted or non-secure origin:', err.message);
+          // Fall back gracefully to simulation mode so app continues working seamlessly
+          setGpsMode('simulation');
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 4000 }
       );
 
       return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+      setGpsMode('simulation');
     }
   }, [gpsActive, isOnline, myActiveTrips, onUpdateLocation, riderName]);
 
-  // Route Simulation step (for laptop testing: nudges GPS position toward customer)
-  const handleSimulateBikeMovement = () => {
-    const nextLat = Number((gpsLat + (Math.random() * 0.001 - 0.0003)).toFixed(5));
-    const nextLng = Number((gpsLng + (Math.random() * 0.001 - 0.0003)).toFixed(5));
-    setGpsLat(nextLat);
-    setGpsLng(nextLng);
-    if (onUpdateLocation) {
-      onUpdateLocation({
-        riderId: 'rider-1',
-        riderName,
-        lat: nextLat,
-        lng: nextLng,
-        speed: 32,
-        heading: 180,
-        orderId: myActiveTrips[0]?.orderId || null
+  // Route Simulation helper: moves smoothly towards customer drop or along GST road
+  const stepSimulatedPosition = React.useCallback(() => {
+    setGpsLat((prevLat) => {
+      setGpsLng((prevLng) => {
+        // Small realistic GPS delta (~35-45 meters per step)
+        const dLat = (Math.random() * 0.0006) - 0.0001;
+        const dLng = (Math.random() * 0.0006) - 0.0001;
+        const nextLat = Number((prevLat + dLat).toFixed(5));
+        const nextLng = Number((prevLng + dLng).toFixed(5));
+
+        if (onUpdateLocation) {
+          onUpdateLocation({
+            riderId: currentRiderId,
+            riderName,
+            lat: nextLat,
+            lng: nextLng,
+            speed: Math.floor(24 + Math.random() * 8),
+            heading: 185,
+            orderId: myActiveTrips[0]?.orderId || null
+          });
+        }
+        return nextLng;
       });
-    }
+      return prevLat;
+    });
+  }, [currentRiderId, myActiveTrips, onUpdateLocation, riderName]);
+
+  // Auto-Drive Telemetry Loop: emits live simulated GPS every 3 seconds
+  React.useEffect(() => {
+    if (!autoDriveActive || !isOnline) return;
+
+    const interval = setInterval(() => {
+      stepSimulatedPosition();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [autoDriveActive, isOnline, stepSimulatedPosition]);
+
+  // Manual Nudge GPS button
+  const handleSimulateBikeMovement = () => {
+    stepSimulatedPosition();
   };
-
-  // Trips waiting for a rider
-  const availableTrips = orders.filter(
-    o => o.status === 'READY_FOR_PICKUP' && !o.riderId
-  );
-
-  // Completed trips
-  const completedTrips = orders.filter(
-    o => o.riderId === 'rider-1' && o.status === 'DELIVERED'
-  );
-
-  const todayEarnings = completedTrips.reduce((acc, t) => acc + (t.riderEarnings || 60), 0) + 180; // baseline demo
 
   return (
     <div className="portal-page-container rider-theme">
@@ -159,7 +195,7 @@ export default function RiderPortal({
         </div>
       </div>
 
-      {/* Rider Stats Bar */}
+      {/* Rider Stats Bar with Live Telemetry Mode */}
       <div className="rider-status-bar">
         <div className="status-chip">
           <Zap size={14} className="text-orange" />
@@ -173,17 +209,39 @@ export default function RiderPortal({
           className="status-chip" 
           onClick={() => setGpsActive(!gpsActive)}
           style={{ cursor: 'pointer' }}
-          title="Click to toggle GPS broadcast"
+          title="Click to pause or resume GPS broadcast"
         >
           <Navigation size={14} className={gpsActive ? 'text-green' : 'text-muted'} />
-          <span>Live GPS: <strong>{gpsActive ? `${gpsLat.toFixed(4)}, ${gpsLng.toFixed(4)}` : 'Paused'}</strong></span>
+          <span>
+            {gpsMode === 'simulation' ? '📡 Simulated GPS:' : '📍 Live GPS:'}{' '}
+            <strong>{gpsActive ? `${gpsLat.toFixed(4)}, ${gpsLng.toFixed(4)}` : 'Paused'}</strong>
+          </span>
         </div>
+
+        {/* Auto-Drive Real-time Telemetry Toggle */}
         <button 
+          type="button"
+          className={`btn-gps-nudge ${autoDriveActive ? 'active-autodrive' : ''}`}
+          onClick={() => setAutoDriveActive(!autoDriveActive)}
+          style={{
+            backgroundColor: autoDriveActive ? '#16a34a' : 'rgba(226, 55, 68, 0.12)',
+            color: autoDriveActive ? '#ffffff' : '#e23744',
+            border: autoDriveActive ? '1px solid #15803d' : '1px solid rgba(226, 55, 68, 0.3)',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+          title="Continuously broadcasts moving coordinates to customer live map every 3s"
+        >
+          {autoDriveActive ? '🟢 Auto-Drive Active (3s ping)' : '🛵 Start Auto-Drive'}
+        </button>
+
+        <button 
+          type="button"
           className="btn-gps-nudge"
           onClick={handleSimulateBikeMovement}
-          title="Simulate bike driving along GST road"
+          title="Step bike GPS position once"
         >
-          🛵 Move Bike (GPS Simulation)
+          ⚡ Step GPS
         </button>
       </div>
 
@@ -353,7 +411,13 @@ export default function RiderPortal({
 
                     <button 
                       className="btn-accept-trip"
-                      onClick={() => onAcceptTrip(trip.orderId)}
+                      onClick={() => {
+                        if (trip.status !== 'READY_FOR_PICKUP') {
+                          alert(`⚠️ Cannot accept order #${trip.orderId}. Kitchen must first mark the order as READY_FOR_PICKUP.`);
+                          return;
+                        }
+                        onAcceptTrip(trip.orderId);
+                      }}
                     >
                       <span>Accept Delivery Trip</span>
                       <ChevronRight size={16} />
