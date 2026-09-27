@@ -1,11 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { initDatabaseConnection, getActiveEngine } from './db/connection.js';
+import * as dbRepo from './db/repository.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,160 +12,32 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-const DB_DIR = path.join(__dirname, 'data');
-const DB_FILE = path.join(DB_DIR, 'db.json');
-
-// Ensure DB directory exists
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
-
-// Initial seed data
-const initialDb = {
-  orders: [
-    {
-      orderId: 'UNV-784102',
-      customerName: 'Karthik Raja',
-      customerPhone: '+91 98402 11223',
-      restaurantId: 'res-perungalathur-1',
-      restaurantName: 'SS Hyderabad Biryani',
-      restaurantAddress: 'GST Road, Perungalathur',
-      customerAddress: 'Peerkankaranai Main Rd, Perungalathur',
-      locality: 'Perungalathur',
-      items: [
-        { id: 'ssh-1', name: 'Special Chicken Dum Biryani', price: 280, quantity: 2 },
-        { id: 'ssh-4', name: 'Chicken 65 (Boneless)', price: 210, quantity: 1 }
-      ],
-      itemTotal: 770,
-      deliveryFee: 35,
-      platformFee: 5,
-      taxes: 38,
-      discount: 120,
-      grandTotal: 728,
-      status: 'PREPARING',
-      paymentMethod: 'UPI',
-      paymentStatus: 'PAID',
-      riderId: 'rider-1',
-      riderName: 'Murugan S.',
-      riderPhone: '+91 98765 43210',
-      riderEarnings: 65,
-      placedAt: '12 mins ago',
-      etaMins: 16
-    },
-    {
-      orderId: 'UNV-649201',
-      customerName: 'Deepa Lakshmi',
-      customerPhone: '+91 97910 88776',
-      restaurantId: 'res-vandalur-1',
-      restaurantName: 'Hotel Vandalur Ananda Bhavan',
-      restaurantAddress: 'Opposite Zoo Gate, Vandalur',
-      customerAddress: 'Crescent Campus Staff Quarters, Vandalur',
-      locality: 'Vandalur',
-      items: [
-        { id: 'vab-1', name: 'Ghee Podi Roast Dosa', price: 130, quantity: 2 },
-        { id: 'vab-5', name: 'Vandalur Filter Kaapi', price: 35, quantity: 2 }
-      ],
-      itemTotal: 330,
-      deliveryFee: 35,
-      platformFee: 5,
-      taxes: 16,
-      discount: 150,
-      grandTotal: 236,
-      status: 'READY_FOR_PICKUP',
-      paymentMethod: 'UPI',
-      paymentStatus: 'PAID',
-      riderId: null,
-      riderName: null,
-      riderPhone: null,
-      riderEarnings: 55,
-      placedAt: '18 mins ago',
-      etaMins: 10
-    }
-  ],
-  stock: {},
-  coupons: [
-    { code: 'PERUNGAL50', region: 'Perungalathur', discountPercent: 50, maxDiscount: 120, minOrder: 199, label: '50% OFF up to ₹120 (Perungalathur)' },
-    { code: 'VANDALUR60', region: 'Vandalur', discountPercent: 60, maxDiscount: 150, minOrder: 199, label: '60% OFF up to ₹150 (Vandalur)' },
-    { code: 'MANNIVAKKAM40', region: 'Mannivakkam', discountPercent: 40, maxDiscount: 100, minOrder: 149, label: '40% OFF up to ₹100 (Mannivakkam)' },
-    { code: 'UNAVU50', discountPercent: 50, maxDiscount: 100, minOrder: 199, label: '50% OFF up to ₹100 (All Zones)' },
-    { code: 'FREEDEL', discountAmount: 35, minOrder: 200, label: 'Free Delivery over ₹200' }
-  ],
-  settings: {
-    merchantUpi: '8248651695-3@ybl',
-    merchantName: 'Unavukadai Express'
-  }
-};
-
-function readDb() {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    }
-  } catch (err) {
-    console.error('Error reading DB, using initial data:', err);
-  }
-  return initialDb;
-}
-
-function writeDb(data) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (err) {
-    console.error('Error writing DB:', err);
-  }
-}
-
-// Initialize file if not present
-if (!fs.existsSync(DB_FILE)) {
-  writeDb(initialDb);
-}
-
 // SSE (Server-Sent Events) clients registry for instant cross-device broadcast
 let sseClients = [];
 
 function broadcastToClients(eventType, payload) {
   const data = JSON.stringify({ type: eventType, data: payload, timestamp: Date.now() });
   sseClients.forEach(client => {
-    client.res.write(`data: ${data}\n\n`);
+    try {
+      client.res.write(`data: ${data}\n\n`);
+    } catch {
+      // client disconnected
+    }
   });
 }
 
-// Live Rider GPS Locations Registry (Hydrated from persistent store if available)
-const defaultRiderLocations = {
-  'rider-1': {
-    riderId: 'rider-1',
-    riderName: 'Murugan S.',
-    lat: 12.9056,
-    lng: 80.0832,
-    speed: 28,
-    heading: 195,
-    locality: 'Perungalathur',
-    updatedAt: new Date().toISOString()
-  },
-  'rider-2': {
-    riderId: 'rider-2',
-    riderName: 'Anand Kumar',
-    lat: 12.8893,
-    lng: 80.0815,
-    speed: 22,
-    heading: 170,
-    locality: 'Vandalur',
-    updatedAt: new Date().toISOString()
-  }
-};
-
-const initialDbData = readDb();
-let riderLocations = initialDbData.riderLocations && Object.keys(initialDbData.riderLocations).length > 0
-  ? initialDbData.riderLocations
-  : defaultRiderLocations;
-
-// Health Check
+// Health Check with Active Database Engine Status
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Unavukadai API', time: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    service: 'Unavukadai API', 
+    databaseEngine: getActiveEngine(),
+    time: new Date().toISOString() 
+  });
 });
 
 // Real-Time SSE Stream Endpoint
-app.get('/api/orders/stream', (req, res) => {
+app.get('/api/orders/stream', async (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -178,9 +49,21 @@ app.get('/api/orders/stream', (req, res) => {
   const newClient = { id: clientId, res };
   sseClients.push(newClient);
 
-  // Send initial state immediately with riderLocations
-  const db = readDb();
-  res.write(`data: ${JSON.stringify({ type: 'INIT', data: { ...db, riderLocations } })}\n\n`);
+  // Send initial state immediately with fresh DB data
+  try {
+    const orders = await dbRepo.getOrders();
+    const riderLocations = await dbRepo.getRiderLocations();
+    const stock = await dbRepo.getStock();
+    const coupons = await dbRepo.getCoupons();
+    const settings = await dbRepo.getSettings();
+
+    res.write(`data: ${JSON.stringify({ 
+      type: 'INIT', 
+      data: { orders, stock, coupons, settings, riderLocations } 
+    })}\n\n`);
+  } catch (err) {
+    console.error('Error sending SSE INIT state:', err);
+  }
 
   req.on('close', () => {
     sseClients = sseClients.filter(c => c.id !== clientId);
@@ -188,28 +71,51 @@ app.get('/api/orders/stream', (req, res) => {
 });
 
 // GET Orders
-app.get('/api/orders', (req, res) => {
-  const db = readDb();
-  res.json(db.orders || []);
+app.get('/api/orders', async (req, res) => {
+  try {
+    const orders = await dbRepo.getOrders();
+    res.json(orders || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve orders' });
+  }
 });
 
-// POST Create Order
-app.post('/api/orders', (req, res) => {
-  const db = readDb();
-  const newOrder = {
-    ...req.body,
-    orderId: req.body.orderId || ('UNV-' + Math.floor(100000 + Math.random() * 900000)),
-    status: 'PLACED',
-    deliveryOtp: req.body.deliveryOtp || String(Math.floor(1000 + Math.random() * 9000)),
-    placedAt: 'Just now',
-    createdAt: new Date().toISOString()
-  };
+// POST Create Order (Atomic DB Transaction + Instant Broadcast)
+app.post('/api/orders', async (req, res) => {
+  try {
+    const newOrder = await dbRepo.createOrder(req.body);
+    const allOrders = await dbRepo.getOrders();
 
-  db.orders = [newOrder, ...(db.orders || [])];
-  writeDb(db);
+    broadcastToClients('ORDERS_UPDATED', allOrders);
 
-  broadcastToClients('ORDERS_UPDATED', db.orders);
-  res.status(201).json(newOrder);
+    // Asynchronously dispatch WhatsApp order confirmation without blocking checkout response
+    if (newOrder.customerPhone) {
+      const itemsSummary = Array.isArray(newOrder.items)
+        ? newOrder.items.map(i => `• ${i.quantity}x ${i.name}`).join('\n')
+        : '';
+
+      const msg = `🍲 *UNAVUKADAI ORDER CONFIRMED!* 🍲\n\n` +
+        `*Order ID:* #${newOrder.orderId}\n` +
+        `*Restaurant:* ${newOrder.restaurantName || 'Eatery'}\n` +
+        `*Total Bill:* ₹${newOrder.grandTotal}\n\n` +
+        (itemsSummary ? `*Ordered Items:*\n${itemsSummary}\n\n` : '') +
+        `🔑 *Doorstep Delivery OTP: ${newOrder.deliveryOtp}*\n` +
+        `_Please share this 4-digit OTP with your delivery partner upon food arrival._\n\n` +
+        `🛵 *Live Tracking:* http://localhost:5173/#/customer\n` +
+        `_Thank you for supporting authentic local South Chennai eateries!_`;
+
+      enqueueNotification('/send-message', {
+        phone: normalizePhone(newOrder.customerPhone),
+        message: msg,
+        orderId: newOrder.orderId
+      });
+    }
+
+    res.status(201).json(newOrder);
+  } catch (err) {
+    console.error('Error creating order in DB:', err);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
 });
 
 // Allowed Order Status Transitions (State Machine)
@@ -222,103 +128,119 @@ const ALLOWED_ORDER_TRANSITIONS = {
   'CANCELLED': []
 };
 
-// PATCH Update Order Status or Rider
-app.patch('/api/orders/:id', (req, res) => {
-  const db = readDb();
+// PATCH Update Order Status or Rider (With Strict State Constraints)
+app.patch('/api/orders/:id', async (req, res) => {
   const orderId = req.params.id;
-  const existingOrder = (db.orders || []).find(o => o.orderId === orderId);
 
-  if (!existingOrder) {
-    return res.status(404).json({ error: 'Order not found' });
-  }
+  try {
+    const orders = await dbRepo.getOrders();
+    const existingOrder = (orders || []).find(o => o.orderId === orderId);
 
-  // 1. Enforce Rider Acceptance Constraint:
-  // Riders can ONLY accept orders that have reached 'READY_FOR_PICKUP'
-  if (req.body.riderId && !existingOrder.riderId) {
-    if (existingOrder.status !== 'READY_FOR_PICKUP' && req.body.status !== 'READY_FOR_PICKUP') {
-      return res.status(400).json({
-        error: `Rider cannot accept order #${orderId}. Kitchen must first mark the order as READY_FOR_PICKUP (current status is: ${existingOrder.status}).`
-      });
+    if (!existingOrder) {
+      return res.status(404).json({ error: 'Order not found' });
     }
-  }
 
-  // 2. Enforce Order State Machine Transitions
-  if (req.body.status && req.body.status !== existingOrder.status) {
-    const allowedNext = ALLOWED_ORDER_TRANSITIONS[existingOrder.status] || [];
-    if (!allowedNext.includes(req.body.status) && !req.body.forceTransition) {
-      return res.status(400).json({
-        error: `Invalid status transition from ${existingOrder.status} to ${req.body.status}. Allowed transitions: ${allowedNext.join(', ') || 'Terminal state'}.`
-      });
+    // 1. Enforce Rider Acceptance Constraint:
+    // Riders can ONLY accept orders that have reached 'READY_FOR_PICKUP'
+    if (req.body.riderId && !existingOrder.riderId) {
+      if (existingOrder.status !== 'READY_FOR_PICKUP' && req.body.status !== 'READY_FOR_PICKUP') {
+        return res.status(400).json({
+          error: `Rider cannot accept order #${orderId}. Kitchen must first mark the order as READY_FOR_PICKUP (current status is: ${existingOrder.status}).`
+        });
+      }
     }
-  }
 
-  let updatedOrder = null;
-  db.orders = (db.orders || []).map(order => {
-    if (order.orderId === orderId) {
-      updatedOrder = { ...order, ...req.body };
-      return updatedOrder;
+    // 2. Enforce Order State Machine Transitions
+    if (req.body.status && req.body.status !== existingOrder.status) {
+      const allowedNext = ALLOWED_ORDER_TRANSITIONS[existingOrder.status] || [];
+      if (!allowedNext.includes(req.body.status) && !req.body.forceTransition) {
+        return res.status(400).json({
+          error: `Invalid status transition from ${existingOrder.status} to ${req.body.status}. Allowed transitions: ${allowedNext.join(', ') || 'Terminal state'}.`
+        });
+      }
     }
-    return order;
-  });
 
-  writeDb(db);
-  broadcastToClients('ORDERS_UPDATED', db.orders);
-  res.json(updatedOrder);
+    const updatedOrder = await dbRepo.updateOrder(orderId, req.body);
+    const allOrders = await dbRepo.getOrders();
+
+    broadcastToClients('ORDERS_UPDATED', allOrders);
+    res.json(updatedOrder);
+  } catch (err) {
+    console.error('Error updating order:', err);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
 });
 
 // DELETE Cancel Order
-app.delete('/api/orders/:id', (req, res) => {
-  const db = readDb();
+app.delete('/api/orders/:id', async (req, res) => {
   const orderId = req.params.id;
+  try {
+    await dbRepo.deleteOrder(orderId);
+    const allOrders = await dbRepo.getOrders();
 
-  db.orders = (db.orders || []).filter(o => o.orderId !== orderId);
-  writeDb(db);
-
-  broadcastToClients('ORDERS_UPDATED', db.orders);
-  res.json({ success: true, orderId });
+    broadcastToClients('ORDERS_UPDATED', allOrders);
+    res.json({ success: true, orderId });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to cancel order' });
+  }
 });
 
 // GET & POST Stock
-app.get('/api/stock', (req, res) => {
-  const db = readDb();
-  res.json(db.stock || {});
+app.get('/api/stock', async (req, res) => {
+  try {
+    const stock = await dbRepo.getStock();
+    res.json(stock || {});
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve stock' });
+  }
 });
 
-app.post('/api/stock/toggle', (req, res) => {
+app.post('/api/stock/toggle', async (req, res) => {
   const { itemId } = req.body;
-  const db = readDb();
-  db.stock = db.stock || {};
-  db.stock[itemId] = db.stock[itemId] === false ? true : false;
-  writeDb(db);
-
-  broadcastToClients('STOCK_UPDATED', db.stock);
-  res.json(db.stock);
+  try {
+    const updatedStock = await dbRepo.toggleStock(itemId);
+    broadcastToClients('STOCK_UPDATED', updatedStock);
+    res.json(updatedStock);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to toggle stock' });
+  }
 });
 
 // GET & POST Coupons
-app.get('/api/coupons', (req, res) => {
-  const db = readDb();
-  res.json(db.coupons || []);
+app.get('/api/coupons', async (req, res) => {
+  try {
+    const coupons = await dbRepo.getCoupons();
+    res.json(coupons || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve coupons' });
+  }
 });
 
-app.post('/api/coupons', (req, res) => {
-  const db = readDb();
-  const newCoupon = req.body;
-  db.coupons = [newCoupon, ...(db.coupons || [])];
-  writeDb(db);
-
-  broadcastToClients('COUPONS_UPDATED', db.coupons);
-  res.status(201).json(newCoupon);
+app.post('/api/coupons', async (req, res) => {
+  try {
+    const newCoupon = await dbRepo.createCoupon(req.body);
+    const allCoupons = await dbRepo.getCoupons();
+    broadcastToClients('COUPONS_UPDATED', allCoupons);
+    res.status(201).json(newCoupon);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create coupon' });
+  }
 });
 
 // GET & POST Rider GPS Locations
-app.get('/api/riders/locations', (req, res) => {
-  res.json(riderLocations);
+app.get('/api/riders/locations', async (req, res) => {
+  try {
+    const locs = await dbRepo.getRiderLocations();
+    res.json(locs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve rider locations' });
+  }
 });
 
-app.post('/api/riders/location', (req, res) => {
-  const rawLat = lat !== undefined ? lat : req.body.latitude;
-  const rawLng = lng !== undefined ? lng : req.body.longitude;
+app.post('/api/riders/location', async (req, res) => {
+  const { riderId, lat, lng, latitude, longitude, speed, heading, orderId, riderName } = req.body;
+  const rawLat = lat !== undefined ? lat : latitude;
+  const rawLng = lng !== undefined ? lng : longitude;
 
   if (!riderId || rawLat === undefined || rawLng === undefined) {
     return res.status(400).json({ error: 'riderId, lat (or latitude), and lng (or longitude) are required' });
@@ -331,55 +253,62 @@ app.post('/api/riders/location', (req, res) => {
     return res.status(400).json({ error: 'Invalid coordinate numbers provided' });
   }
 
-  riderLocations[riderId] = {
-    riderId,
-    riderName: riderName || riderLocations[riderId]?.riderName || 'Murugan S.',
-    lat: Number(parsedLat.toFixed(6)),
-    lng: Number(parsedLng.toFixed(6)),
-    speed: typeof speed === 'number' ? speed : 25,
-    heading: typeof heading === 'number' ? heading : 0,
-    orderId: orderId || null,
-    updatedAt: new Date().toISOString()
-  };
+  try {
+    const locationData = {
+      riderId,
+      riderName: riderName || 'Murugan S.',
+      lat: Number(parsedLat.toFixed(6)),
+      lng: Number(parsedLng.toFixed(6)),
+      speed: typeof speed === 'number' ? speed : 25,
+      heading: typeof heading === 'number' ? heading : 0,
+      orderId: orderId || null
+    };
 
-  // Persist rider location snapshots to db so server reboot does not erase them
-  const db = readDb();
-  db.riderLocations = riderLocations;
-  writeDb(db);
-
-  broadcastToClients('RIDER_LOCATION_UPDATED', riderLocations[riderId]);
-  res.json(riderLocations[riderId]);
+    const saved = await dbRepo.updateRiderLocation(locationData);
+    broadcastToClients('RIDER_LOCATION_UPDATED', saved);
+    res.json(saved);
+  } catch (err) {
+    console.error('Error saving rider location:', err);
+    res.status(500).json({ error: 'Failed to update rider location' });
+  }
 });
 
 // GET & POST Platform Settings (e.g. Merchant UPI ID)
-app.get('/api/settings', (req, res) => {
-  const db = readDb();
-  res.json(db.settings || { merchantUpi: '8248651695-3@ybl', merchantName: 'Unavukadai Express' });
+app.get('/api/settings', async (req, res) => {
+  try {
+    const settings = await dbRepo.getSettings();
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve settings' });
+  }
 });
 
-app.post('/api/settings', (req, res) => {
-  const db = readDb();
-  db.settings = { ...(db.settings || {}), ...req.body };
-  writeDb(db);
-  broadcastToClients('SETTINGS_UPDATED', db.settings);
-  res.json(db.settings);
+app.post('/api/settings', async (req, res) => {
+  try {
+    const updatedSettings = await dbRepo.updateSettings(req.body);
+    broadcastToClients('SETTINGS_UPDATED', updatedSettings);
+    res.json(updatedSettings);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
 });
 
 // POST Reset Orders for Clean Production Launch
-app.post('/api/orders/reset', (req, res) => {
-  const db = readDb();
-  db.orders = [];
-  writeDb(db);
-  broadcastToClients('ORDERS_UPDATED', []);
-  res.json({ success: true, message: 'All test orders cleared for production launch' });
+app.post('/api/orders/reset', async (req, res) => {
+  try {
+    await dbRepo.resetOrders();
+    broadcastToClients('ORDERS_UPDATED', []);
+    res.json({ success: true, message: 'All test orders cleared for production launch' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reset orders' });
+  }
 });
 
 // -------------------------------------------------------------
-// WHATSAPP OTP VERIFICATION & NOTIFICATION GATEWAY INTEGRATION
+// WHATSAPP OTP VERIFICATION & ASYNC NOTIFICATION GATEWAY (API v1)
 // -------------------------------------------------------------
-const LIVE_GATEWAY_URL = 'https://whatsappmarketingking-production.up.railway.app/whatsapp-gateway';
-const LOCAL_GATEWAY_URL = 'http://localhost:3002';
-const WHATSAPP_GATEWAY_URL = process.env.WHATSAPP_GATEWAY_URL || LIVE_GATEWAY_URL;
+const WHATSAPP_GATEWAY_BASE_URL = process.env.WHATSAPP_GATEWAY_URL || 'https://whatsappmarketingking-production.up.railway.app';
+const WHATSAPP_API_KEY = process.env.WHATSAPP_API_KEY || 'wa_live_ec5dbf1a10fb6cc19f6523719e380fca433a7b39';
 const activeOtps = new Map(); // normalizedPhone -> { otp, expiresAt, attempts }
 
 function normalizePhone(phone) {
@@ -391,19 +320,18 @@ function normalizePhone(phone) {
   return digits;
 }
 
-// Resilient gateway dispatcher: tries Live Railway first, then Local fallback
+// Resilient gateway dispatcher for order messages
 async function postToGateway(endpoint, body, timeoutMs = 3500) {
-  const targets = [WHATSAPP_GATEWAY_URL];
-  if (WHATSAPP_GATEWAY_URL !== LOCAL_GATEWAY_URL) {
-    targets.push(LOCAL_GATEWAY_URL);
-  }
-
+  const targets = [WHATSAPP_GATEWAY_BASE_URL];
   let lastError = null;
   for (const baseUrl of targets) {
     try {
       const res = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-API-Key': WHATSAPP_API_KEY
+        },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs)
       });
@@ -452,41 +380,34 @@ function enqueueNotification(endpoint, payload) {
 
 // 1. WhatsApp Gateway Live Connection Status
 app.get('/api/whatsapp/status', async (req, res) => {
-  const targets = [WHATSAPP_GATEWAY_URL];
-  if (WHATSAPP_GATEWAY_URL !== LOCAL_GATEWAY_URL) {
-    targets.push(LOCAL_GATEWAY_URL);
-  }
-
-  for (const baseUrl of targets) {
-    try {
-      const gatewayRes = await fetch(`${baseUrl}/status`, {
-        signal: AbortSignal.timeout(4000)
+  try {
+    const gatewayRes = await fetch(`${WHATSAPP_GATEWAY_BASE_URL}/`, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(3500)
+    });
+    if (gatewayRes.status < 500) {
+      return res.json({
+        success: true,
+        gatewayConnected: true,
+        gatewayUrl: WHATSAPP_GATEWAY_BASE_URL,
+        isLiveCloud: true,
+        status: 'ONLINE'
       });
-      if (gatewayRes.ok) {
-        const data = await gatewayRes.json();
-        return res.json({
-          success: true,
-          gatewayConnected: Boolean(data.isConnected || data.status === 'CONNECTED'),
-          gatewayUrl: baseUrl,
-          isLiveCloud: baseUrl.includes('railway.app'),
-          ...data
-        });
-      }
-    } catch (err) {
-      // try next target
     }
+  } catch {
+    // Gateway offline
   }
 
   res.json({
     success: false,
     gatewayConnected: false,
-    gatewayUrl: WHATSAPP_GATEWAY_URL,
+    gatewayUrl: WHATSAPP_GATEWAY_BASE_URL,
     status: 'OFFLINE',
-    message: `WhatsApp gateway at ${WHATSAPP_GATEWAY_URL} is offline. Using fallback verification.`
+    message: `WhatsApp gateway at ${WHATSAPP_GATEWAY_BASE_URL} is offline. Using fallback verification.`
   });
 });
 
-// 2. Send Real WhatsApp OTP to Customer
+// 2. Send Real WhatsApp OTP to Customer via Custom Gateway API v1
 app.post('/api/whatsapp/send-otp', async (req, res) => {
   const { phone, purpose = 'LOGIN' } = req.body;
   const normalized = normalizePhone(phone);
@@ -495,92 +416,118 @@ app.post('/api/whatsapp/send-otp', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Valid mobile number is required' });
   }
 
-  // Generate 4-digit cryptographically secure numeric OTP
-  const otp = String(Math.floor(1000 + Math.random() * 9000));
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins validity
+  // 1. Dispatch through Custom WhatsApp OTP Gateway API: POST /api/v1/otp/send
+  try {
+    const gatewayRes = await fetch(`${WHATSAPP_GATEWAY_BASE_URL}/api/v1/otp/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': WHATSAPP_API_KEY
+      },
+      body: JSON.stringify({
+        phone: normalized,
+        app_name: 'Unavukadai Express',
+        code_length: 4,
+        purpose: purpose || 'LOGIN'
+      }),
+      signal: AbortSignal.timeout(5000)
+    });
 
+    const data = await gatewayRes.json().catch(() => ({}));
+    if (gatewayRes.ok && data.success) {
+      console.log(`[WhatsApp OTP v1] Successfully dispatched OTP via gateway to +${normalized}`);
+      return res.json({
+        success: true,
+        phone: normalized,
+        sentViaWhatsApp: true,
+        gatewayConnected: true,
+        expiresInSeconds: data.expires_in_seconds || 300,
+        expiresAt: Date.now() + 60 * 1000 // 60s resend timer
+      });
+    }
+
+    console.warn(`[WhatsApp OTP v1] Gateway error:`, data.error || gatewayRes.status);
+  } catch (err) {
+    console.warn(`[WhatsApp OTP v1] Gateway network error:`, err.message);
+  }
+
+  // Fallback OTP for local offline or dev testing
+  const fallbackOtp = String(Math.floor(1000 + Math.random() * 9000));
+  const expiresAt = Date.now() + 5 * 60 * 1000;
   activeOtps.set(normalized, {
-    otp,
+    otp: fallbackOtp,
     expiresAt,
     attempts: 0
   });
 
-  const otpMessage = `🍲 *UNAVUKADAI AUTHENTIC FOOD* 🍲\n\n` +
-    `Your ${purpose === 'ORDER' ? 'Order Confirmation' : 'Login'} Verification OTP is: *${otp}*\n\n` +
-    `⏱️ *Valid for 5 minutes.*\n` +
-    `🔒 Do not share this OTP with anyone for account security.\n\n` +
-    `📍 _South Chennai Hyperlocal Delivery (Perungalathur • Vandalur • Mannivakkam)_`;
-
-  const dispatchResult = await postToGateway('/send-message', {
-    phone: normalized,
-    message: otpMessage
-  });
-
-  if (dispatchResult.success) {
-    console.log(`[WhatsApp OTP] Successfully sent OTP via ${dispatchResult.gatewayUrl} to +${normalized}`);
-  } else {
-    console.warn(`[WhatsApp OTP] Gateway failed to deliver to +${normalized}:`, dispatchResult.error);
-  }
-
   res.json({
     success: true,
     phone: normalized,
-    sentViaWhatsApp: dispatchResult.success,
-    gatewayUrl: dispatchResult.gatewayUrl || WHATSAPP_GATEWAY_URL,
-    gatewayError: dispatchResult.success ? null : dispatchResult.error,
+    sentViaWhatsApp: false,
+    offlineFallback: true,
     expiresAt
   });
 });
 
-// 3. Verify WhatsApp OTP with Rate Limiting & Expiry
-app.post('/api/whatsapp/verify-otp', (req, res) => {
+// 3. Verify WhatsApp OTP with Custom Gateway API v1
+app.post('/api/whatsapp/verify-otp', async (req, res) => {
   const { phone, otp } = req.body;
   const normalized = normalizePhone(phone);
   const enteredOtp = String(otp || '').trim();
 
-  // Master bypass for testing
+  // Master bypass for testing / emergency demo
   if (enteredOtp === '1234') {
     return res.json({ success: true, verified: true, bypass: true });
   }
 
+  // 1. Primary Live Gateway API v1: POST /api/v1/otp/verify
+  try {
+    const gatewayRes = await fetch(`${WHATSAPP_GATEWAY_BASE_URL}/api/v1/otp/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': WHATSAPP_API_KEY
+      },
+      body: JSON.stringify({
+        phone: normalized,
+        otp: enteredOtp
+      }),
+      signal: AbortSignal.timeout(5000)
+    });
+
+    const data = await gatewayRes.json().catch(() => ({}));
+    if (data.success && data.verified) {
+      console.log(`[WhatsApp OTP v1] Successfully verified OTP for +${normalized}`);
+      return res.json({ success: true, verified: true });
+    } else if (data.error) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: data.error
+      });
+    }
+  } catch (err) {
+    console.warn(`[WhatsApp OTP v1] Gateway verify error, checking local fallback:`, err.message);
+  }
+
+  // 2. Check local fallback OTP store
   const record = activeOtps.get(normalized);
-
-  if (!record) {
-    return res.status(400).json({
-      success: false,
-      error: 'No active OTP found for this number or it has expired. Please request a new OTP.'
-    });
+  if (record) {
+    if (Date.now() > record.expiresAt) {
+      activeOtps.delete(normalized);
+      return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new code.' });
+    }
+    if (record.otp === enteredOtp) {
+      activeOtps.delete(normalized);
+      return res.json({ success: true, verified: true, fallback: true });
+    }
   }
 
-  if (Date.now() > record.expiresAt) {
-    activeOtps.delete(normalized);
-    return res.status(400).json({
-      success: false,
-      error: 'OTP has expired (validity is 5 minutes). Please tap resend.'
-    });
-  }
-
-  if (record.attempts >= 5) {
-    activeOtps.delete(normalized);
-    return res.status(429).json({
-      success: false,
-      error: 'Too many incorrect attempts. Please request a new OTP.'
-    });
-  }
-
-  if (record.otp !== enteredOtp) {
-    record.attempts += 1;
-    const remaining = 5 - record.attempts;
-    return res.status(400).json({
-      success: false,
-      error: `Incorrect OTP. Please check the 4-digit code in your WhatsApp (${remaining} attempts remaining).`
-    });
-  }
-
-  // Successful verification
-  activeOtps.delete(normalized);
-  console.log(`[WhatsApp OTP] Verified successfully for +${normalized}`);
-  res.json({ success: true, verified: true });
+  return res.status(400).json({
+    success: false,
+    verified: false,
+    error: 'Incorrect OTP code. Please check your WhatsApp.'
+  });
 });
 
 // 4. Send Order Confirmation with Doorstep Delivery OTP (Asynchronously Non-Blocking)
@@ -606,7 +553,6 @@ app.post('/api/whatsapp/send-order-notification', (req, res) => {
     `🛵 *Live Tracking:* http://localhost:5173/#/customer\n` +
     `_Thank you for supporting authentic local South Chennai eateries!_`;
 
-  // Asynchronously enqueue so client checkout responds in < 5ms
   enqueueNotification('/send-message', {
     phone: normalized,
     message,
@@ -621,6 +567,19 @@ app.post('/api/whatsapp/send-order-notification', (req, res) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`⚡ Unavukadai Production API running on http://0.0.0.0:${PORT}`);
-});
+// Initialize Database connection, migrate initial seed, and start server
+async function startServer() {
+  try {
+    await initDatabaseConnection();
+    await dbRepo.migrateSeedDataFromDbJson();
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`⚡ Unavukadai Production API running on http://0.0.0.0:${PORT} [Engine: ${getActiveEngine()}]`);
+    });
+  } catch (err) {
+    console.error('Fatal error starting Unavukadai API server:', err);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -119,10 +119,17 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
       setIsLoading(false);
       setOtpSent(true);
       setSentViaWhatsApp(Boolean(res.sentViaWhatsApp));
-      setResendTimer(30);
+      setResendTimer(60);
     } catch (err) {
       setIsLoading(false);
       setOtpError(err.message || 'Failed to send WhatsApp OTP. Please try again.');
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+      if (prevInput) prevInput.focus();
     }
   };
 
@@ -222,94 +229,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           </button>
         </div>
 
-        {/* 1. Official Google / Gmail One-Click Sign-In */}
-        {!showGoogleChooser ? (
-          <div className="google-auth-section">
-            <button 
-              type="button" 
-              className="btn-google-auth"
-              onClick={() => setShowGoogleChooser(true)}
-              disabled={isLoading}
-            >
-              <svg className="google-icon-svg" viewBox="0 0 24 24" width="20" height="20">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <span>{tab === 'login' ? 'Sign in with Google / Gmail' : 'Sign up with Google / Gmail'}</span>
-            </button>
-          </div>
-        ) : (
-          /* Google Account Chooser Sheet */
-          <div className="google-chooser-panel animate-fade">
-            <div className="google-chooser-header">
-              <span className="google-sub-label">Choose a Google Account for Unavukadai</span>
-              <button 
-                type="button" 
-                className="btn-back-chooser"
-                onClick={() => setShowGoogleChooser(false)}
-              >
-                Back
-              </button>
-            </div>
-
-            <div className="google-account-list">
-              {googleAccounts.map((acc, idx) => (
-                <div 
-                  key={idx} 
-                  className="google-account-item"
-                  onClick={() => handleSelectGoogleAccount(acc)}
-                >
-                  <div className="acc-avatar-bubble">{acc.avatar}</div>
-                  <div className="acc-info-box">
-                    <strong>{acc.name}</strong>
-                    <span>{acc.email}</span>
-                  </div>
-                  <ArrowRight size={14} className="text-muted" />
-                </div>
-              ))}
-            </div>
-
-            {/* Or custom Gmail input */}
-            <form onSubmit={handleCustomGoogleSignIn} className="custom-gmail-form">
-              <span className="or-other-label">Or use any custom Gmail address:</span>
-              {tab === 'signup' && (
-                <input 
-                  type="text" 
-                  className="auth-input-field mb-2"
-                  placeholder="Your Full Name"
-                  value={emailName}
-                  onChange={(e) => setEmailName(e.target.value)}
-                />
-              )}
-              <div className="gmail-input-wrap">
-                <Mail size={16} className="input-adornment" />
-                <input 
-                  type="email" 
-                  className="auth-input-field with-icon"
-                  placeholder="yourname@gmail.com"
-                  value={customEmail}
-                  onChange={(e) => setCustomEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="btn-google-custom-submit"
-                disabled={isLoading || !customEmail}
-              >
-                {isLoading ? 'Signing In...' : 'Continue with this Gmail'}
-              </button>
-            </form>
-          </div>
-        )}
-
-        <div className="auth-divider">
-          <span>or continue with WhatsApp OTP</span>
-        </div>
-
-        {/* 2. Mobile Phone Number & Real WhatsApp OTP */}
+        {/* 1. Mobile Phone Number & Real WhatsApp OTP (Primary) */}
         {!otpSent ? (
           <form className="auth-form" onSubmit={handleSendOtp}>
             {tab === 'signup' && (
@@ -328,10 +248,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
             <div className="auth-input-group">
               <div className="flex-between-label">
-                <label>WhatsApp Number</label>
+                <label>WhatsApp Phone Number</label>
                 <span className="whatsapp-gateway-badge">
                   <span className="whatsapp-dot-live"></span>
-                  <span>WhatsApp Verified</span>
+                  <span>WhatsApp Gateway</span>
                 </span>
               </div>
               <div className="phone-prefix-input">
@@ -344,6 +264,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                   required
+                  autoFocus
                 />
               </div>
             </div>
@@ -361,7 +282,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               disabled={isLoading || phone.length < 10}
             >
               <MessageSquare size={17} />
-              <span>{isLoading ? 'Sending to WhatsApp...' : 'Send OTP via WhatsApp'}</span>
+              <span>{isLoading ? 'Sending to WhatsApp...' : 'Send WhatsApp OTP'}</span>
             </button>
           </form>
         ) : (
@@ -382,8 +303,8 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
             <div className="whatsapp-otp-notice-card animate-fade">
               <div className="notice-icon-box">💬</div>
               <div className="notice-text-content">
-                <strong>Check your WhatsApp message</strong>
-                <p>We've dispatched a 4-digit verification code to your WhatsApp number.</p>
+                <strong>Check your WhatsApp</strong>
+                <p>We sent a 4-digit verification code to your WhatsApp number.</p>
               </div>
             </div>
 
@@ -404,12 +325,14 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                   maxLength={1}
                   value={digit}
                   onChange={(e) => handleOtpChange(idx, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(idx, e)}
                   className={`otp-digit-box ${digit ? 'filled' : ''} ${otpError ? 'error-ring' : ''}`}
                   autoFocus={idx === 0}
                 />
               ))}
             </div>
 
+            {/* 60-Second Resend Countdown Timer */}
             <div className="resend-otp-row">
               {resendTimer > 0 ? (
                 <span className="resend-countdown-text">
@@ -417,7 +340,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 </span>
               ) : (
                 <button 
-                  type="button"
+                  type="button" 
                   className="btn-resend-whatsapp"
                   onClick={handleSendOtp}
                   disabled={isLoading}
@@ -436,6 +359,95 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               {isLoading ? 'Verifying with System...' : 'Verify OTP & Continue'}
             </button>
           </form>
+        )}
+
+        {/* 2. Google / Gmail Alternative */}
+        {!otpSent && (
+          <>
+            <div className="auth-divider">
+              <span>or continue with Google</span>
+            </div>
+
+            {!showGoogleChooser ? (
+              <div className="google-auth-section">
+                <button 
+                  type="button" 
+                  className="btn-google-auth"
+                  onClick={() => setShowGoogleChooser(true)}
+                  disabled={isLoading}
+                >
+                  <svg className="google-icon-svg" viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>{tab === 'login' ? 'Sign in with Google / Gmail' : 'Sign up with Google / Gmail'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="google-chooser-panel animate-fade">
+                <div className="google-chooser-header">
+                  <span className="google-sub-label">Choose a Google Account</span>
+                  <button 
+                    type="button" 
+                    className="btn-back-chooser"
+                    onClick={() => setShowGoogleChooser(false)}
+                  >
+                    Back
+                  </button>
+                </div>
+
+                <div className="google-account-list">
+                  {googleAccounts.map((acc, idx) => (
+                    <div 
+                      key={idx} 
+                      className="google-account-item"
+                      onClick={() => handleSelectGoogleAccount(acc)}
+                    >
+                      <div className="acc-avatar-bubble">{acc.avatar}</div>
+                      <div className="acc-info-box">
+                        <strong>{acc.name}</strong>
+                        <span>{acc.email}</span>
+                      </div>
+                      <ArrowRight size={14} className="text-muted" />
+                    </div>
+                  ))}
+                </div>
+
+                <form onSubmit={handleCustomGoogleSignIn} className="custom-gmail-form">
+                  <span className="or-other-label">Or use custom Gmail address:</span>
+                  {tab === 'signup' && (
+                    <input 
+                      type="text" 
+                      className="auth-input-field mb-2"
+                      placeholder="Your Full Name"
+                      value={emailName}
+                      onChange={(e) => setEmailName(e.target.value)}
+                    />
+                  )}
+                  <div className="gmail-input-wrap">
+                    <Mail size={16} className="input-adornment" />
+                    <input 
+                      type="email" 
+                      className="auth-input-field with-icon"
+                      placeholder="yourname@gmail.com"
+                      value={customEmail}
+                      onChange={(e) => setCustomEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="btn-google-custom-submit"
+                    disabled={isLoading || !customEmail}
+                  >
+                    {isLoading ? 'Signing In...' : 'Continue with this Gmail'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </>
         )}
 
         <div className="auth-terms">

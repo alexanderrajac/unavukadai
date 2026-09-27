@@ -12,10 +12,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.48.0",
+    "mongoose": "^9.10.2",
+    "pg": "^8.23.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
