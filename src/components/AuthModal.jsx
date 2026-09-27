@@ -116,6 +116,11 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     setOtpError('');
     try {
       const res = await sendWhatsAppOtpApi(phone, tab === 'signup' ? 'SIGNUP' : 'LOGIN');
+      if (res && res.success === false) {
+        setIsLoading(false);
+        setOtpError(res.error || 'Failed to send WhatsApp OTP. Please wait a moment and try again.');
+        return;
+      }
       setIsLoading(false);
       setOtpSent(true);
       setSentViaWhatsApp(Boolean(res.sentViaWhatsApp));

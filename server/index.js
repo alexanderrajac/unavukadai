@@ -430,7 +430,7 @@ app.post('/api/whatsapp/send-otp', async (req, res) => {
         code_length: 4,
         purpose: purpose || 'LOGIN'
       }),
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(35000)
     });
 
     const data = await gatewayRes.json().catch(() => ({}));
@@ -446,7 +446,16 @@ app.post('/api/whatsapp/send-otp', async (req, res) => {
       });
     }
 
-    console.warn(`[WhatsApp OTP v1] Gateway error:`, data.error || gatewayRes.status);
+    console.warn(`[WhatsApp OTP v1] Gateway response error:`, data.error || gatewayRes.status);
+    if (data.error || (gatewayRes.status >= 400 && gatewayRes.status < 500)) {
+      const friendlyError = gatewayRes.status === 429
+        ? (data.error || 'Please wait 60 seconds before requesting a new WhatsApp OTP code.')
+        : (data.error || `WhatsApp Gateway returned error (${gatewayRes.status})`);
+      return res.status(gatewayRes.status >= 400 && gatewayRes.status < 500 ? gatewayRes.status : 400).json({
+        success: false,
+        error: friendlyError
+      });
+    }
   } catch (err) {
     console.warn(`[WhatsApp OTP v1] Gateway network error:`, err.message);
   }
@@ -492,7 +501,7 @@ app.post('/api/whatsapp/verify-otp', async (req, res) => {
         phone: normalized,
         otp: enteredOtp
       }),
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(15000)
     });
 
     const data = await gatewayRes.json().catch(() => ({}));
