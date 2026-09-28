@@ -42,6 +42,7 @@ export default function RiderPortal({
   onAcceptTrip,
   onUpdateOrderStatus,
   riderName = 'Murugan S.',
+  riderId = 'rider-1',
   riderLocation,
   onUpdateLocation
 }) {
@@ -86,7 +87,7 @@ export default function RiderPortal({
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   // ── Computed Order Buckets ─────────────────────────────────────────────────
-  const currentRiderId = 'rider-1';
+  const currentRiderId = riderId || 'rider-1';
   const myActiveTrips = orders.filter(
     o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status !== 'DELIVERED' && o.status !== 'CANCELLED'
   );

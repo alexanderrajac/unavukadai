@@ -31,7 +31,8 @@ export default function AdminPortal({
   onRejectRestaurant = () => {},
   onUpdateRestaurantDetails = () => {},
   onDeleteRestaurant = () => {},
-  onApproveAllRestaurants = () => {}
+  onApproveAllRestaurants = () => {},
+  onOpenRegisterRider = () => {}
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [filterLocality, setFilterLocality] = useState('ALL');
@@ -343,12 +344,23 @@ export default function AdminPortal({
                   <option value="SUSPENDED">Suspended</option>
                 </select>
               </div>
-              <div className="adm-role-pills">
-                {[['ALL','All'], ['customer','🍲'], ['restaurant','👨‍🍳'], ['rider','🛵'], ['admin','🛡️']].map(([r,l]) => (
-                  <button key={r} className={`adm-role-pill ${roleFilter===r?'active':''}`} onClick={()=>setRoleFilter(r)}>
-                    {l} {r!=='ALL' && `(${usersList.filter(u=>u.role===r).length})`}
-                  </button>
-                ))}
+              <div className="adm-role-pills" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[['ALL','All'], ['customer','🍲'], ['restaurant','👨‍🍳'], ['rider','🛵'], ['admin','🛡️']].map(([r,l]) => (
+                    <button key={r} className={`adm-role-pill ${roleFilter===r?'active':''}`} onClick={()=>setRoleFilter(r)}>
+                      {l} {r!=='ALL' && `(${usersList.filter(u=>u.role===r).length})`}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="adm-add-rider-btn"
+                  onClick={onOpenRegisterRider}
+                  title="Onboard and register new delivery partner"
+                >
+                  <Bike size={14} />
+                  <span>+ Onboard Rider</span>
+                </button>
               </div>
             </div>
 
@@ -373,6 +385,11 @@ export default function AdminPortal({
                         </div>
                         <div className="adm-uc-email">{u.email}</div>
                         <div className="adm-uc-phone">{u.phone}</div>
+                        {u.role === 'rider' && (u.operatingZone || u.vehicleType || u.payoutUpi) && (
+                          <div style={{ fontSize: '11px', color: '#8b5cf6', margin: '4px 0', background: 'rgba(139, 92, 246, 0.08)', padding: '4px 8px', borderRadius: '6px' }}>
+                            🛵 {u.vehicleType || 'Two-Wheeler'} {u.vehicleNumber ? `(${u.vehicleNumber})` : ''} · 📍 {u.operatingZone || 'South Chennai'} {u.payoutUpi ? `· 💳 ${u.payoutUpi}` : ''}
+                          </div>
+                        )}
                       </div>
                       <div className="adm-uc-status-col">
                         <span className={`adm-uc-status ${u.status==='ACTIVE'?'active':'suspended'}`}>{u.status}</span>

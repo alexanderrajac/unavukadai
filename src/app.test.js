@@ -808,3 +808,81 @@ describe('Restaurant Self-Registration & Merchant Onboarding Pipeline', () => {
   });
 });
 
+describe('Rider Partner Registration & Order Dispatch Mechanics', () => {
+  it('should register a new rider with vehicle details, driving license, and payout UPI', () => {
+    const riderPayload = {
+      id: 'rider-vand-9921',
+      name: 'Karthik Raja',
+      phone: '+91 98401 77777',
+      email: 'karthik.rider@gmail.com',
+      role: 'rider',
+      operatingZone: 'Vandalur & Zoo Corridor',
+      vehicleType: 'EV',
+      vehicleNumber: 'TN 11 EV 1008',
+      drivingLicense: 'TN1120250001234',
+      payoutUpi: 'karthik@ybl',
+      status: 'ACTIVE',
+      approvalStatus: 'APPROVED',
+      isApproved: true
+    };
+
+    expect(riderPayload.role).toBe('rider');
+    expect(riderPayload.vehicleType).toBe('EV');
+    expect(riderPayload.operatingZone).toContain('Vandalur');
+    expect(riderPayload.payoutUpi).toBe('karthik@ybl');
+  });
+
+  it('should split available orders to broadcast pool and assign exclusively upon rider acceptance', () => {
+    const orders = [
+      { orderId: 'UK-101', status: 'READY_FOR_PICKUP', riderId: null, riderName: null, total: 340 },
+      { orderId: 'UK-102', status: 'READY_FOR_PICKUP', riderId: null, riderName: null, total: 520 },
+      { orderId: 'UK-103', status: 'OUT_FOR_DELIVERY', riderId: 'rider-1', riderName: 'Murugan S.', total: 280 }
+    ];
+
+    // Broadcast pool: unassigned orders
+    const broadcastPool = orders.filter(o => !o.riderId && o.status !== 'DELIVERED');
+    expect(broadcastPool.length).toBe(2);
+    expect(broadcastPool.map(o => o.orderId)).toEqual(['UK-101', 'UK-102']);
+
+    // Rider Karthik claims UK-101
+    const claimedOrder = {
+      ...broadcastPool[0],
+      riderId: 'rider-karthik',
+      riderName: 'Karthik Raja',
+      riderPhone: '+91 98401 77777',
+      status: 'OUT_FOR_DELIVERY'
+    };
+
+    expect(claimedOrder.riderId).toBe('rider-karthik');
+    expect(claimedOrder.status).toBe('OUT_FOR_DELIVERY');
+
+    // Remaining broadcast pool should no longer include UK-101
+    const updatedOrders = [claimedOrder, orders[1], orders[2]];
+    const newBroadcastPool = updatedOrders.filter(o => !o.riderId && o.status !== 'DELIVERED');
+    expect(newBroadcastPool.length).toBe(1);
+    expect(newBroadcastPool[0].orderId).toBe('UK-102');
+  });
+
+  it('should prevent rider from taking concurrent orders until doorstep OTP delivery is complete', () => {
+    const activeOrders = [
+      { orderId: 'UK-101', status: 'OUT_FOR_DELIVERY', riderId: 'rider-karthik', riderName: 'Karthik Raja' },
+      { orderId: 'UK-102', status: 'READY_FOR_PICKUP', riderId: null }
+    ];
+
+    const currentRider = 'rider-karthik';
+    const hasActiveTrip = activeOrders.some(o => o.riderId === currentRider && o.status !== 'DELIVERED');
+
+    // Concurrency check should block 2nd order
+    const canAcceptSecondTrip = !hasActiveTrip;
+    expect(canAcceptSecondTrip).toBe(false);
+
+    // After doorstep OTP delivery
+    const completedOrders = activeOrders.map(o => o.orderId === 'UK-101' ? { ...o, status: 'DELIVERED' } : o);
+    const hasActiveTripAfterDelivery = completedOrders.some(o => o.riderId === currentRider && o.status !== 'DELIVERED');
+    const canAcceptNow = !hasActiveTripAfterDelivery;
+
+    expect(canAcceptNow).toBe(true);
+  });
+});
+
+

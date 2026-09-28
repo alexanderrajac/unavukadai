@@ -13316,5 +13316,111 @@
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
+/* ── RIDER REGISTRATION MODAL STYLES ───────────────────── */
+.rider-vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@media (max-width: 600px) {
+  .rider-vehicle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.rider-vehicle-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.dark .rider-vehicle-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.rider-vehicle-card:hover {
+  border-color: #8b5cf6;
+  transform: translateY(-2px);
+}
+
+.rider-vehicle-card.active {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.rider-vehicle-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.rider-vehicle-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dark .rider-vehicle-label {
+  color: #f8fafc;
+}
+
+.rider-vehicle-desc {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.rider-guarantee-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  color: #059669;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 12px 0 4px;
+}
+
+.dark .rider-guarantee-strip {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+}
+
+.adm-add-rider-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adm-add-rider-btn:hover {
+  background: #8b5cf6;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+
 
 

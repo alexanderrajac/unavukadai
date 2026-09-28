@@ -19,7 +19,8 @@ import {
   Check,
   Mail,
   Sparkles,
-  Store
+  Store,
+  Bike
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
@@ -45,7 +46,8 @@ export default function Header({
   onLogout,
   currentPortal = 'customer',
   onSwitchPortal = () => {},
-  onOpenRegisterRestaurant = () => {}
+  onOpenRegisterRestaurant = () => {},
+  onOpenRegisterRider = () => {}
 }) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -263,6 +265,17 @@ export default function Header({
               <span>Partner</span>
             </button>
 
+            {/* Ride / Delivery Partner Button */}
+            <button 
+              className="partner-btn-trigger"
+              onClick={onOpenRegisterRider}
+              title="Deliver with Unavukadai - Earn Daily"
+              style={{ borderColor: 'rgba(139, 92, 246, 0.35)', color: '#8b5cf6' }}
+            >
+              <Bike size={15} />
+              <span>Drive</span>
+            </button>
+
             {/* Cart Trigger */}
             <button 
               className={`cart-btn-trigger ${cartCount > 0 ? 'has-items' : ''}`}
@@ -359,6 +372,34 @@ export default function Header({
                       >
                         <Store size={15} style={{ color: '#3b82f6' }} />
                         <span>🏪 Register Restaurant</span>
+                      </button>
+                    )}
+
+                    {/* Rider Delivery Portal shortcut for riders or admin */}
+                    {(user?.role === 'rider' || user?.role === 'admin') && (
+                      <button 
+                        type="button" 
+                        className={`user-dropdown-item ${currentPortal === 'rider' ? 'active-portal-item' : ''}`}
+                        onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('rider'); }}
+                      >
+                        <Bike size={15} style={{ color: '#8b5cf6' }} />
+                        <span>🛵 Rider Delivery Portal</span>
+                        {currentPortal === 'rider' && <Check size={14} className="text-green" />}
+                      </button>
+                    )}
+
+                    {/* Become Delivery Partner link for non-riders */}
+                    {user?.role !== 'rider' && (
+                      <button 
+                        type="button" 
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenRegisterRider();
+                        }}
+                      >
+                        <Bike size={15} style={{ color: '#8b5cf6' }} />
+                        <span>🚴 Become Delivery Partner</span>
                       </button>
                     )}
 

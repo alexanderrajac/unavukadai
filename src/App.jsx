@@ -17,6 +17,7 @@ import AddressBookModal from './components/AddressBookModal';
 import MobileBottomNav from './components/MobileBottomNav';
 import Footer from './components/Footer';
 import RegisterRestaurantModal from './components/RegisterRestaurantModal';
+import RegisterRiderModal from './components/RegisterRiderModal';
 import { ArrowRight, Flame } from 'lucide-react';
 
 import HotelPortal from './components/HotelPortal';
@@ -366,6 +367,81 @@ export default function App() {
         };
       }
       return r;
+    }));
+  };
+
+  // Delivery Partner / Rider Registration
+  const [isRegisterRiderOpen, setIsRegisterRiderOpen] = useState(false);
+
+  const handleRegisterRider = (newRider, registeredByAdmin = false) => {
+    // 1. Add or upgrade rider in usersList
+    setUsersList(prev => {
+      const normalizedEmail = newRider.email?.toLowerCase().trim();
+      const normalizedPhone = newRider.phone?.replace(/\D/g, '');
+
+      const existingIdx = prev.findIndex(u => 
+        (normalizedEmail && u.email?.toLowerCase().trim() === normalizedEmail) ||
+        (normalizedPhone && u.phone && u.phone.replace(/\D/g, '') === normalizedPhone)
+      );
+
+      if (existingIdx !== -1) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          role: 'rider',
+          operatingZone: newRider.operatingZone,
+          vehicleType: newRider.vehicleType,
+          vehicleNumber: newRider.vehicleNumber,
+          drivingLicense: newRider.drivingLicense,
+          payoutUpi: newRider.payoutUpi,
+          riderStatus: 'ACTIVE',
+          status: 'ACTIVE'
+        };
+        return updated;
+      } else {
+        const riderUser = {
+          id: newRider.id,
+          name: newRider.name,
+          email: newRider.email || `${newRider.id}@unavukadai.com`,
+          phone: newRider.phone,
+          role: 'rider',
+          operatingZone: newRider.operatingZone,
+          vehicleType: newRider.vehicleType,
+          vehicleNumber: newRider.vehicleNumber,
+          drivingLicense: newRider.drivingLicense,
+          payoutUpi: newRider.payoutUpi,
+          riderStatus: 'ACTIVE',
+          status: 'ACTIVE',
+          createdAt: newRider.registeredAt || '28 Sep, 2026'
+        };
+        return [riderUser, ...prev];
+      }
+    });
+
+    // 2. If logged in user registered themselves, upgrade current user session
+    if (user && (!registeredByAdmin || user.email === newRider.email || user.phone === newRider.phone)) {
+      const updatedUser = {
+        ...user,
+        role: 'rider',
+        name: newRider.name || user.name,
+        phone: newRider.phone || user.phone
+      };
+      setUser(updatedUser);
+      localStorage.setItem('unavu_user', JSON.stringify(updatedUser));
+    }
+
+    // 3. Register live GPS coordinates in riderLocations
+    setRiderLocations(prev => ({
+      ...prev,
+      [newRider.id]: {
+        riderId: newRider.id,
+        riderName: newRider.name,
+        lat: 12.9056,
+        lng: 80.0832,
+        speed: 24,
+        heading: 180,
+        locality: newRider.operatingZone
+      }
     }));
   };
 
@@ -940,9 +1016,13 @@ export default function App() {
     const existingOrder = orders.find(o => o.orderId === orderId);
     if (!existingOrder) return false;
 
+    const activeRiderId = user?.role === 'rider' ? (user.id || 'rider-1') : 'rider-1';
+    const activeRiderName = user?.role === 'rider' ? (user.name || 'Murugan S.') : 'Murugan S.';
+    const activeRiderPhone = user?.role === 'rider' ? (user.phone || '+91 98765 43210') : '+91 98765 43210';
+
     // Strict 1-Trip Limit: Rider cannot take multiple concurrent trips!
     const activeTrip = orders.find(o => 
-      (o.riderId === 'rider-1' || o.riderName === 'Murugan S.') && 
+      (o.riderId === activeRiderId || o.riderName === activeRiderName) && 
       o.status !== 'DELIVERED'
     );
 
@@ -955,9 +1035,9 @@ export default function App() {
     const targetStatus = existingOrder.status === 'READY_FOR_PICKUP' ? 'OUT_FOR_DELIVERY' : existingOrder.status;
 
     const riderDetails = {
-      riderId: 'rider-1',
-      riderName: 'Murugan S.',
-      riderPhone: '+91 98765 43210',
+      riderId: activeRiderId,
+      riderName: activeRiderName,
+      riderPhone: activeRiderPhone,
       status: targetStatus
     };
     setOrders(prev => prev.map(o => {
@@ -1132,6 +1212,7 @@ export default function App() {
             currentPortal={currentPortal}
             onSwitchPortal={setCurrentPortal}
             onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
+            onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
           />
 
           {activeTab === 'orders' ? (
@@ -1437,8 +1518,9 @@ export default function App() {
           orders={orders}
           onAcceptTrip={handleAcceptTrip}
           onUpdateOrderStatus={handleUpdateOrderStatus}
-          riderName="Murugan S."
-          riderLocation={riderLocations['rider-1']}
+          riderName={user?.name || "Murugan S."}
+          riderId={user?.id || 'rider-1'}
+          riderLocation={riderLocations[user?.id || 'rider-1'] || riderLocations['rider-1']}
           onUpdateLocation={handleUpdateRiderLocation}
         />
       )}
@@ -1466,6 +1548,7 @@ export default function App() {
           onUpdateRestaurantDetails={handleUpdateRestaurantDetails}
           onDeleteRestaurant={handleDeleteRestaurant}
           onApproveAllRestaurants={handleApproveAllRestaurants}
+          onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
         />
       )}
 
@@ -1474,6 +1557,16 @@ export default function App() {
         isOpen={isRegisterRestaurantOpen}
         onClose={() => setIsRegisterRestaurantOpen(false)}
         onRegisterRestaurant={handleRegisterRestaurant}
+        currentUser={user}
+        isAdmin={user?.role === 'admin'}
+        onSwitchPortal={setCurrentPortal}
+      />
+
+      {/* Global Rider Partner Registration & Onboarding Modal */}
+      <RegisterRiderModal
+        isOpen={isRegisterRiderOpen}
+        onClose={() => setIsRegisterRiderOpen(false)}
+        onRegisterRider={handleRegisterRider}
         currentUser={user}
         isAdmin={user?.role === 'admin'}
         onSwitchPortal={setCurrentPortal}
