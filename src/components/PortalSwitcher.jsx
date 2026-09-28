@@ -13,7 +13,7 @@ export default function PortalSwitcher({
     <div className="portal-switcher-bar">
       <div className="portal-switcher-inner">
         <div className="portal-brand-mini">
-          <span className="portal-hub-tag">UNAVUKADAI MULTI-PORTAL ECOSYSTEM</span>
+          <span className="portal-hub-tag">⚡ CHANGE APP POSITION ANYTIME:</span>
         </div>
 
         <nav className="portal-nav-pills">
@@ -22,9 +22,10 @@ export default function PortalSwitcher({
             href="#/customer"
             className={`portal-pill-btn ${currentPortal === 'customer' ? 'active' : ''}`}
             onClick={(e) => { e.preventDefault(); setCurrentPortal('customer'); }}
+            title="Switch to Customer Foodie App"
           >
             <ShoppingBag size={15} />
-            <span>Customer App</span>
+            <span>🍲 Customer App</span>
             {cartCount > 0 && <span className="portal-counter-badge primary">{cartCount}</span>}
           </a>
 
@@ -33,9 +34,10 @@ export default function PortalSwitcher({
             href="#/hotel"
             className={`portal-pill-btn ${currentPortal === 'hotel' ? 'active' : ''}`}
             onClick={(e) => { e.preventDefault(); setCurrentPortal('hotel'); }}
+            title="Switch to Restaurant Merchant & Kitchen Portal"
           >
             <Store size={15} />
-            <span>Hotel / Merchant</span>
+            <span>👨‍🍳 Merchant App</span>
             {pendingKitchenOrdersCount > 0 && (
               <span className="portal-counter-badge warning">{pendingKitchenOrdersCount} KOT</span>
             )}
@@ -46,9 +48,10 @@ export default function PortalSwitcher({
             href="#/rider"
             className={`portal-pill-btn ${currentPortal === 'rider' ? 'active' : ''}`}
             onClick={(e) => { e.preventDefault(); setCurrentPortal('rider'); }}
+            title="Switch to Delivery Rider Partner Captain App"
           >
             <Bike size={15} />
-            <span>Rider Partner</span>
+            <span>🛵 Rider App</span>
             {availableRiderTripsCount > 0 && (
               <span className="portal-counter-badge success">{availableRiderTripsCount} Trips</span>
             )}
@@ -59,9 +62,10 @@ export default function PortalSwitcher({
             href="#/admin"
             className={`portal-pill-btn ${currentPortal === 'admin' ? 'active' : ''}`}
             onClick={(e) => { e.preventDefault(); setCurrentPortal('admin'); }}
+            title="Switch to Super Admin Radar & Analytics"
           >
             <ShieldAlert size={15} />
-            <span>Super Admin</span>
+            <span>🛡️ Admin App</span>
             <span className="portal-counter-badge dark">{totalOrdersCount} Orders</span>
           </a>
         </nav>

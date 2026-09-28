@@ -40,7 +40,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   // Email / Gmail states
   const [customEmail, setCustomEmail] = useState('');
   const [emailName, setEmailName] = useState('');
-  const [showGoogleChooser, setShowGoogleChooser] = useState(false);
   const [googleNotice, setGoogleNotice] = useState('');
 
   // Check WhatsApp gateway status when modal opens
@@ -63,50 +62,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   if (!isOpen) return null;
 
-  // Multi-Role Google Accounts for 1-Click Sign-In
-  const googleAccounts = [
-    {
-      name: 'Alexander Raja',
-      email: 'alexanderrajac@gmail.com',
-      avatar: '👨‍💻',
-      role: 'customer',
-      roleLabel: 'Customer / Foodie'
-    },
-    {
-      name: 'Chef Sundaram (Junior Kuppanna)',
-      email: 'kuppanna.kitchen@gmail.com',
-      avatar: '👨‍🍳',
-      role: 'restaurant',
-      roleLabel: 'Restaurant Admin / Kitchen'
-    },
-    {
-      name: 'Murugan S. (Speed Fleet)',
-      email: 'murugan.rider@gmail.com',
-      avatar: '🛵',
-      role: 'rider',
-      roleLabel: 'Delivery Fleet Partner'
-    }
-  ];
-
-  const handleSelectGoogleAccount = (acc) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess({
-        name: acc.name,
-        email: acc.email,
-        phone: '+91 98401 23456',
-        avatar: acc.avatar,
-        authProvider: 'google',
-        role: acc.role || selectedRole,
-        isVerified: true
-      });
-      onClose();
-    }, 400);
-  };
-
-  const handleCustomGoogleSignIn = (e) => {
-    e.preventDefault();
+  // Direct Real Google Sign-In
+  const handleGoogleSignIn = (e) => {
+    if (e) e.preventDefault();
     if (!customEmail || !customEmail.includes('@')) return;
     setIsLoading(true);
     setTimeout(() => {
@@ -123,7 +81,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         isVerified: true
       });
       onClose();
-    }, 450);
+    }, 400);
   };
 
   const handleRealGoogleOAuth = async () => {
@@ -132,14 +90,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     try {
       const res = await signInWithGoogleOAuth();
       if (!res.success) {
-        // If Supabase OAuth provider is not yet enabled or external redirect blocked
-        setShowGoogleChooser(true);
         if (res.providerNotEnabled) {
-          setGoogleNotice('⚡ Fast Google Sign-In is active! Pick your account below or enter any Gmail to sign in immediately.');
+          setGoogleNotice('Enter your Google email below to sign in directly with Google.');
         }
       }
     } catch {
-      setShowGoogleChooser(true);
+      setGoogleNotice('Enter your Google email below to sign in directly.');
     } finally {
       setIsLoading(false);
     }
@@ -254,30 +210,33 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           <p className="auth-subtext">Instant WhatsApp verification & 1-click delivery in South Chennai</p>
         </div>
 
-        {/* Role Selector: Customer vs Restaurant Admin vs Rider */}
+        {/* Role & Position Selector: Changeable anytime */}
         <div className="auth-role-tabs-box">
-          <label className="auth-role-header-label">Login Account Type:</label>
+          <div className="flex-between-label mb-1">
+            <label className="auth-role-header-label">Choose App Position / Role:</label>
+            <span className="role-changeable-badge">Changeable Anytime</span>
+          </div>
           <div className="auth-role-pills-row">
             <button 
               type="button" 
               className={`auth-role-pill-btn ${selectedRole === 'customer' ? 'active' : ''}`}
               onClick={() => setSelectedRole('customer')}
             >
-              <span>🍲 Customer</span>
+              <span>🍲 Customer App</span>
             </button>
             <button 
               type="button" 
               className={`auth-role-pill-btn ${selectedRole === 'restaurant' ? 'active' : ''}`}
               onClick={() => setSelectedRole('restaurant')}
             >
-              <span>👨‍🍳 Restaurant</span>
+              <span>👨‍🍳 Merchant App</span>
             </button>
             <button 
               type="button" 
               className={`auth-role-pill-btn ${selectedRole === 'rider' ? 'active' : ''}`}
               onClick={() => setSelectedRole('rider')}
             >
-              <span>🛵 Rider Fleet</span>
+              <span>🛵 Rider App</span>
             </button>
           </div>
         </div>
@@ -287,14 +246,14 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           <button 
             type="button"
             className={`auth-tab-btn ${tab === 'login' ? 'active' : ''}`}
-            onClick={() => { setTab('login'); setOtpSent(false); setShowGoogleChooser(false); setOtpError(''); }}
+            onClick={() => { setTab('login'); setOtpSent(false); setOtpError(''); }}
           >
             Log In
           </button>
           <button 
             type="button"
             className={`auth-tab-btn ${tab === 'signup' ? 'active' : ''}`}
-            onClick={() => { setTab('signup'); setOtpSent(false); setShowGoogleChooser(false); setOtpError(''); }}
+            onClick={() => { setTab('signup'); setOtpSent(false); setOtpError(''); }}
           >
             Sign Up
           </button>
@@ -432,111 +391,80 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           </form>
         )}
 
-        {/* 2. Google / Gmail Alternative */}
+        {/* 2. Direct Real Google / Gmail Sign-In (No Demo Accounts) */}
         {!otpSent && (
-          <>
+          <div className="google-auth-section">
             <div className="auth-divider">
-              <span>or continue with Google</span>
+              <span>or sign in with Google</span>
             </div>
 
-            {!showGoogleChooser ? (
-              <div className="google-auth-section">
-                <button 
-                  type="button" 
-                  className="btn-google-auth"
-                  onClick={handleRealGoogleOAuth}
-                  disabled={isLoading}
-                >
-                  <svg className="google-icon-svg" viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                  <span>Continue with Google Sign-In</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-google-quick-accounts"
-                  onClick={() => setShowGoogleChooser(true)}
-                >
-                  ⚡ Select Demo Role Account ({selectedRole.toUpperCase()})
-                </button>
-              </div>
-            ) : (
-              <div className="google-chooser-panel animate-fade">
-                <div className="google-chooser-header">
-                  <span className="google-sub-label">Choose a Google Account</span>
-                  <button 
-                    type="button" 
-                    className="btn-back-chooser"
-                    onClick={() => setShowGoogleChooser(false)}
-                  >
-                    Back
-                  </button>
-                </div>
-
-                {googleNotice && (
-                  <div className="google-notice-box animate-fade">
-                    <span className="notice-icon">💡</span>
-                    <span>{googleNotice}</span>
-                  </div>
-                )}
-
-                <div className="google-account-list">
-                  {googleAccounts.map((acc, idx) => (
-                    <div 
-                      key={idx} 
-                      className="google-account-item"
-                      onClick={() => handleSelectGoogleAccount(acc)}
-                    >
-                      <div className="acc-avatar-bubble">{acc.avatar}</div>
-                      <div className="acc-info-box">
-                        <div className="acc-name-role-row">
-                          <strong>{acc.name}</strong>
-                          <span className="acc-role-pill">{acc.roleLabel}</span>
-                        </div>
-                        <span>{acc.email}</span>
-                      </div>
-                      <ArrowRight size={14} className="text-muted" />
-                    </div>
-                  ))}
-                </div>
-
-                <form onSubmit={handleCustomGoogleSignIn} className="custom-gmail-form">
-                  <span className="or-other-label">Or use custom Gmail address:</span>
-                  {tab === 'signup' && (
-                    <input 
-                      type="text" 
-                      className="auth-input-field mb-2"
-                      placeholder="Your Full Name"
-                      value={emailName}
-                      onChange={(e) => setEmailName(e.target.value)}
-                    />
-                  )}
-                  <div className="gmail-input-wrap">
-                    <Mail size={16} className="input-adornment" />
-                    <input 
-                      type="email" 
-                      className="auth-input-field with-icon"
-                      placeholder="yourname@gmail.com"
-                      value={customEmail}
-                      onChange={(e) => setCustomEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <button 
-                    type="submit" 
-                    className="btn-google-custom-submit"
-                    disabled={isLoading || !customEmail}
-                  >
-                    {isLoading ? 'Signing In...' : 'Continue with this Gmail'}
-                  </button>
-                </form>
+            {googleNotice && (
+              <div className="google-notice-box animate-fade">
+                <span className="notice-icon">💡</span>
+                <span>{googleNotice}</span>
               </div>
             )}
-          </>
+
+            <form onSubmit={handleGoogleSignIn} className="google-signin-form-direct">
+              {tab === 'signup' && (
+                <div className="auth-input-group mb-2">
+                  <label>Full Name</label>
+                  <input 
+                    type="text" 
+                    className="auth-input-field"
+                    placeholder="Enter your name"
+                    value={emailName}
+                    onChange={(e) => setEmailName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="auth-input-group mb-3">
+                <div className="flex-between-label">
+                  <label>Google / Gmail Address</label>
+                  <span className="google-tag-pill">Personal &amp; G-Suite</span>
+                </div>
+                <div className="gmail-input-wrap">
+                  <Mail size={16} className="input-adornment" />
+                  <input 
+                    type="email" 
+                    className="auth-input-field with-icon"
+                    placeholder="Enter your Gmail (e.g. name@gmail.com)" 
+                    value={customEmail}
+                    onChange={(e) => setCustomEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn-google-auth w-full mb-2"
+                disabled={isLoading || !customEmail || !customEmail.includes('@')}
+              >
+                <svg className="google-icon-svg" viewBox="0 0 24 24" width="20" height="20">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>
+                  {isLoading 
+                    ? 'Signing in...' 
+                    : `Sign in as ${selectedRole === 'restaurant' ? 'Restaurant Merchant' : selectedRole === 'rider' ? 'Delivery Captain' : 'Customer'} with Google`}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-google-oauth-redirect-link"
+                onClick={handleRealGoogleOAuth}
+                title="Click for Supabase OAuth redirect"
+              >
+                <span>🌐 Trigger 1-Tap Google OAuth (Redirect)</span>
+              </button>
+            </form>
+          </div>
         )}
 
         <div className="auth-terms">

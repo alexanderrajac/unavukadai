@@ -735,6 +735,8 @@ export default function App() {
             activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
             onOpenAddressBook={() => setIsAddressBookOpen(true)}
             onLogout={handleLogout}
+            currentPortal={currentPortal}
+            onSwitchPortal={setCurrentPortal}
           />
 
           <main className="main-content">

@@ -9187,6 +9187,98 @@
   vertical-align: middle;
 }
 
+/* Position Switcher & Role Badges */
+.role-changeable-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.btn-header-position-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: var(--bg-surface-elevated, #f1f5f9);
+  border: 1px solid var(--border-light, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-header-position-switcher:hover {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.pos-sub-tag {
+  font-size: 10.5px;
+  color: var(--text-muted, #64748b);
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.btn-header-position-switcher:hover .pos-sub-tag {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.user-dropdown-category-title {
+  padding: 6px 14px 4px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.active-portal-item {
+  background: rgba(226, 55, 68, 0.08) !important;
+  color: #e23744 !important;
+  font-weight: 800 !important;
+}
+
+.google-tag-pill {
+  font-size: 10.5px;
+  color: #4285f4;
+  font-weight: 700;
+  background: rgba(66, 133, 244, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn-google-oauth-redirect-link {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border-light, #cbd5e1);
+  color: var(--text-secondary, #64748b);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.btn-google-oauth-redirect-link:hover {
+  border-color: #4285f4;
+  color: #4285f4;
+  background: rgba(66, 133, 244, 0.04);
+}
+
+
 
 
 
