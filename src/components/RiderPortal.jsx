@@ -57,6 +57,26 @@ export default function RiderPortal({
   const [gpsLat, setGpsLat] = useState(() => parseFloat(riderLocation?.lat) || 12.9056);
   const [gpsLng, setGpsLng] = useState(() => parseFloat(riderLocation?.lng) || 80.0832);
 
+  const handleToggleOnline = (targetState) => {
+    const nextState = typeof targetState === 'boolean' ? targetState : !isOnline;
+    setIsOnline(nextState);
+    if (!nextState) {
+      setNewOrderAlert(null);
+    }
+    if (onUpdateLocation) {
+      onUpdateLocation({
+        ...(riderLocation || {}),
+        riderId: currentRiderId,
+        riderName,
+        lat: gpsLat,
+        lng: gpsLng,
+        speed: nextState ? 24 : 0,
+        isOnline: nextState,
+        status: nextState ? 'ONLINE' : 'OFFLINE'
+      });
+    }
+  };
+
   // ── OTP Modal ─────────────────────────────────────────────────────────────
   const [otpModalTrip, setOtpModalTrip] = useState(null);
   const [enteredOtp, setEnteredOtp] = useState('');
@@ -427,7 +447,7 @@ export default function RiderPortal({
         <div className="rp-header-right">
           <button
             className={`rp-online-toggle ${isOnline ? 'online' : 'offline'}`}
-            onClick={() => setIsOnline(o => !o)}
+            onClick={handleToggleOnline}
           >
             <Power size={15}/>
             <span>{isOnline ? 'Online' : 'Offline'}</span>
@@ -1115,7 +1135,7 @@ export default function RiderPortal({
               </div>
               <div className="rp-pref-row">
                 <span>Online Status</span>
-                <button className={`rp-toggle-pill ${isOnline ? 'on' : 'off'}`} onClick={() => setIsOnline(o => !o)}>
+                <button className={`rp-toggle-pill ${isOnline ? 'on' : 'off'}`} onClick={handleToggleOnline}>
                   {isOnline ? 'ONLINE' : 'OFFLINE'}
                 </button>
               </div>

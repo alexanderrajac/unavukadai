@@ -79,7 +79,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
       onLoginSuccess({
         name: extractedName,
         email: finalEmail.toLowerCase(),
-        phone: '+91 98401 23456',
+        phone: phone ? `+91 ${phone}` : '',
         authProvider: 'google',
         isVerified: true
       });

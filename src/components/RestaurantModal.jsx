@@ -56,6 +56,7 @@ export default function RestaurantModal({
 
   const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
   const totalCartAmount = cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+  const isClosed = restaurant.isOpen === false || restaurant.isClosed === true;
 
   return (
     <div className="modal-backdrop animate-fade" onClick={onClose}>
@@ -78,7 +79,11 @@ export default function RestaurantModal({
           <div className="modal-hero-details">
             <div className="modal-hero-meta">
               <span className="badge-featured">⭐ Top Choice</span>
-              {restaurant.offer && <span className="badge-offer-highlight">{restaurant.offer}</span>}
+              {isClosed ? (
+                <span className="badge-offer-highlight" style={{ background: '#ef4444', color: '#fff' }}>🔴 KITCHEN CLOSED</span>
+              ) : restaurant.offer ? (
+                <span className="badge-offer-highlight">{restaurant.offer}</span>
+              ) : null}
             </div>
             <h1 className="modal-restaurant-title">{restaurant.name}</h1>
             <p className="modal-cuisines">{restaurant.cuisines.join(' • ')}</p>
@@ -109,6 +114,13 @@ export default function RestaurantModal({
             </div>
           </div>
         </div>
+
+        {/* Closed Alert Banner */}
+        {isClosed && (
+          <div className="restaurant-closed-banner animate-fade">
+            <span>🔴 <strong>Kitchen Currently Closed:</strong> {restaurant.name} is resting and not accepting delivery orders right now. Ordering will resume when the kitchen reopens.</span>
+          </div>
+        )}
 
         {/* Menu Search & Filters Bar */}
         <div className="menu-control-bar">
@@ -190,7 +202,11 @@ export default function RestaurantModal({
                     </div>
 
                     <div className="dish-btn-container">
-                      {qty === 0 ? (
+                      {isClosed ? (
+                        <div className="dish-btn-closed-pill" title="Kitchen is currently closed">
+                          <span>Closed</span>
+                        </div>
+                      ) : qty === 0 ? (
                         <button 
                           className="add-dish-btn"
                           onClick={() => onAddToCart(dish, restaurant)}

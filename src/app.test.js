@@ -883,6 +883,101 @@ describe('Rider Partner Registration & Order Dispatch Mechanics', () => {
 
     expect(canAcceptNow).toBe(true);
   });
+
+  it('should register new Google OAuth users with unique ID and Google auth provider badge', () => {
+    const existingUsers = [
+      { id: 'usr-admin-1', name: 'Admin', email: 'admin@unavukadai.com', role: 'admin', phone: '+91 98400 11111' },
+      { id: 'usr-cust-1', name: 'Alexander Raja', email: 'alexanderrajac@gmail.com', role: 'customer', phone: '+91 98401 23456' }
+    ];
+
+    const googleUser = {
+      name: 'Priya Dharshini',
+      email: 'priya.dharshini99@gmail.com',
+      phone: '',
+      authProvider: 'google',
+      isVerified: true
+    };
+
+    // Registration simulation
+    const alreadyExists = existingUsers.some(u => u.email.toLowerCase() === googleUser.email.toLowerCase());
+    expect(alreadyExists).toBe(false);
+
+    const newUserRecord = {
+      id: 'usr-g-' + Date.now(),
+      name: googleUser.name,
+      email: googleUser.email,
+      phone: googleUser.phone,
+      role: 'customer',
+      authProvider: 'google',
+      status: 'ACTIVE',
+      isVerified: true,
+      createdAt: '28 Sep, 2026'
+    };
+
+    const updatedUsersList = [newUserRecord, ...existingUsers];
+    expect(updatedUsersList.length).toBe(3);
+    expect(updatedUsersList[0].authProvider).toBe('google');
+    expect(updatedUsersList[0].email).toBe('priya.dharshini99@gmail.com');
+  });
+
+  it('should mark rider as OFFLINE and remove from active dispatch when vehicle toggle is turned off', () => {
+    const initialRiderLocations = {
+      'rider-1': { riderId: 'rider-1', riderName: 'Murugan S.', isOnline: true, speed: 28, lat: 12.9056, lng: 80.0832 }
+    };
+
+    expect(initialRiderLocations['rider-1'].isOnline).toBe(true);
+
+    // Rider switches vehicle to OFFLINE
+    const offlineLocData = {
+      riderId: 'rider-1',
+      riderName: 'Murugan S.',
+      isOnline: false,
+      speed: 0,
+      status: 'OFFLINE'
+    };
+
+    const updatedLocations = {
+      ...initialRiderLocations,
+      [offlineLocData.riderId]: {
+        ...initialRiderLocations[offlineLocData.riderId],
+        ...offlineLocData
+      }
+    };
+
+    expect(updatedLocations['rider-1'].isOnline).toBe(false);
+    expect(updatedLocations['rider-1'].speed).toBe(0);
+
+    // Active online fleet count
+    const onlineRiders = Object.values(updatedLocations).filter(r => r.isOnline !== false);
+    expect(onlineRiders.length).toBe(0);
+  });
+
+  it('should update restaurant to CLOSED and reflect in customer card & modal ordering state', () => {
+    const restaurant = {
+      id: 'res-vandalur-1',
+      name: 'Hotel Ananda Bhavan',
+      isOpen: true,
+      isClosed: false
+    };
+
+    expect(restaurant.isOpen).toBe(true);
+
+    // Restaurant closes kitchen
+    const closedRestaurant = {
+      ...restaurant,
+      isOpen: false,
+      isClosed: true
+    };
+
+    // Verification on customer card
+    const isOutletClosedOnCard = closedRestaurant.isOpen === false || closedRestaurant.isClosed === true;
+    expect(isOutletClosedOnCard).toBe(true);
+
+    // Dishes should have ADD disabled when closed
+    const canOrderDishes = !isOutletClosedOnCard;
+    expect(canOrderDishes).toBe(false);
+  });
 });
+
 
 

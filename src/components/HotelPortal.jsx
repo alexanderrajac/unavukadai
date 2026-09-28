@@ -88,12 +88,28 @@ export default function HotelPortal({
   // ── Core State ─────────────────────────────────────────────────────────────
   const [selectedHotelId, setSelectedHotelId] = useState(restaurantsList[0]?.id || 'res-perungalathur-1');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isOpen, setIsOpen] = useState(true);
+  const currentHotel = restaurantsList.find(r => r.id === selectedHotelId) || restaurantsList[0];
+  const [isOpen, setIsOpen] = useState(() => currentHotel?.isOpen !== false && !currentHotel?.isClosed);
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const prevOrderCountRef = useRef(0);
 
-  const currentHotel = restaurantsList.find(r => r.id === selectedHotelId) || restaurantsList[0];
+  useEffect(() => {
+    if (currentHotel) {
+      setIsOpen(currentHotel.isOpen !== false && !currentHotel.isClosed);
+    }
+  }, [currentHotel?.id, currentHotel?.isOpen, currentHotel?.isClosed]);
+
+  const handleToggleOpen = () => {
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    if (onUpdateRestaurantDetails && currentHotel) {
+      onUpdateRestaurantDetails(currentHotel.id, {
+        isOpen: nextOpen,
+        isClosed: !nextOpen
+      });
+    }
+  };
 
   // ── Order buckets ──────────────────────────────────────────────────────────
   const hotelOrders = orders.filter(o => o.restaurantId === selectedHotelId);
@@ -287,7 +303,7 @@ export default function HotelPortal({
         </div>
         <div className="mp-header-right">
           {/* Open/Closed toggle */}
-          <button className={`mp-open-toggle ${isOpen ? 'open' : 'closed'}`} onClick={() => setIsOpen(o => !o)}>
+          <button className={`mp-open-toggle ${isOpen ? 'open' : 'closed'}`} onClick={handleToggleOpen}>
             <Power size={14}/>
             <span>{isOpen ? 'Open' : 'Closed'}</span>
           </button>
@@ -341,7 +357,7 @@ export default function HotelPortal({
                 <div className="mp-status-name">{currentHotel.name}</div>
                 <div className="mp-status-sub">{currentHotel.address} · {profileForm.openTime} – {profileForm.closeTime}</div>
               </div>
-              <button className={`mp-toggle-large ${isOpen ? 'open' : 'closed'}`} onClick={() => setIsOpen(o => !o)}>
+              <button className={`mp-toggle-large ${isOpen ? 'open' : 'closed'}`} onClick={handleToggleOpen}>
                 <Power size={20}/>
                 <span>{isOpen ? 'Close Restaurant' : 'Open Restaurant'}</span>
               </button>

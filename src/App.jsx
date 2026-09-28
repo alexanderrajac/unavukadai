@@ -496,7 +496,10 @@ export default function App() {
   const handleUpdateRiderLocation = (locData) => {
     setRiderLocations(prev => ({
       ...prev,
-      [locData.riderId]: locData
+      [locData.riderId]: {
+        ...(prev[locData.riderId] || {}),
+        ...locData
+      }
     }));
     updateRiderLocationApi(locData);
   };
@@ -723,27 +726,41 @@ export default function App() {
     // Check if user already exists in master registered users directory (only admin can change role in Admin panel)
     const normalizedEmail = userData.email?.toLowerCase().trim();
     const normalizedPhone = userData.phone?.replace(/\D/g, '');
-    const existing = usersList.find(u => 
-      (normalizedEmail && u.email?.toLowerCase().trim() === normalizedEmail) ||
-      (normalizedPhone && u.phone && u.phone.replace(/\D/g, '') === normalizedPhone)
-    );
-    const effectiveRole = existing ? existing.role : 'customer';
+    const isGenericPhone = !normalizedPhone || normalizedPhone === '919840123456' || normalizedPhone === '9840123456';
+
+    const existing = usersList.find(u => {
+      if (normalizedEmail && u.email?.toLowerCase().trim() === normalizedEmail) return true;
+      if (!isGenericPhone && u.phone && u.phone.replace(/\D/g, '') === normalizedPhone) return true;
+      return false;
+    });
+    const effectiveRole = existing ? existing.role : (userData.role || 'customer');
 
     if (!existing) {
       const newUserRecord = {
-        id: 'usr-' + Date.now(),
-        name: userData.name || userData.email?.split('@')[0] || 'User',
-        email: userData.email,
-        phone: userData.phone || '+91 98401 23456',
+        id: userData.id || ('usr-g-' + Date.now().toString().slice(-6)),
+        name: userData.name || (userData.email ? userData.email.split('@')[0] : 'User'),
+        email: userData.email || '',
+        phone: userData.phone && !isGenericPhone ? userData.phone : '',
         role: effectiveRole,
+        authProvider: userData.authProvider || (userData.email?.includes('@') ? 'google' : 'phone'),
         status: 'ACTIVE',
-        createdAt: '28 Sep, 2026'
+        isVerified: true,
+        createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
       };
-      setUsersList(prev => [...prev, newUserRecord]);
+      setUsersList(prev => {
+        const nextList = [newUserRecord, ...prev];
+        try { localStorage.setItem('unavu_registered_users', JSON.stringify(nextList)); } catch {}
+        return nextList;
+      });
     }
 
     const roleAvatar = effectiveRole === 'restaurant' ? '👨‍🍳' : effectiveRole === 'rider' ? '🛵' : effectiveRole === 'admin' ? '🛡️' : '🍲';
-    const updatedUser = { ...userData, role: effectiveRole, avatar: roleAvatar };
+    const updatedUser = { 
+      ...userData, 
+      role: effectiveRole, 
+      avatar: roleAvatar,
+      authProvider: userData.authProvider || (userData.email ? 'google' : 'phone')
+    };
     setUser(updatedUser);
 
     // Strict Role-Based Portal Routing
@@ -769,7 +786,7 @@ export default function App() {
         handleLoginSuccess({
           name: googleName,
           email: googleEmail,
-          phone: supaUser.phone || '+91 98401 23456',
+          phone: supaUser.phone || '',
           authProvider: 'google',
           isVerified: true
         });
@@ -785,7 +802,7 @@ export default function App() {
         handleLoginSuccess({
           name: googleName,
           email: googleEmail,
-          phone: supaUser.phone || '+91 98401 23456',
+          phone: supaUser.phone || '',
           authProvider: 'google',
           isVerified: true
         });

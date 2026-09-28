@@ -91,10 +91,11 @@ export default function AdminFleetRadarMap({
     // 2. Plot Active Riders
     Object.values(riderLocations).forEach(rider => {
       if (!rider.lat || !rider.lng) return;
+      const isRiderOnline = rider.isOnline !== false;
 
       const icon = L.divIcon({
-        className: 'custom-map-pin bike-pin',
-        html: `<div class="pin-bubble bike animate-pulse-halo"><span>🏍️</span></div><div class="pin-title">${rider.riderName || 'Rider'}</div>`,
+        className: `custom-map-pin bike-pin ${isRiderOnline ? '' : 'rider-offline-pin'}`,
+        html: `<div class="pin-bubble bike ${isRiderOnline ? 'animate-pulse-halo' : 'offline'}"><span>${isRiderOnline ? '🏍️' : '🛑'}</span></div><div class="pin-title">${rider.riderName || 'Rider'} ${isRiderOnline ? '' : '(OFFLINE)'}</div>`,
         iconSize: [42, 42],
         iconAnchor: [21, 21]
       });
@@ -102,7 +103,8 @@ export default function AdminFleetRadarMap({
       L.marker([rider.lat, rider.lng], { icon })
         .bindPopup(`
           <strong>${rider.riderName} (ID: ${rider.riderId})</strong><br/>
-          Speed: ${rider.speed || 24} km/h • Heading: ${rider.heading || 0}°<br/>
+          Status: <strong>${isRiderOnline ? '🟢 ONLINE & ACTIVE' : '🔴 VEHICLE OFFLINE'}</strong><br/>
+          Speed: ${isRiderOnline ? (rider.speed || 24) : 0} km/h • Heading: ${rider.heading || 0}°<br/>
           Zone: ${rider.locality || 'Suburban Belt'}
         `)
         .addTo(markersLayerRef.current);

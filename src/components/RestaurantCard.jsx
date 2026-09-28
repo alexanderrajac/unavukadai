@@ -27,9 +27,11 @@ export default function RestaurantCard({
     onToggleFavorite(id);
   };
 
+  const isClosed = restaurant.isOpen === false || restaurant.isClosed === true;
+
   return (
     <div 
-      className="restaurant-card"
+      className={`restaurant-card ${isClosed ? 'outlet-closed' : ''}`}
       onClick={() => onOpenModal(restaurant)}
       tabIndex={0}
       role="button"
@@ -46,7 +48,11 @@ export default function RestaurantCard({
         
         {/* Top Badges */}
         <div className="card-top-badges">
-          {offer ? (
+          {isClosed ? (
+            <div className="card-closed-badge">
+              <span>🔴 CLOSED</span>
+            </div>
+          ) : offer ? (
             <div className="card-offer-badge">
               <span>{offer}</span>
             </div>
@@ -61,6 +67,13 @@ export default function RestaurantCard({
             <Heart size={16} fill={isFavorite ? '#e23744' : 'none'} stroke={isFavorite ? '#e23744' : '#ffffff'} />
           </button>
         </div>
+
+        {/* Closed Overlay Strip */}
+        {isClosed && (
+          <div className="card-closed-strip">
+            <span>Currently Not Accepting Orders</span>
+          </div>
+        )}
 
         {/* Bottom Time & Distance overlay */}
         <div className="card-thumb-footer">
@@ -81,6 +94,7 @@ export default function RestaurantCard({
           <div className="card-name-group">
             <h3 className="restaurant-name">{name}</h3>
             {pureVeg && <span className="veg-badge-mini" title="Pure Vegetarian" />}
+            {isClosed && <span className="closed-status-pill">CLOSED</span>}
           </div>
           <div className="rating-badge">
             <span>{rating}</span>

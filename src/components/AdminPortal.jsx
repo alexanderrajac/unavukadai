@@ -382,12 +382,21 @@ export default function AdminPortal({
                         <div className="adm-uc-name">
                           {u.name}
                           {isSelf && <span className="adm-self-tag">You</span>}
+                          {(u.authProvider === 'google' || u.email?.includes('gmail') || u.id?.includes('google')) && (
+                            <span className="adm-google-tag" title="Signed up with Google / Gmail ID">
+                              🌐 Google ID
+                            </span>
+                          )}
                         </div>
                         <div className="adm-uc-email">{u.email}</div>
                         <div className="adm-uc-phone">{u.phone}</div>
-                        {u.role === 'rider' && (u.operatingZone || u.vehicleType || u.payoutUpi) && (
+                        {u.role === 'rider' && (
                           <div style={{ fontSize: '11px', color: '#8b5cf6', margin: '4px 0', background: 'rgba(139, 92, 246, 0.08)', padding: '4px 8px', borderRadius: '6px' }}>
-                            🛵 {u.vehicleType || 'Two-Wheeler'} {u.vehicleNumber ? `(${u.vehicleNumber})` : ''} · 📍 {u.operatingZone || 'South Chennai'} {u.payoutUpi ? `· 💳 ${u.payoutUpi}` : ''}
+                            <span style={{ color: (riderLocations[u.id]?.isOnline === false || (u.id === 'usr-rider-1' && riderLocations['rider-1']?.isOnline === false)) ? '#ef4444' : '#10b981', fontWeight: 800 }}>
+                              {(riderLocations[u.id]?.isOnline === false || (u.id === 'usr-rider-1' && riderLocations['rider-1']?.isOnline === false)) ? '🔴 Vehicle Offline' : '🟢 Vehicle Online'}
+                            </span>
+                            {u.vehicleType ? ` · 🛵 ${u.vehicleType} (${u.vehicleNumber || 'No Plate'})` : ''}
+                            {u.operatingZone ? ` · 📍 ${u.operatingZone}` : ''}
                           </div>
                         )}
                       </div>
@@ -609,9 +618,29 @@ export default function AdminPortal({
                             </span>
                           )}
                           {!isPending && !isRejected && (
-                            <span className="adm-status-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981' }}>
-                              🟢 LIVE ON APP
-                            </span>
+                            <>
+                              <span className="adm-status-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981' }}>
+                                🟢 LIVE ON APP
+                              </span>
+                              <span 
+                                className="adm-status-pill" 
+                                style={{ 
+                                  background: r.isOpen === false ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', 
+                                  color: r.isOpen === false ? '#ef4444' : '#10b981', 
+                                  border: `1px solid ${r.isOpen === false ? '#ef4444' : '#10b981'}`,
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                  const newOpen = r.isOpen === false ? true : false;
+                                  onUpdateRestaurantDetails(r.id, { isOpen: newOpen, isClosed: !newOpen });
+                                  setRestaurantApprovalMsg(`🏪 ${r.name} marked ${newOpen ? '🟢 OPEN' : '🔴 CLOSED'}`);
+                                  setTimeout(() => setRestaurantApprovalMsg(''), 3000);
+                                }}
+                                title="Click to toggle kitchen Open / Closed status"
+                              >
+                                {r.isOpen === false ? '🔴 CLOSED' : '🟢 OPEN'}
+                              </span>
+                            </>
                           )}
                           {isRejected && (
                             <span className="adm-status-pill" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid #ef4444' }}>
