@@ -370,6 +370,15 @@ export default function App() {
       createdAt: '28 Sep, 2026'
     },
     {
+      id: 'usr-admin-2',
+      name: 'Raja Official',
+      email: 'rajacofficial369@gmail.com',
+      phone: '+91 98401 23456',
+      role: 'admin',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
+    {
       id: 'usr-cust-1',
       name: 'Alexander Raja',
       email: 'alexanderrajac@gmail.com',
@@ -383,7 +392,14 @@ export default function App() {
   const [usersList, setUsersList] = useState(() => {
     try {
       const saved = localStorage.getItem('unavu_registered_users');
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!parsed.some(u => u.email?.toLowerCase() === 'rajacofficial369@gmail.com')) {
+          parsed.push(INITIAL_USERS[3]);
+        }
+        return parsed;
+      }
+      return INITIAL_USERS;
     } catch {
       return INITIAL_USERS;
     }
@@ -427,16 +443,19 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData) => {
-    // Check if user already exists in master registered users directory
-    const existing = usersList.find(u => u.email?.toLowerCase() === userData.email?.toLowerCase());
-    let effectiveRole = userData.role || 'customer';
+    // Check if user already exists in master registered users directory (only admin can change role in Admin panel)
+    const normalizedEmail = userData.email?.toLowerCase().trim();
+    const normalizedPhone = userData.phone?.replace(/\D/g, '');
+    const existing = usersList.find(u => 
+      (normalizedEmail && u.email?.toLowerCase().trim() === normalizedEmail) ||
+      (normalizedPhone && u.phone && u.phone.replace(/\D/g, '') === normalizedPhone)
+    );
+    const effectiveRole = existing ? existing.role : 'customer';
 
-    if (existing) {
-      effectiveRole = existing.role;
-    } else {
+    if (!existing) {
       const newUserRecord = {
         id: 'usr-' + Date.now(),
-        name: userData.name || userData.email.split('@')[0],
+        name: userData.name || userData.email?.split('@')[0] || 'User',
         email: userData.email,
         phone: userData.phone || '+91 98401 23456',
         role: effectiveRole,
@@ -446,7 +465,8 @@ export default function App() {
       setUsersList(prev => [...prev, newUserRecord]);
     }
 
-    const updatedUser = { ...userData, role: effectiveRole };
+    const roleAvatar = effectiveRole === 'restaurant' ? '👨‍🍳' : effectiveRole === 'rider' ? '🛵' : effectiveRole === 'admin' ? '🛡️' : '🍲';
+    const updatedUser = { ...userData, role: effectiveRole, avatar: roleAvatar };
     setUser(updatedUser);
 
     // Strict Role-Based Portal Routing
@@ -468,18 +488,14 @@ export default function App() {
         const supaUser = session.user;
         const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
         const googleEmail = supaUser.email;
-        const savedRole = localStorage.getItem('unavu_oauth_intended_role') || 'customer';
 
         handleLoginSuccess({
           name: googleName,
           email: googleEmail,
           phone: supaUser.phone || '+91 98401 23456',
-          avatar: savedRole === 'restaurant' ? '👨‍🍳' : savedRole === 'rider' ? '🛵' : savedRole === 'admin' ? '🛡️' : '🍲',
           authProvider: 'google',
-          role: savedRole,
           isVerified: true
         });
-        localStorage.removeItem('unavu_oauth_intended_role');
       }
     });
 
@@ -488,25 +504,21 @@ export default function App() {
         const supaUser = session.user;
         const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
         const googleEmail = supaUser.email;
-        const savedRole = localStorage.getItem('unavu_oauth_intended_role') || 'customer';
 
         handleLoginSuccess({
           name: googleName,
           email: googleEmail,
           phone: supaUser.phone || '+91 98401 23456',
-          avatar: savedRole === 'restaurant' ? '👨‍🍳' : savedRole === 'rider' ? '🛵' : savedRole === 'admin' ? '🛡️' : '🍲',
           authProvider: 'google',
-          role: savedRole,
           isVerified: true
         });
-        localStorage.removeItem('unavu_oauth_intended_role');
       }
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [usersList]);
 
   // Strict Role Route Guard: non-admins are locked strictly to their respective app portal
   useEffect(() => {

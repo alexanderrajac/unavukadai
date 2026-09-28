@@ -210,44 +210,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           <p className="auth-subtext">Instant WhatsApp verification & 1-click delivery in South Chennai</p>
         </div>
 
-        {/* Role & Position Selector: Changeable anytime */}
-        <div className="auth-role-tabs-box">
-          <div className="flex-between-label mb-1">
-            <label className="auth-role-header-label">Choose App Position / Role:</label>
-            <span className="role-changeable-badge">Changeable Anytime</span>
-          </div>
-          <div className="auth-role-pills-row">
-            <button 
-              type="button" 
-              className={`auth-role-pill-btn ${selectedRole === 'customer' ? 'active' : ''}`}
-              onClick={() => setSelectedRole('customer')}
-            >
-              <span>🍲 Customer App</span>
-            </button>
-            <button 
-              type="button" 
-              className={`auth-role-pill-btn ${selectedRole === 'restaurant' ? 'active' : ''}`}
-              onClick={() => setSelectedRole('restaurant')}
-            >
-              <span>👨‍🍳 Merchant App</span>
-            </button>
-            <button 
-              type="button" 
-              className={`auth-role-pill-btn ${selectedRole === 'rider' ? 'active' : ''}`}
-              onClick={() => setSelectedRole('rider')}
-            >
-              <span>🛵 Rider App</span>
-            </button>
-            <button 
-              type="button" 
-              className={`auth-role-pill-btn ${selectedRole === 'admin' ? 'active' : ''}`}
-              onClick={() => setSelectedRole('admin')}
-            >
-              <span>🛡️ Master Admin</span>
-            </button>
-          </div>
-        </div>
-
         {/* Tab Switcher: Log In / Sign Up */}
         <div className="auth-tab-switch">
           <button 
@@ -426,9 +388,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
               <span>
-                {isLoading 
-                  ? 'Connecting to Google...' 
-                  : `Continue with Google (${selectedRole === 'restaurant' ? 'Merchant' : selectedRole === 'rider' ? 'Rider' : selectedRole === 'admin' ? 'Master Admin' : 'Customer'})`}
+                {isLoading ? 'Connecting to Google...' : 'Continue with Google'}
               </span>
             </button>
 
@@ -486,7 +446,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 className="btn-primary w-full animate-fade"
                 disabled={isLoading || !customEmail || !customEmail.includes('@')}
               >
-                <span>⚡ Instant Sign In as {selectedRole.toUpperCase()}</span>
+                <span>⚡ Instant Sign In with Google</span>
               </button>
             </form>
           </div>

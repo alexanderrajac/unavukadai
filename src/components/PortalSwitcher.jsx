@@ -156,36 +156,6 @@ export default function PortalSwitcher({
     );
   }
 
-  // 4. CUSTOMER VIEW (Default for Foodies)
-  return (
-    <div className="portal-switcher-bar">
-      <div className="portal-switcher-inner">
-        <div className="portal-brand-mini">
-          <span className="portal-hub-tag">🍲 UNAVUKADAI FOOD ORDERING</span>
-          <span className="portal-user-tag">South Chennai Suburban Express</span>
-        </div>
-
-        <nav className="portal-nav-pills">
-          <a 
-            href="#/customer"
-            className="portal-pill-btn active"
-            onClick={(e) => { e.preventDefault(); setCurrentPortal('customer'); }}
-          >
-            <ShoppingBag size={15} />
-            <span>Customer App</span>
-            {cartCount > 0 && <span className="portal-counter-badge primary">{cartCount}</span>}
-          </a>
-
-          <button 
-            type="button" 
-            className="portal-pill-btn partner-login-link"
-            onClick={onOpenAuth}
-            title="Log in as Restaurant Partner, Rider, or Master Admin"
-          >
-            <span>Partner / Rider / Admin Login ➔</span>
-          </button>
-        </nav>
-      </div>
-    </div>
-  );
+  // 4. CUSTOMER VIEW / GUESTS: No top bar shown (clean user interface)
+  return null;
 }

@@ -316,44 +316,19 @@ export default function Header({
                       {activeOrdersCount > 0 && <span className="active-dot-mini" />}
                     </button>
 
-                    <div className="user-dropdown-divider" />
-                    <div className="user-dropdown-category-title">Switch App Position:</div>
-
-                    <button 
-                      type="button" 
-                      className={`user-dropdown-item ${currentPortal === 'customer' ? 'active-portal-item' : ''}`}
-                      onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('customer'); }}
-                    >
-                      <span>🍲 Customer App</span>
-                      {currentPortal === 'customer' && <Check size={14} className="text-green" />}
-                    </button>
-
-                    <button 
-                      type="button" 
-                      className={`user-dropdown-item ${currentPortal === 'hotel' ? 'active-portal-item' : ''}`}
-                      onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('hotel'); }}
-                    >
-                      <span>👨‍🍳 Merchant App (Kitchen)</span>
-                      {currentPortal === 'hotel' && <Check size={14} className="text-green" />}
-                    </button>
-
-                    <button 
-                      type="button" 
-                      className={`user-dropdown-item ${currentPortal === 'rider' ? 'active-portal-item' : ''}`}
-                      onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('rider'); }}
-                    >
-                      <span>🛵 Rider Partner App</span>
-                      {currentPortal === 'rider' && <Check size={14} className="text-green" />}
-                    </button>
-
-                    <button 
-                      type="button" 
-                      className={`user-dropdown-item ${currentPortal === 'admin' ? 'active-portal-item' : ''}`}
-                      onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('admin'); }}
-                    >
-                      <span>🛡️ Super Admin</span>
-                      {currentPortal === 'admin' && <Check size={14} className="text-green" />}
-                    </button>
+                    {user?.role === 'admin' && (
+                      <>
+                        <div className="user-dropdown-divider" />
+                        <button 
+                          type="button" 
+                          className={`user-dropdown-item ${currentPortal === 'admin' ? 'active-portal-item' : ''}`}
+                          onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('admin'); }}
+                        >
+                          <span>🛡️ Super Admin Console</span>
+                          {currentPortal === 'admin' && <Check size={14} className="text-green" />}
+                        </button>
+                      </>
+                    )}
 
                     <div className="user-dropdown-divider" />
 
@@ -377,22 +352,6 @@ export default function Header({
                 <span>Log in</span>
               </button>
             )}
-
-            {/* Quick App Position Switcher */}
-            <button 
-              type="button"
-              className="btn-header-position-switcher"
-              onClick={() => onSwitchPortal(currentPortal === 'customer' ? 'hotel' : currentPortal === 'hotel' ? 'rider' : 'customer')}
-              title="Change Position (Customer / Merchant / Rider)"
-            >
-              <span className="pos-badge-icon">
-                {currentPortal === 'customer' ? '🍲' : currentPortal === 'hotel' ? '👨‍🍳' : '🛵'}
-              </span>
-              <span className="pos-text">
-                {currentPortal === 'customer' ? 'Customer App' : currentPortal === 'hotel' ? 'Merchant' : 'Rider'}
-              </span>
-              <span className="pos-sub-tag">Switch ▾</span>
-            </button>
           </div>
         </div>
 
