@@ -2429,10 +2429,66 @@
   color: var(--text-secondary);
 }
 
+.otp-sent-indicator.whatsapp-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.whatsapp-waiting-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.whatsapp-pulse-dot {
+  background: #16a34a !important;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+}
+
+.waiting-message-text {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #166534;
+}
+
+.whatsapp-sent-subrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.whatsapp-chat-check-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.08);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.text-whatsapp {
+  color: #25d366;
+}
+
 .edit-phone-link {
   color: var(--primary);
   font-weight: 700;
   margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 11.5px;
 }
 
 .otp-inputs-row {

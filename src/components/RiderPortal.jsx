@@ -790,15 +790,15 @@ export default function RiderPortal({
 
               {otpError && <p className="otp-verify-error animate-shake">{otpError}</p>}
 
-              {/* Zero External SMS Help & Auto-fill hint */}
+              {/* Customer PIN hint */}
               <div className="otp-bypass-hint">
-                <span>💡 Customer PIN: <strong>{otpModalTrip.deliveryOtp || '4821'}</strong> (Bypass: <strong>1234</strong>)</span>
+                <span>💡 Customer Delivery OTP: <strong>{otpModalTrip.deliveryOtp || '4821'}</strong></span>
                 <button 
                   type="button" 
                   className="btn-quick-fill-rider-otp"
                   onClick={() => setEnteredOtp(otpModalTrip.deliveryOtp || '4821')}
                 >
-                  ⚡ Auto-fill PIN
+                  ⚡ Fill PIN
                 </button>
               </div>
 

@@ -126,12 +126,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
     }
   };
 
-  // Auto-Fill test OTP
-  const handleFillTestOtp = () => {
-    setOtp(['1', '2', '3', '4']);
-    setOtpError('');
-  };
-
   const handleOtpKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       const prevInput = document.getElementById(`otp-input-${index - 1}`);
@@ -189,7 +183,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
         });
         onClose();
       } else {
-        setOtpError(res.error || 'Incorrect OTP code. Tip: Use test code 1234');
+        setOtpError(res.error || 'Incorrect OTP code. Please enter the 4-digit code sent to your WhatsApp.');
       }
     } catch (err) {
       setIsLoading(false);
@@ -335,16 +329,25 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
               </form>
             ) : (
               <form className="auth-form" onSubmit={handleVerifyOtp}>
-                <div className="otp-sent-indicator whatsapp-indicator">
-                  <CheckCircle size={16} className="icon-success" />
-                  <span>Sent verification code to: <strong>+91 {phone}</strong></span>
-                  <button 
-                    type="button" 
-                    className="edit-phone-link"
-                    onClick={() => { setOtpSent(false); setOtpError(''); }}
-                  >
-                    Change
-                  </button>
+                <div className="otp-sent-indicator whatsapp-indicator animate-fade">
+                  <div className="whatsapp-waiting-header">
+                    <span className="live-dot-pulse mini whatsapp-pulse-dot" />
+                    <strong className="waiting-message-text">Waiting for the message...</strong>
+                  </div>
+                  <div className="whatsapp-sent-subrow">
+                    <span>Sent WhatsApp verification code to <strong>+91 {phone}</strong></span>
+                    <button 
+                      type="button" 
+                      className="edit-phone-link"
+                      onClick={() => { setOtpSent(false); setOtpError(''); }}
+                    >
+                      Change Number
+                    </button>
+                  </div>
+                  <div className="whatsapp-chat-check-tip">
+                    <MessageSquare size={13} className="text-whatsapp" />
+                    <span>Please check your WhatsApp application for the incoming 4-digit code.</span>
+                  </div>
                 </div>
 
                 {/* 4-digit interactive OTP inputs */}
@@ -364,19 +367,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
                   ))}
                 </div>
 
-                {/* Test bypass helper chip */}
-                <div className="test-otp-chip-row">
-                  <button 
-                    type="button" 
-                    className="test-otp-chip-btn"
-                    onClick={handleFillTestOtp}
-                    title="Click to automatically fill bypass OTP code"
-                  >
-                    <Key size={13} />
-                    <span>Test Bypass OTP: <strong>1234</strong> (Click to auto-fill)</span>
-                  </button>
-                </div>
-
                 {otpError && (
                   <div className="auth-error-banner animate-fade">
                     <AlertCircle size={15} />
@@ -388,7 +378,8 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
                 <div className="resend-otp-row">
                   {resendTimer > 0 ? (
                     <span className="resend-countdown-text">
-                      Resend code via WhatsApp in <strong>{resendTimer}s</strong>
+                      <span className="live-dot-pulse mini whatsapp-pulse-dot" />
+                      Waiting for the message... Resend in <strong>{resendTimer}s</strong>
                     </span>
                   ) : (
                     <button 
