@@ -59,12 +59,34 @@ export default function App() {
     window.location.hash = `#/${portal}`;
   };
 
-  // Listen to browser hash changes (direct link clicks, back/forward buttons)
+  // Listen to browser hash changes (direct link clicks, back/forward buttons, auth modal deep links)
   useEffect(() => {
     const handleHashChange = () => {
+      const rawHash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
+      if (rawHash === 'login' || rawHash === 'signin') {
+        setAuthInitialTab('login');
+        setIsAuthOpen(true);
+        return;
+      }
+      if (rawHash === 'signup' || rawHash === 'register') {
+        setAuthInitialTab('signup');
+        setIsAuthOpen(true);
+        return;
+      }
       const detected = getPortalFromUrl();
       setCurrentPortalState(detected);
     };
+
+    // Check initial hash on mount
+    const rawHash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
+    if (rawHash === 'login' || rawHash === 'signin') {
+      setAuthInitialTab('login');
+      setIsAuthOpen(true);
+    } else if (rawHash === 'signup' || rawHash === 'register') {
+      setAuthInitialTab('signup');
+      setIsAuthOpen(true);
+    }
+
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -309,10 +331,16 @@ export default function App() {
   const [activeRestaurantModal, setActiveRestaurantModal] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState('login');
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [prefilledCoupon, setPrefilledCoupon] = useState('');
+
+  const handleOpenAuth = (tab = 'login') => {
+    setAuthInitialTab(tab);
+    setIsAuthOpen(true);
+  };
 
   // User Authentication State (Persistent with Google Gmail support)
   const [user, setUser] = useState(() => {
@@ -897,7 +925,7 @@ export default function App() {
         totalOrdersCount={orders.length}
         user={user}
         onLogout={handleLogout}
-        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAuth={() => handleOpenAuth('login')}
       />
 
       {/* 1. CUSTOMER PORTAL */}
@@ -916,6 +944,7 @@ export default function App() {
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
             setIsAuthOpen={setIsAuthOpen}
+            onOpenAuth={handleOpenAuth}
             user={user}
             onOpenMyOrders={() => setIsMyOrdersOpen(true)}
             activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
@@ -1074,6 +1103,7 @@ export default function App() {
           {/* Auth Modal (Google / Gmail & Mobile OTP) */}
           <AuthModal
             isOpen={isAuthOpen}
+            initialTab={authInitialTab}
             onClose={() => setIsAuthOpen(false)}
             onLoginSuccess={handleLoginSuccess}
           />

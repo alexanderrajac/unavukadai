@@ -17,7 +17,8 @@ import {
   LogOut,
   Home,
   Check,
-  Mail
+  Mail,
+  Sparkles
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
@@ -35,6 +36,7 @@ export default function Header({
   isDarkMode,
   setIsDarkMode,
   setIsAuthOpen,
+  onOpenAuth,
   user,
   onOpenMyOrders,
   activeOrdersCount = 0,
@@ -347,10 +349,22 @@ export default function Header({
                 )}
               </div>
             ) : (
-              <button className="auth-btn-pill" onClick={() => setIsAuthOpen(true)}>
-                <User size={16} />
-                <span>Log in</span>
-              </button>
+              <div className="auth-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button 
+                  className="auth-btn-pill" 
+                  onClick={() => onOpenAuth ? onOpenAuth('login') : (setIsAuthOpen && setIsAuthOpen(true))}
+                >
+                  <User size={15} />
+                  <span>Log in</span>
+                </button>
+                <button 
+                  className="auth-btn-pill auth-btn-signup-pill" 
+                  onClick={() => onOpenAuth ? onOpenAuth('signup') : (setIsAuthOpen && setIsAuthOpen(true))}
+                >
+                  <Sparkles size={14} />
+                  <span>Sign up</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
