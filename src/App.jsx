@@ -364,6 +364,15 @@ export default function App() {
   // Master Registered Users Directory & Roles
   const INITIAL_USERS = [
     {
+      id: 'usr-admin-0',
+      name: 'Murugan (Master Admin)',
+      email: 'murugan@unavukadai.com',
+      phone: '+91 82486 51695',
+      role: 'admin',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
+    {
       id: 'usr-admin-1',
       name: 'Master Admin (HQ)',
       email: 'admin@unavukadai.com',
@@ -415,8 +424,13 @@ export default function App() {
       const saved = localStorage.getItem('unavu_registered_users');
       if (saved) {
         const parsed = JSON.parse(saved);
+        // Ensure Raja Official admin is always present
         if (!parsed.some(u => u.email?.toLowerCase() === 'rajacofficial369@gmail.com')) {
-          parsed.push(INITIAL_USERS[3]);
+          parsed.push(INITIAL_USERS[4]);
+        }
+        // Ensure 8248651695 master admin is always present
+        if (!parsed.some(u => u.phone?.replace(/\D/g, '') === '918248651695' || u.phone?.replace(/\D/g, '') === '8248651695')) {
+          parsed.unshift(INITIAL_USERS[0]);
         }
         return parsed;
       }
