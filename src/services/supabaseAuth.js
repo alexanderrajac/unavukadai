@@ -3,6 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = 'https://efncxyhwgxozdzcbpgjy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmbmN4eWh3Z3hvemR6Y2JwZ2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1MTg5MjUsImV4cCI6MjEwNjA5NDkyNX0.Pt2h--CxM01KP8dQ-BOzUyJH2pmOACbzz6KSLOjctNk';
 
+export const SUPABASE_OAUTH_CLIENT_ID = 
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_OAUTH_CLIENT_ID) || 
+  '32fe1233-09e8-4538-a822-6324b7bbaf5a';
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
@@ -11,19 +15,54 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-// Trigger real Supabase Google OAuth login flow
+// Check if Google Provider is enabled in the Supabase Dashboard
+export async function checkGoogleProviderStatus() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/authorize?provider=google`, {
+      method: 'GET'
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return {
+        enabled: false,
+        code: data.code || res.status,
+        msg: data.msg || 'Unsupported provider: provider is not enabled'
+      };
+    }
+    return { enabled: true };
+  } catch {
+    // If network or CORS, assume not enabled for external redirect
+    return { enabled: false, msg: 'Unable to connect to Supabase OAuth endpoint' };
+  }
+}
+
+// Trigger Supabase Google OAuth login flow safely without crashing to raw 400 error page
 export async function signInWithGoogleOAuth() {
   try {
+    // Step 1: Pre-check if Google provider is enabled in Supabase Dashboard
+    const status = await checkGoogleProviderStatus();
+    if (!status.enabled) {
+      console.warn('Supabase Google OAuth provider is not enabled in dashboard:', status.msg);
+      return { 
+        success: false, 
+        providerNotEnabled: true, 
+        error: status.msg || 'Unsupported provider: provider is not enabled'
+      };
+    }
+
+    // Step 2: If enabled, proceed with Supabase OAuth redirect
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin
       }
     });
+
     if (error) {
-      console.warn('Supabase Google OAuth initialization notice:', error.message);
+      console.warn('Supabase Google OAuth error:', error.message);
       return { success: false, error: error.message };
     }
+
     return { success: true, data };
   } catch (err) {
     console.warn('Google OAuth exception:', err.message);

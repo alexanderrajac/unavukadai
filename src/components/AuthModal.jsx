@@ -41,6 +41,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [customEmail, setCustomEmail] = useState('');
   const [emailName, setEmailName] = useState('');
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
+  const [googleNotice, setGoogleNotice] = useState('');
 
   // Check WhatsApp gateway status when modal opens
   useEffect(() => {
@@ -127,11 +128,15 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   const handleRealGoogleOAuth = async () => {
     setIsLoading(true);
+    setGoogleNotice('');
     try {
       const res = await signInWithGoogleOAuth();
       if (!res.success) {
-        // If Supabase OAuth redirect is blocked or running locally, open chooser smoothly
+        // If Supabase OAuth provider is not yet enabled or external redirect blocked
         setShowGoogleChooser(true);
+        if (res.providerNotEnabled) {
+          setGoogleNotice('Note: Google OAuth provider is not enabled in your Supabase project dashboard yet. You can sign in instantly using any Gmail or the 1-click demo accounts below!');
+        }
       }
     } catch {
       setShowGoogleChooser(true);
@@ -471,6 +476,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                     Back
                   </button>
                 </div>
+
+                {googleNotice && (
+                  <div className="google-notice-box animate-fade">
+                    <span className="notice-icon">💡</span>
+                    <span>{googleNotice}</span>
+                  </div>
+                )}
 
                 <div className="google-account-list">
                   {googleAccounts.map((acc, idx) => (
