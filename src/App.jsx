@@ -187,21 +187,55 @@ export default function App() {
     }));
   };
 
-  // Restaurant Admin: Edit Restaurant Profile, Address & Coordinates
+  // Master Admin & Restaurant Admin: Edit Restaurant Profile, Images, Address & Operations
   const handleUpdateRestaurantDetails = (restaurantId, details) => {
     setRestaurantsList(prev => prev.map(r => {
       if (r.id === restaurantId) {
         return {
           ...r,
-          name: details.name || r.name,
-          address: details.address || r.address,
-          region: details.region || r.region,
+          ...details,
+          name: details.name !== undefined ? details.name : r.name,
+          image: details.image !== undefined ? details.image : r.image,
+          address: details.address !== undefined ? details.address : r.address,
+          region: details.region !== undefined ? details.region : r.region,
+          cuisines: details.cuisines !== undefined ? details.cuisines : r.cuisines,
           costForTwo: details.costForTwo ? Number(details.costForTwo) : r.costForTwo,
           deliveryTimeMins: details.deliveryTimeMins ? Number(details.deliveryTimeMins) : r.deliveryTimeMins,
-          coords: details.coords || r.coords
+          deliveryTime: details.deliveryTimeMins ? `${details.deliveryTimeMins}-${Number(details.deliveryTimeMins) + 5} min` : r.deliveryTime,
+          offer: details.offer !== undefined ? details.offer : r.offer,
+          pureVeg: details.pureVeg !== undefined ? Boolean(details.pureVeg) : r.pureVeg,
+          safetyScore: details.safetyScore !== undefined ? details.safetyScore : r.safetyScore,
+          coords: details.coords || r.coords,
+          isApproved: details.isApproved !== undefined ? details.isApproved : r.isApproved,
+          approvalStatus: details.approvalStatus !== undefined ? details.approvalStatus : r.approvalStatus
         };
       }
       return r;
+    }));
+  };
+
+  // Master Admin: Delete / Remove Restaurant
+  const handleDeleteRestaurant = (restaurantId) => {
+    setRestaurantsList(prev => prev.filter(r => r.id !== restaurantId));
+  };
+
+  // Master Admin: Approve All Pending Restaurants with 1-click
+  const handleApproveAllRestaurants = () => {
+    setRestaurantsList(prev => prev.map(r => ({
+      ...r,
+      isApproved: true,
+      approvalStatus: 'APPROVED'
+    })));
+
+    setUsersList(prev => prev.map(u => {
+      if (u.merchantStatus === 'PENDING_APPROVAL') {
+        return {
+          ...u,
+          role: 'restaurant',
+          merchantStatus: 'APPROVED'
+        };
+      }
+      return u;
     }));
   };
 
@@ -1429,6 +1463,9 @@ export default function App() {
           onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
           onApproveRestaurant={handleApproveRestaurant}
           onRejectRestaurant={handleRejectRestaurant}
+          onUpdateRestaurantDetails={handleUpdateRestaurantDetails}
+          onDeleteRestaurant={handleDeleteRestaurant}
+          onApproveAllRestaurants={handleApproveAllRestaurants}
         />
       )}
 

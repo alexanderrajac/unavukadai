@@ -5,10 +5,11 @@ import {
   CheckCircle2, Users, UserCheck, UserX, Search, ArrowRight,
   ExternalLink, ShieldCheck, UserPlus, Bell, BarChart2, Settings,
   Home, Package, X, ChevronDown, RefreshCw, Eye, Edit3,
-  IndianRupee, Zap, Activity, Power, Store, Tag
+  IndianRupee, Zap, Activity, Power, Store, Tag, Sparkles, Camera
 } from 'lucide-react';
 import { COUPONS, RESTAURANTS } from '../data/mockData';
 import AdminFleetRadarMap from './AdminFleetRadarMap';
+import EditRestaurantModal from './EditRestaurantModal';
 
 export default function AdminPortal({
   orders,
@@ -27,7 +28,10 @@ export default function AdminPortal({
   restaurantsList = RESTAURANTS,
   onOpenRegisterRestaurant = () => {},
   onApproveRestaurant = () => {},
-  onRejectRestaurant = () => {}
+  onRejectRestaurant = () => {},
+  onUpdateRestaurantDetails = () => {},
+  onDeleteRestaurant = () => {},
+  onApproveAllRestaurants = () => {}
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [filterLocality, setFilterLocality] = useState('ALL');
@@ -37,6 +41,8 @@ export default function AdminPortal({
   const [statusFilterUser, setStatusFilterUser] = useState('ALL');
   const [roleMsg, setRoleMsg] = useState('');
   const [restaurantFilter, setRestaurantFilter] = useState('ALL');
+  const [restaurantSearch, setRestaurantSearch] = useState('');
+  const [editingRestaurant, setEditingRestaurant] = useState(null);
   const [restaurantApprovalMsg, setRestaurantApprovalMsg] = useState('');
   const [upiIdInput, setUpiIdInput] = useState(settings?.merchantUpi || '8248651695-3@ybl');
   const [merchantNameInput, setMerchantNameInput] = useState(settings?.merchantName || 'Unavukadai Express');
@@ -423,26 +429,53 @@ export default function AdminPortal({
         {activeTab === 'restaurants' && (() => {
           const pendingList = restaurantsList.filter(r => r.approvalStatus === 'PENDING');
           const approvedList = restaurantsList.filter(r => r.approvalStatus !== 'PENDING' && r.approvalStatus !== 'REJECTED');
-          const displayedList = restaurantFilter === 'PENDING' 
+          
+          let displayedList = restaurantFilter === 'PENDING' 
             ? pendingList 
             : restaurantFilter === 'APPROVED' 
               ? approvedList 
               : restaurantsList;
+
+          if (restaurantSearch.trim()) {
+            const query = restaurantSearch.toLowerCase().trim();
+            displayedList = displayedList.filter(r => 
+              r.name?.toLowerCase().includes(query) ||
+              r.region?.toLowerCase().includes(query) ||
+              r.address?.toLowerCase().includes(query) ||
+              (Array.isArray(r.cuisines) && r.cuisines.some(c => c.toLowerCase().includes(query)))
+            );
+          }
 
           return (
             <div className="adm-partners-page">
               <div className="adm-partners-header-row">
                 <div>
                   <div className="adm-section-title">Partner Restaurants ({restaurantsList.length})</div>
-                  <p className="adm-section-sub">Manage outlet onboarding, hygiene verification, and live food delivery status</p>
+                  <p className="adm-section-sub">Manage outlet onboarding, hygiene verification, image galleries, and live food delivery status</p>
                 </div>
-                <button 
-                  className="btn-primary adm-add-partner-btn"
-                  onClick={onOpenRegisterRestaurant}
-                >
-                  <Plus size={16} />
-                  <span>+ Register New Restaurant</span>
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {pendingList.length > 0 && (
+                    <button 
+                      className="adm-approve-btn"
+                      onClick={() => {
+                        onApproveAllRestaurants();
+                        setRestaurantApprovalMsg(`🎉 All ${pendingList.length} pending restaurants have been approved and published live!`);
+                        setTimeout(() => setRestaurantApprovalMsg(''), 4000);
+                      }}
+                      title="Approve and publish all pending restaurants at once"
+                    >
+                      <Sparkles size={14} />
+                      <span>Approve All ({pendingList.length})</span>
+                    </button>
+                  )}
+                  <button 
+                    className="btn-primary adm-add-partner-btn"
+                    onClick={onOpenRegisterRestaurant}
+                  >
+                    <Plus size={16} />
+                    <span>+ Register New Restaurant</span>
+                  </button>
+                </div>
               </div>
 
               {/* Approval status banner message */}
@@ -457,16 +490,47 @@ export default function AdminPortal({
                 <div className="adm-pending-alert-bar animate-fade">
                   <div className="adm-pab-content">
                     <AlertTriangle size={18} className="text-amber" />
-                    <span><strong>{pendingList.length} New Restaurant{pendingList.length === 1 ? '' : 's'} Awaiting Admin Review:</strong> Verify FSSAI &amp; details before approving to go live on the customer app.</span>
+                    <span><strong>{pendingList.length} New Restaurant{pendingList.length === 1 ? '' : 's'} Awaiting Admin Review:</strong> Verify FSSAI, photos &amp; details before approving to go live on the customer app.</span>
                   </div>
-                  <button 
-                    className="adm-pab-btn"
-                    onClick={() => setRestaurantFilter('PENDING')}
-                  >
-                    Review Pending ({pendingList.length})
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button 
+                      className="adm-pab-btn"
+                      onClick={() => setRestaurantFilter('PENDING')}
+                    >
+                      Review Pending ({pendingList.length})
+                    </button>
+                    <button 
+                      className="adm-approve-btn"
+                      onClick={() => {
+                        onApproveAllRestaurants();
+                        setRestaurantApprovalMsg(`🎉 All ${pendingList.length} pending restaurants approved!`);
+                        setTimeout(() => setRestaurantApprovalMsg(''), 4000);
+                      }}
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>Approve All</span>
+                    </button>
+                  </div>
                 </div>
               )}
+
+              {/* Search Toolbar */}
+              <div style={{ padding: '0 20px 10px' }}>
+                <div className="adm-search-wrap">
+                  <Search size={15} className="adm-search-icon"/>
+                  <input 
+                    className="adm-search-input" 
+                    placeholder="Search restaurants by name, locality, cuisines, or address..." 
+                    value={restaurantSearch} 
+                    onChange={e => setRestaurantSearch(e.target.value)}
+                  />
+                  {restaurantSearch && (
+                    <button className="adm-clear-btn" onClick={() => setRestaurantSearch('')}>
+                      <X size={13}/>
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* Filter Tabs */}
               <div className="adm-role-pills" style={{ padding: '0 20px 14px' }}>
@@ -495,7 +559,7 @@ export default function AdminPortal({
                 {displayedList.length === 0 ? (
                   <div className="adm-empty">
                     <Store size={36} />
-                    <p>No restaurants found in this category.</p>
+                    <p>No restaurants found matching your criteria.</p>
                   </div>
                 ) : displayedList.map(r => {
                   const isPending = r.approvalStatus === 'PENDING';
@@ -507,7 +571,18 @@ export default function AdminPortal({
                       className={`adm-partner-card ${isPending ? 'partner-pending-card' : ''}`}
                       style={isPending ? { border: '1.5px solid #f59e0b', background: 'rgba(245, 158, 11, 0.04)' } : {}}
                     >
-                      <img src={r.image} alt={r.name} className="adm-partner-thumb" onError={e => e.target.style.display='none'}/>
+                      <div style={{ position: 'relative' }}>
+                        <img src={r.image} alt={r.name} className="adm-partner-thumb" onError={e => e.target.style.display='none'}/>
+                        <button
+                          type="button"
+                          className="adm-photo-badge"
+                          onClick={() => setEditingRestaurant(r)}
+                          title="Change photo"
+                        >
+                          <Camera size={11} />
+                        </button>
+                      </div>
+
                       <div className="adm-partner-info">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span className="adm-partner-name">{r.name}</span>
@@ -543,11 +618,36 @@ export default function AdminPortal({
                           <span>{r.menu?.length || 0} dishes</span>
                           <span>{r.ratingCount} reviews</span>
                           <span>₹{r.costForTwo} for two</span>
+                          {r.pureVeg && <span style={{ color: '#10b981' }}>🌱 Pure Veg</span>}
+                          {r.offer && <span style={{ color: '#f59e0b' }}>🏷️ {r.offer.slice(0, 18)}...</span>}
                         </div>
                       </div>
 
-                      <div className="adm-partner-actions" style={{ flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                        {isPending ? (
+                      <div className="adm-partner-actions" style={{ flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {/* Edit Hotel & Photo Button */}
+                          <button
+                            className="adm-edit-hotel-btn"
+                            onClick={() => setEditingRestaurant(r)}
+                            title="Edit hotel details, images, cuisines, prices & status"
+                          >
+                            <Edit3 size={13} />
+                            <span>Edit Hotel</span>
+                          </button>
+
+                          {!isPending && (
+                            <button 
+                              className="adm-inspect-btn"
+                              onClick={() => onSwitchPortal('hotel')}
+                              title="Open Restaurant Kitchen Portal"
+                            >
+                              <Store size={13} />
+                              <span>Open Kitchen</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {isPending && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button 
                               className="adm-approve-btn"
@@ -574,15 +674,6 @@ export default function AdminPortal({
                               <span>Reject</span>
                             </button>
                           </div>
-                        ) : (
-                          <button 
-                            className="adm-inspect-btn"
-                            onClick={() => onSwitchPortal('hotel')}
-                            title="Open Restaurant Kitchen Portal"
-                          >
-                            <Store size={13} />
-                            <span>Open Kitchen</span>
-                          </button>
                         )}
                       </div>
                     </div>
@@ -721,6 +812,25 @@ export default function AdminPortal({
         )}
 
       </div>
+
+      {/* Edit Restaurant Modal */}
+      {editingRestaurant && (
+        <EditRestaurantModal
+          isOpen={Boolean(editingRestaurant)}
+          onClose={() => setEditingRestaurant(null)}
+          restaurant={editingRestaurant}
+          onSave={(id, updated) => {
+            onUpdateRestaurantDetails(id, updated);
+            setRestaurantApprovalMsg(`✅ "${updated.name}" updated successfully!`);
+            setTimeout(() => setRestaurantApprovalMsg(''), 3500);
+          }}
+          onDelete={(id) => {
+            onDeleteRestaurant(id);
+            setRestaurantApprovalMsg(`🗑️ Restaurant removed from directory.`);
+            setTimeout(() => setRestaurantApprovalMsg(''), 3500);
+          }}
+        />
+      )}
     </div>
   );
 }
