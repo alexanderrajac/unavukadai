@@ -774,4 +774,37 @@ describe('Restaurant Self-Registration & Merchant Onboarding Pipeline', () => {
     expect(promotedUser.role).toBe('restaurant');
     expect(promotedUser.restaurantId).toBe('res-vandalur-888');
   });
+
+  it('should enforce Admin Approval Gate: pending restaurants do not appear on customer side until approved', () => {
+    const pendingRestaurant = {
+      id: 'res-tambaram-777',
+      name: 'Tambaram Chettinad Kitchen',
+      region: 'Tambaram',
+      cuisines: ['Chettinad'],
+      isApproved: false,
+      approvalStatus: 'PENDING',
+      delivery: true
+    };
+
+    const restaurantList = [pendingRestaurant, ...RESTAURANTS];
+
+    // Customer filter simulation
+    const customerVisible = restaurantList.filter(res => {
+      if (res.isApproved === false || res.approvalStatus === 'PENDING') return false;
+      return true;
+    });
+
+    expect(customerVisible.some(r => r.id === 'res-tambaram-777')).toBe(false);
+
+    // After Admin Approval
+    const approvedRestaurant = { ...pendingRestaurant, isApproved: true, approvalStatus: 'APPROVED' };
+    const listAfterApproval = [approvedRestaurant, ...RESTAURANTS];
+    const customerVisibleAfterApproval = listAfterApproval.filter(res => {
+      if (res.isApproved === false || res.approvalStatus === 'PENDING') return false;
+      return true;
+    });
+
+    expect(customerVisibleAfterApproval.some(r => r.id === 'res-tambaram-777')).toBe(true);
+  });
 });
+

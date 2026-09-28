@@ -25,7 +25,9 @@ export default function AdminPortal({
   currentUser,
   onSwitchPortal = () => {},
   restaurantsList = RESTAURANTS,
-  onOpenRegisterRestaurant = () => {}
+  onOpenRegisterRestaurant = () => {},
+  onApproveRestaurant = () => {},
+  onRejectRestaurant = () => {}
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [filterLocality, setFilterLocality] = useState('ALL');
@@ -34,6 +36,8 @@ export default function AdminPortal({
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilterUser, setStatusFilterUser] = useState('ALL');
   const [roleMsg, setRoleMsg] = useState('');
+  const [restaurantFilter, setRestaurantFilter] = useState('ALL');
+  const [restaurantApprovalMsg, setRestaurantApprovalMsg] = useState('');
   const [upiIdInput, setUpiIdInput] = useState(settings?.merchantUpi || '8248651695-3@ybl');
   const [merchantNameInput, setMerchantNameInput] = useState(settings?.merchantName || 'Unavukadai Express');
   const [settingsSavedMsg, setSettingsSavedMsg] = useState('');
@@ -414,53 +418,180 @@ export default function AdminPortal({
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            RESTAURANT PARTNERS
+            RESTAURANT PARTNERS & APPROVAL GATE
         ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'restaurants' && (
-          <div className="adm-partners-page">
-            <div className="adm-partners-header-row">
-              <div>
-                <div className="adm-section-title">Partner Restaurants ({restaurantsList.length})</div>
-                <p className="adm-section-sub">Active outlets taking orders across Perungalathur, Vandalur, Mannivakkam &amp; Tambaram</p>
-              </div>
-              <button 
-                className="btn-primary adm-add-partner-btn"
-                onClick={onOpenRegisterRestaurant}
-              >
-                <Plus size={16} />
-                <span>+ Register New Restaurant</span>
-              </button>
-            </div>
+        {activeTab === 'restaurants' && (() => {
+          const pendingList = restaurantsList.filter(r => r.approvalStatus === 'PENDING');
+          const approvedList = restaurantsList.filter(r => r.approvalStatus !== 'PENDING' && r.approvalStatus !== 'REJECTED');
+          const displayedList = restaurantFilter === 'PENDING' 
+            ? pendingList 
+            : restaurantFilter === 'APPROVED' 
+              ? approvedList 
+              : restaurantsList;
 
-            <div className="adm-partner-cards">
-              {restaurantsList.map(r => (
-                <div key={r.id} className="adm-partner-card">
-                  <img src={r.image} alt={r.name} className="adm-partner-thumb" onError={e => e.target.style.display='none'}/>
-                  <div className="adm-partner-info">
-                    <div className="adm-partner-name">{r.name}</div>
-                    <div className="adm-partner-region"><MapPin size={11}/> {r.region} · {r.address}</div>
-                    <div className="adm-partner-chips">
-                      <span>⭐ {r.rating}</span>
-                      <span>{r.menu?.length || 0} dishes</span>
-                      <span>{r.ratingCount} reviews</span>
-                      <span>₹{r.costForTwo} for two</span>
-                    </div>
-                  </div>
-                  <div className="adm-partner-actions">
-                    <button 
-                      className="adm-inspect-btn"
-                      onClick={() => onSwitchPortal('hotel')}
-                      title="Open Restaurant Kitchen Portal"
-                    >
-                      <Store size={13} />
-                      <span>Open Kitchen</span>
-                    </button>
-                  </div>
+          return (
+            <div className="adm-partners-page">
+              <div className="adm-partners-header-row">
+                <div>
+                  <div className="adm-section-title">Partner Restaurants ({restaurantsList.length})</div>
+                  <p className="adm-section-sub">Manage outlet onboarding, hygiene verification, and live food delivery status</p>
                 </div>
-              ))}
+                <button 
+                  className="btn-primary adm-add-partner-btn"
+                  onClick={onOpenRegisterRestaurant}
+                >
+                  <Plus size={16} />
+                  <span>+ Register New Restaurant</span>
+                </button>
+              </div>
+
+              {/* Approval status banner message */}
+              {restaurantApprovalMsg && (
+                <div className="adm-alert-toast animate-fade">
+                  {restaurantApprovalMsg}
+                </div>
+              )}
+
+              {/* Pending Approvals Alert Bar */}
+              {pendingList.length > 0 && (
+                <div className="adm-pending-alert-bar animate-fade">
+                  <div className="adm-pab-content">
+                    <AlertTriangle size={18} className="text-amber" />
+                    <span><strong>{pendingList.length} New Restaurant{pendingList.length === 1 ? '' : 's'} Awaiting Admin Review:</strong> Verify FSSAI &amp; details before approving to go live on the customer app.</span>
+                  </div>
+                  <button 
+                    className="adm-pab-btn"
+                    onClick={() => setRestaurantFilter('PENDING')}
+                  >
+                    Review Pending ({pendingList.length})
+                  </button>
+                </div>
+              )}
+
+              {/* Filter Tabs */}
+              <div className="adm-role-pills" style={{ padding: '0 20px 14px' }}>
+                <button 
+                  className={`adm-role-pill ${restaurantFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setRestaurantFilter('ALL')}
+                >
+                  All Outlets ({restaurantsList.length})
+                </button>
+                <button 
+                  className={`adm-role-pill ${restaurantFilter === 'PENDING' ? 'active' : ''}`}
+                  onClick={() => setRestaurantFilter('PENDING')}
+                  style={pendingList.length > 0 ? { borderColor: '#f59e0b', color: '#f59e0b' } : {}}
+                >
+                  ⏳ Pending Approvals ({pendingList.length})
+                </button>
+                <button 
+                  className={`adm-role-pill ${restaurantFilter === 'APPROVED' ? 'active' : ''}`}
+                  onClick={() => setRestaurantFilter('APPROVED')}
+                >
+                  🟢 Live on App ({approvedList.length})
+                </button>
+              </div>
+
+              <div className="adm-partner-cards">
+                {displayedList.length === 0 ? (
+                  <div className="adm-empty">
+                    <Store size={36} />
+                    <p>No restaurants found in this category.</p>
+                  </div>
+                ) : displayedList.map(r => {
+                  const isPending = r.approvalStatus === 'PENDING';
+                  const isRejected = r.approvalStatus === 'REJECTED';
+
+                  return (
+                    <div 
+                      key={r.id} 
+                      className={`adm-partner-card ${isPending ? 'partner-pending-card' : ''}`}
+                      style={isPending ? { border: '1.5px solid #f59e0b', background: 'rgba(245, 158, 11, 0.04)' } : {}}
+                    >
+                      <img src={r.image} alt={r.name} className="adm-partner-thumb" onError={e => e.target.style.display='none'}/>
+                      <div className="adm-partner-info">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span className="adm-partner-name">{r.name}</span>
+                          {isPending && (
+                            <span className="adm-status-pill" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid #f59e0b' }}>
+                              ⏳ PENDING APPROVAL
+                            </span>
+                          )}
+                          {!isPending && !isRejected && (
+                            <span className="adm-status-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981' }}>
+                              🟢 LIVE ON APP
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="adm-status-pill" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid #ef4444' }}>
+                              ❌ REJECTED
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="adm-partner-region"><MapPin size={11}/> {r.region} · {r.address}</div>
+                        
+                        {/* Owner & License Details */}
+                        {(r.ownerName || r.fssaiLicense) && (
+                          <div style={{ fontSize: '11px', color: '#94a3b8', margin: '4px 0' }}>
+                            {r.ownerName && <span>👤 Owner: <strong>{r.ownerName}</strong> ({r.ownerPhone || 'No Phone'}) · </span>}
+                            {r.fssaiLicense && <span>🛡️ FSSAI: <strong>{r.fssaiLicense}</strong></span>}
+                          </div>
+                        )}
+
+                        <div className="adm-partner-chips">
+                          <span>⭐ {r.rating}</span>
+                          <span>{r.menu?.length || 0} dishes</span>
+                          <span>{r.ratingCount} reviews</span>
+                          <span>₹{r.costForTwo} for two</span>
+                        </div>
+                      </div>
+
+                      <div className="adm-partner-actions" style={{ flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                        {isPending ? (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                              className="adm-approve-btn"
+                              onClick={() => {
+                                onApproveRestaurant(r.id);
+                                setRestaurantApprovalMsg(`🎉 ${r.name} approved! It is now LIVE on the customer page.`);
+                                setTimeout(() => setRestaurantApprovalMsg(''), 4000);
+                              }}
+                              title="Approve restaurant and publish live to customers"
+                            >
+                              <CheckCircle2 size={14} />
+                              <span>Approve &amp; Publish</span>
+                            </button>
+                            <button 
+                              className="adm-reject-btn"
+                              onClick={() => {
+                                onRejectRestaurant(r.id);
+                                setRestaurantApprovalMsg(`❌ ${r.name} rejected.`);
+                                setTimeout(() => setRestaurantApprovalMsg(''), 4000);
+                              }}
+                              title="Reject application"
+                            >
+                              <X size={14} />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            className="adm-inspect-btn"
+                            onClick={() => onSwitchPortal('hotel')}
+                            title="Open Restaurant Kitchen Portal"
+                          >
+                            <Store size={13} />
+                            <span>Open Kitchen</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ══════════════════════════════════════════════════════════════════
             FLEET GPS

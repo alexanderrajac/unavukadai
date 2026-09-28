@@ -130,7 +130,7 @@ export default function RegisterRestaurantModal({
       email: formData.email,
       phone: formData.phone,
       role: 'restaurant'
-    });
+    }, isAdmin);
 
     setNewRestaurantDetails(newRestaurant);
     setIsSuccess(true);
@@ -163,7 +163,7 @@ export default function RegisterRestaurantModal({
               <p className="reg-header-sub">
                 {isAdmin 
                   ? 'Add a new restaurant and onboard its merchant into the Unavukadai network' 
-                  : 'Start receiving orders in Tambaram, Perungalathur & Vandalur in 5 minutes'}
+                  : 'Submit your restaurant for Admin review & get listed in South Chennai'}
               </p>
             </div>
           </div>
@@ -182,11 +182,19 @@ export default function RegisterRestaurantModal({
         {isSuccess ? (
           <div className="reg-success-card animate-fade">
             <div className="reg-success-icon">
-              <CheckCircle2 size={56} style={{ color: '#10b981' }} />
+              {isAdmin ? (
+                <CheckCircle2 size={56} style={{ color: '#10b981' }} />
+              ) : (
+                <Clock size={56} style={{ color: '#f59e0b' }} />
+              )}
             </div>
-            <h3>🎉 Restaurant Successfully Registered!</h3>
+            <h3>{isAdmin ? '🎉 Restaurant Successfully Registered & Live!' : '📋 Application Submitted for Admin Verification!'}</h3>
             <p className="reg-success-desc">
-              <strong>{newRestaurantDetails?.name}</strong> is now live in the <strong>{newRestaurantDetails?.region}</strong> zone!
+              {isAdmin ? (
+                <><strong>{newRestaurantDetails?.name}</strong> is verified and live on the customer app!</>
+              ) : (
+                <>Thank you! <strong>{newRestaurantDetails?.name}</strong> has been submitted. It will go live once verified by the <strong>Master Admin</strong>.</>
+              )}
             </p>
             <div className="reg-success-summary">
               <div className="summary-pill">
@@ -194,8 +202,10 @@ export default function RegisterRestaurantModal({
                 <strong>{newRestaurantDetails?.region}</strong>
               </div>
               <div className="summary-pill">
-                <span>👨‍🍳 Assigned Role</span>
-                <strong>Merchant (Restaurant Admin)</strong>
+                <span>🛡️ Status</span>
+                <strong style={{ color: isAdmin ? '#10b981' : '#f59e0b' }}>
+                  {isAdmin ? '✅ LIVE ON APP' : '⏳ PENDING ADMIN APPROVAL'}
+                </strong>
               </div>
               <div className="summary-pill">
                 <span>📦 Menu Starter</span>
@@ -203,26 +213,32 @@ export default function RegisterRestaurantModal({
               </div>
             </div>
             <p className="reg-role-tip">
-              💡 You can now open your <strong>👨‍🍳 Merchant Kitchen Portal</strong> to manage live orders, edit your menu prices, and customize your kitchen timings.
+              {isAdmin ? (
+                <>💡 Restaurant is active immediately. You can manage live KOT orders in the <strong>Merchant Kitchen Portal</strong>.</>
+              ) : (
+                <>🔒 <strong>Admin Verification Policy:</strong> To maintain hygiene &amp; quality standards, new restaurant listings require Master Admin approval before appearing on the customer food delivery page.</>
+              )}
             </p>
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
               <button 
                 type="button" 
-                className="btn-secondary" 
-                onClick={() => handleFinish(false)}
-                style={{ padding: '12px 20px' }}
-              >
-                Close
-              </button>
-              <button 
-                type="button" 
                 className="btn-primary" 
-                onClick={() => handleFinish(true)}
-                style={{ padding: '12px 24px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                onClick={() => handleFinish(false)}
+                style={{ padding: '12px 24px' }}
               >
-                <span>Open Merchant Kitchen Portal</span>
-                <ArrowRight size={15} />
+                Done
               </button>
+              {isAdmin && (
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  onClick={() => handleFinish(true)}
+                  style={{ padding: '12px 20px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <span>Open Merchant Kitchen</span>
+                  <ArrowRight size={15} />
+                </button>
+              )}
             </div>
           </div>
         ) : (

@@ -208,11 +208,20 @@ export default function App() {
   // Restaurant Registration & Merchant Promotion
   const [isRegisterRestaurantOpen, setIsRegisterRestaurantOpen] = useState(false);
 
-  const handleRegisterRestaurant = (newRestaurant, ownerInfo) => {
-    // 1. Add restaurant to dynamic list
-    setRestaurantsList(prev => [newRestaurant, ...prev]);
+  const handleRegisterRestaurant = (newRestaurant, ownerInfo, registeredByAdmin = false) => {
+    // If registered by admin, auto-approve; otherwise, set to PENDING admin verification
+    const isApproved = registeredByAdmin || user?.role === 'admin';
+    const restaurantRecord = {
+      ...newRestaurant,
+      isApproved,
+      approvalStatus: isApproved ? 'APPROVED' : 'PENDING',
+      registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    };
 
-    // 2. Automatically upgrade/create merchant role in master registered users
+    // 1. Add restaurant to dynamic list
+    setRestaurantsList(prev => [restaurantRecord, ...prev]);
+
+    // 2. Automatically record merchant user
     if (ownerInfo) {
       const normalizedEmail = ownerInfo.email?.toLowerCase().trim();
       const normalizedPhone = ownerInfo.phone?.replace(/\D/g, '');
@@ -227,20 +236,22 @@ export default function App() {
           const updated = [...prev];
           updated[existingIdx] = {
             ...updated[existingIdx],
-            role: 'restaurant',
-            restaurantId: newRestaurant.id,
-            restaurantName: newRestaurant.name
+            role: isApproved ? 'restaurant' : updated[existingIdx].role,
+            merchantStatus: isApproved ? 'APPROVED' : 'PENDING_APPROVAL',
+            restaurantId: restaurantRecord.id,
+            restaurantName: restaurantRecord.name
           };
           return updated;
         } else {
           const newMerchant = {
             id: 'usr-merchant-' + Date.now(),
-            name: ownerInfo.name || newRestaurant.name + ' Owner',
-            email: ownerInfo.email || `${newRestaurant.id}@unavukadai.com`,
+            name: ownerInfo.name || restaurantRecord.name + ' Owner',
+            email: ownerInfo.email || `${restaurantRecord.id}@unavukadai.com`,
             phone: ownerInfo.phone || '+91 98401 22222',
-            role: 'restaurant',
-            restaurantId: newRestaurant.id,
-            restaurantName: newRestaurant.name,
+            role: isApproved ? 'restaurant' : 'customer',
+            merchantStatus: isApproved ? 'APPROVED' : 'PENDING_APPROVAL',
+            restaurantId: restaurantRecord.id,
+            restaurantName: restaurantRecord.name,
             status: 'ACTIVE',
             createdAt: '28 Sep, 2026'
           };
@@ -248,17 +259,80 @@ export default function App() {
         }
       });
 
-      // If active session matches, upgrade session user & switch to hotel merchant portal
-      if (user) {
+      // If active session matches and is approved, elevate immediately
+      if (isApproved && user) {
         const updatedUser = {
           ...user,
           role: 'restaurant',
-          restaurantId: newRestaurant.id,
-          restaurantName: newRestaurant.name
+          restaurantId: restaurantRecord.id,
+          restaurantName: restaurantRecord.name
         };
         setUser(updatedUser);
       }
     }
+  };
+
+  // Master Admin: Approve Pending Restaurant to go Live
+  const handleApproveRestaurant = (restaurantId) => {
+    let approvedName = '';
+    let targetOwnerEmail = '';
+    let targetOwnerPhone = '';
+
+    setRestaurantsList(prev => prev.map(r => {
+      if (r.id === restaurantId) {
+        approvedName = r.name;
+        targetOwnerEmail = r.ownerEmail || '';
+        targetOwnerPhone = r.ownerPhone || '';
+        return {
+          ...r,
+          isApproved: true,
+          approvalStatus: 'APPROVED'
+        };
+      }
+      return r;
+    }));
+
+    // Promote the owner to 'restaurant' role in users directory
+    setUsersList(prev => prev.map(u => {
+      const matchEmail = targetOwnerEmail && u.email?.toLowerCase() === targetOwnerEmail.toLowerCase();
+      const matchPhone = targetOwnerPhone && u.phone?.replace(/\D/g, '') === targetOwnerPhone.replace(/\D/g, '');
+      const matchResId = u.restaurantId === restaurantId;
+
+      if (matchResId || matchEmail || matchPhone) {
+        return {
+          ...u,
+          role: 'restaurant',
+          merchantStatus: 'APPROVED',
+          restaurantId: restaurantId,
+          restaurantName: approvedName || u.restaurantName
+        };
+      }
+      return u;
+    }));
+
+    // If current logged-in user is the owner, upgrade their session
+    if (user && (user.restaurantId === restaurantId || (targetOwnerEmail && user.email?.toLowerCase() === targetOwnerEmail.toLowerCase()))) {
+      setUser(prev => ({
+        ...prev,
+        role: 'restaurant',
+        restaurantId: restaurantId,
+        restaurantName: approvedName
+      }));
+    }
+  };
+
+  // Master Admin: Reject Restaurant Application
+  const handleRejectRestaurant = (restaurantId) => {
+    setRestaurantsList(prev => prev.map(r => {
+      if (r.id === restaurantId) {
+        return {
+          ...r,
+          isApproved: false,
+          approvalStatus: 'REJECTED'
+        };
+      }
+      return r;
+    }));
   };
 
   // Platform Settings (Merchant UPI ID & Name)
@@ -911,9 +985,14 @@ export default function App() {
     setSearchQuery('');
   };
 
-  // Filter & Sort Logic for Customer App
+  // Filter & Sort Logic for Customer App (Only Admin Approved Outlets)
   const filteredRestaurants = useMemo(() => {
     return restaurantsList.filter(res => {
+      // 🔒 ADMIN APPROVAL GATE: Unapproved or pending restaurants never show on customer side
+      if (res.isApproved === false || res.approvalStatus === 'PENDING' || res.approvalStatus === 'REJECTED') {
+        return false;
+      }
+
       // Filter by locality if a specific location/suburb is selected (skip if "All Locations")
       if (selectedCity && !selectedCity.isAll) {
         if (res.region && !res.region.toLowerCase().includes(selectedCity.name.toLowerCase())) {
@@ -1348,6 +1427,8 @@ export default function App() {
           onSwitchPortal={setCurrentPortal}
           restaurantsList={restaurantsList}
           onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
+          onApproveRestaurant={handleApproveRestaurant}
+          onRejectRestaurant={handleRejectRestaurant}
         />
       )}
 
