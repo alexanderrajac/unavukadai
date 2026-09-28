@@ -892,8 +892,9 @@ export const COUPONS = [
 export const INITIAL_ORDERS = [
   {
     orderId: 'UNV-784102',
-    customerName: 'Karthik Raja',
-    customerPhone: '+91 98402 11223',
+    customerName: 'Raja Official',
+    customerEmail: 'rajacofficial369@gmail.com',
+    customerPhone: '+91 98401 23456',
     restaurantId: 'res-perungalathur-1',
     restaurantName: 'SS Hyderabad Biryani',
     restaurantAddress: 'GST Road, Perungalathur',
@@ -920,8 +921,9 @@ export const INITIAL_ORDERS = [
   },
   {
     orderId: 'UNV-649201',
-    customerName: 'Deepa Lakshmi',
-    customerPhone: '+91 97910 88776',
+    customerName: 'Alexander Raja',
+    customerEmail: 'alexanderrajac@gmail.com',
+    customerPhone: '+91 98401 23456',
     restaurantId: 'res-vandalur-1',
     restaurantName: 'Hotel Vandalur Ananda Bhavan',
     restaurantAddress: 'Opposite Zoo Gate, Vandalur',
@@ -948,8 +950,9 @@ export const INITIAL_ORDERS = [
   },
   {
     orderId: 'UNV-512803',
-    customerName: 'Vignesh Kumar',
-    customerPhone: '+91 94441 55667',
+    customerName: 'Raja Official',
+    customerEmail: 'rajacofficial369@gmail.com',
+    customerPhone: '+91 98401 23456',
     restaurantId: 'res-mannivakkam-1',
     restaurantName: 'Mannivakkam Muniyandi Vilas',
     restaurantAddress: 'Near Junction, Mudichur Rd, Mannivakkam',
@@ -972,6 +975,35 @@ export const INITIAL_ORDERS = [
     riderPhone: '+91 98840 99881',
     riderEarnings: 60,
     placedAt: '42 mins ago',
+    etaMins: 0
+  },
+  {
+    orderId: 'UNV-401928',
+    customerName: 'Alexander Raja',
+    customerEmail: 'alexanderrajac@gmail.com',
+    customerPhone: '+91 98401 23456',
+    restaurantId: 'res-perungalathur-2',
+    restaurantName: 'Junior Kuppanna',
+    restaurantAddress: 'Near Railway Station, Perungalathur',
+    customerAddress: 'Flat 4B, Sri Sai Flats, Peerkankaranai Main Road, Perungalathur',
+    locality: 'Perungalathur',
+    items: [
+      { id: 'jk-1', name: 'Kongu Mutton Biryani', price: 340, quantity: 1 },
+      { id: 'jk-3', name: 'Pallipalayam Chicken Fry', price: 230, quantity: 1 }
+    ],
+    itemTotal: 570,
+    deliveryFee: 28,
+    platformFee: 5,
+    taxes: 28,
+    discount: 50,
+    grandTotal: 581,
+    status: 'DELIVERED',
+    deliveryOtp: '5521',
+    riderId: 'rider-1',
+    riderName: 'Murugan S.',
+    riderPhone: '+91 98765 43210',
+    riderEarnings: 65,
+    placedAt: '2 hours ago',
     etaMins: 0
   }
 ];

@@ -10,6 +10,7 @@ import RestaurantModal from './components/RestaurantModal';
 import CartDrawer from './components/CartDrawer';
 import OrderSuccessModal from './components/OrderSuccessModal';
 import MyOrdersModal from './components/MyOrdersModal';
+import UserOrdersPage from './components/UserOrdersPage';
 import ActiveOrderFloatingBar from './components/ActiveOrderFloatingBar';
 import AuthModal from './components/AuthModal';
 import AddressBookModal from './components/AddressBookModal';
@@ -73,6 +74,11 @@ export default function App() {
         setIsAuthOpen(true);
         return;
       }
+      if (rawHash === 'orders' || rawHash === 'my-orders' || rawHash === 'account') {
+        setCurrentPortalState('customer');
+        setActiveTab('orders');
+        return;
+      }
       const detected = getPortalFromUrl();
       setCurrentPortalState(detected);
     };
@@ -85,6 +91,9 @@ export default function App() {
     } else if (rawHash === 'signup' || rawHash === 'register') {
       setAuthInitialTab('signup');
       setIsAuthOpen(true);
+    } else if (rawHash === 'orders' || rawHash === 'my-orders' || rawHash === 'account') {
+      setCurrentPortalState('customer');
+      setActiveTab('orders');
     }
 
     window.addEventListener('hashchange', handleHashChange);
@@ -713,6 +722,7 @@ export default function App() {
     const newOrderObj = {
       orderId: newOrderId,
       customerName: user ? user.name : 'Suburban Foodie',
+      customerEmail: user?.email || 'rajacofficial369@gmail.com',
       customerPhone: orderSummary?.customerPhone || (user ? user.phone : '+91 98401 23456'),
       restaurantId: cartItems[0]?.restaurantId || 'res-perungalathur-1',
       restaurantName: cartItems[0]?.restaurantName || 'SS Hyderabad Biryani',
@@ -954,88 +964,118 @@ export default function App() {
             onSwitchPortal={setCurrentPortal}
           />
 
-          <main className="main-content">
-            <div className="container">
-              {/* Exclusive Regional Offers Strip for Perungalathur, Vandalur & Mannivakkam */}
-              <RegionalOffersStrip
-                selectedCity={selectedCity}
-                onSelectRegion={(reg) => {
-                  const foundCity = CITIES.find(c => c.name.toLowerCase().includes(reg.toLowerCase()));
-                  if (foundCity) setSelectedCity(foundCity);
-                  setSearchQuery('');
-                }}
-                onApplyPromoCode={(code) => {
-                  setPrefilledCoupon(code);
+          {activeTab === 'orders' ? (
+            <UserOrdersPage
+              user={user}
+              orders={orders}
+              onSelectOrderToTrack={(ord) => setTrackingOrder(ord)}
+              onReorder={(ord) => {
+                if (ord.items && ord.items.length > 0) {
+                  setCartItems(ord.items);
                   setIsCartOpen(true);
-                }}
-              />
-
-              {/* Inspiration Category Carousel */}
-              {activeTab === 'delivery' && (
-                <CategoryCarousel
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
-                />
-              )}
-
-              {/* Curated Collections */}
-              {activeTab !== 'delivery' && (
-                <Collections 
-                  onSelectCollection={(col) => {
-                    setSearchQuery(col.tag.includes('Campus') ? 'shawarma' : 'biryani');
-                  }} 
-                />
-              )}
-            </div>
-
-            {/* Sticky Filter Bar */}
-            <FilterBar
-              filters={filters}
-              setFilters={setFilters}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              onResetFilters={resetFilters}
+                  setActiveTab('delivery');
+                }
+              }}
+              onBackToMenu={() => setActiveTab('delivery')}
+              onOpenAuth={handleOpenAuth}
+              onSwitchUser={(targetEmail) => {
+                const target = usersList.find(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
+                if (target) {
+                  handleLoginSuccess({
+                    name: target.name,
+                    email: target.email,
+                    phone: target.phone,
+                    role: target.role,
+                    authProvider: 'google',
+                    isVerified: true
+                  });
+                }
+              }}
             />
+          ) : (
+            <main className="main-content">
+              <div className="container">
+                {/* Exclusive Regional Offers Strip for Perungalathur, Vandalur & Mannivakkam */}
+                <RegionalOffersStrip
+                  selectedCity={selectedCity}
+                  onSelectRegion={(reg) => {
+                    const foundCity = CITIES.find(c => c.name.toLowerCase().includes(reg.toLowerCase()));
+                    if (foundCity) setSelectedCity(foundCity);
+                    setSearchQuery('');
+                  }}
+                  onApplyPromoCode={(code) => {
+                    setPrefilledCoupon(code);
+                    setIsCartOpen(true);
+                  }}
+                />
 
-            {/* Restaurants Grid Section */}
-            <div className="container restaurant-section">
-              <div className="results-headline-row">
-                <h2 className="results-title">
-                  {selectedCity?.isAll
-                    ? (activeTab === 'delivery' ? 'Top Rated Food Delivery in Chennai' : activeTab === 'dining' ? 'Best Dining Spots in Chennai' : 'Nightlife & Pubs in Chennai')
-                    : (activeTab === 'delivery' ? 'Food Delivery in ' + selectedCity.name : activeTab === 'dining' ? 'Best Dining Spots in ' + selectedCity.name : 'Nightlife & Pubs in ' + selectedCity.name)
-                  }
-                  {selectedCategory && ` (${selectedCategory})`}
-                </h2>
-                <span className="results-count">
-                  {filteredRestaurants.length} restaurant{filteredRestaurants.length === 1 ? '' : 's'} available
-                </span>
+                {/* Inspiration Category Carousel */}
+                {activeTab === 'delivery' && (
+                  <CategoryCarousel
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                  />
+                )}
+
+                {/* Curated Collections */}
+                {activeTab !== 'delivery' && (
+                  <Collections 
+                    onSelectCollection={(col) => {
+                      setSearchQuery(col.tag.includes('Campus') ? 'shawarma' : 'biryani');
+                    }} 
+                  />
+                )}
               </div>
 
-              {filteredRestaurants.length > 0 ? (
-                <div className="restaurants-grid">
-                  {filteredRestaurants.map(restaurant => (
-                    <RestaurantCard
-                      key={restaurant.id}
-                      restaurant={restaurant}
-                      onOpenModal={setActiveRestaurantModal}
-                      isFavorite={favorites.includes(restaurant.id)}
-                      onToggleFavorite={toggleFavorite}
-                    />
-                  ))}
+              {/* Sticky Filter Bar */}
+              <FilterBar
+                filters={filters}
+                setFilters={setFilters}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                onResetFilters={resetFilters}
+              />
+
+              {/* Restaurants Grid Section */}
+              <div className="container restaurant-section">
+                <div className="results-headline-row">
+                  <h2 className="results-title">
+                    {selectedCity?.isAll
+                      ? (activeTab === 'delivery' ? 'Top Rated Food Delivery in Chennai' : activeTab === 'dining' ? 'Best Dining Spots in Chennai' : 'Nightlife & Pubs in Chennai')
+                      : (activeTab === 'delivery' ? 'Food Delivery in ' + selectedCity.name : activeTab === 'dining' ? 'Best Dining Spots in ' + selectedCity.name : 'Nightlife & Pubs in ' + selectedCity.name)
+                    }
+                    {selectedCategory && ` (${selectedCategory})`}
+                  </h2>
+                  <span className="results-count">
+                    {filteredRestaurants.length} restaurant{filteredRestaurants.length === 1 ? '' : 's'} available
+                  </span>
                 </div>
-              ) : (
-                <div className="empty-results-box animate-fade">
-                  <div className="empty-results-icon">🔍</div>
-                  <h3>No restaurants matched your filters in {selectedCity.name}</h3>
-                  <p>Try resetting some filters or searching for another dish or cuisine.</p>
-                  <button className="btn-primary" onClick={resetFilters}>
-                    Reset All Filters
-                  </button>
-                </div>
-              )}
-            </div>
-          </main>
+
+                {filteredRestaurants.length > 0 ? (
+                  <div className="restaurants-grid">
+                    {filteredRestaurants.map(restaurant => (
+                      <RestaurantCard
+                        key={restaurant.id}
+                        restaurant={restaurant}
+                        onOpenModal={setActiveRestaurantModal}
+                        isFavorite={favorites.includes(restaurant.id)}
+                        onToggleFavorite={toggleFavorite}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-results-box animate-fade">
+                    <div className="empty-results-icon">🔍</div>
+                    <h3>No restaurants matched your filters in {selectedCity.name}</h3>
+                    <p>Try resetting some filters or searching for another dish or cuisine.</p>
+                    <button className="btn-primary" onClick={resetFilters}>
+                      Reset All Filters
+                    </button>
+                  </div>
+                )}
+              </div>
+            </main>
+          )}
 
           <Footer />
 
@@ -1083,7 +1123,13 @@ export default function App() {
             isOpen={isMyOrdersOpen}
             onClose={() => setIsMyOrdersOpen(false)}
             orders={orders}
+            user={user}
             onSelectOrderToTrack={(ord) => setTrackingOrder(ord)}
+            onViewFullOrdersPage={() => {
+              setIsMyOrdersOpen(false);
+              setActiveTab('orders');
+            }}
+            onOpenAuth={handleOpenAuth}
           />
 
           {/* Live Real-Time Order Tracker Modal */}
@@ -1131,7 +1177,7 @@ export default function App() {
               }
             }}
             onOpenAddresses={() => setIsAddressBookOpen(true)}
-            onOpenMyOrders={() => setIsMyOrdersOpen(true)}
+            onOpenMyOrders={() => setActiveTab('orders')}
             onOpenCart={() => setIsCartOpen(true)}
             cartCount={totalCartCount}
             cartTotal={totalCartAmount}

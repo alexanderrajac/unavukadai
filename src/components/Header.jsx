@@ -310,6 +310,7 @@ export default function Header({
                       className="user-dropdown-item"
                       onClick={() => {
                         setIsUserMenuOpen(false);
+                        setActiveTab('orders');
                         if (onOpenMyOrders) onOpenMyOrders();
                       }}
                     >
@@ -407,6 +408,22 @@ export default function Header({
             <div className="tab-info">
               <span className="tab-title">Nightlife</span>
               <span className="tab-subtitle">Pubs, bars & late night</span>
+            </div>
+          </button>
+
+          <button 
+            className={`service-tab ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            <div className="tab-icon-frame orders-icon">
+              <ReceiptText size={22} />
+            </div>
+            <div className="tab-info">
+              <span className="tab-title">
+                My Orders
+                {activeOrdersCount > 0 && <span className="tab-count-badge">{activeOrdersCount}</span>}
+              </span>
+              <span className="tab-subtitle">Individual Order History</span>
             </div>
           </button>
         </nav>

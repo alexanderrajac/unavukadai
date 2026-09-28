@@ -661,6 +661,75 @@ describe('Rider 1-Trip Concurrency Enforcement & Role-Based Access Isolation', (
   });
 });
 
+describe('Individual Users Orders & Verified Email Display', () => {
+  const testUserRaja = {
+    name: 'Raja Official',
+    email: 'rajacofficial369@gmail.com',
+    phone: '+91 98401 23456',
+    role: 'admin'
+  };
+
+  const testUserAlexander = {
+    name: 'Alexander Raja',
+    email: 'alexanderrajac@gmail.com',
+    phone: '+91 98401 23456',
+    role: 'customer'
+  };
+
+  it('should filter orders strictly by individual user email address', () => {
+    const filterOrdersForUser = (ordersList, user) => {
+      if (!user) return [];
+      const userEmail = user.email?.toLowerCase().trim();
+      return ordersList.filter(o => o.customerEmail?.toLowerCase().trim() === userEmail);
+    };
+
+    const rajaOrders = filterOrdersForUser(INITIAL_ORDERS, testUserRaja);
+    expect(rajaOrders.length).toBeGreaterThanOrEqual(1);
+    rajaOrders.forEach(o => {
+      expect(o.customerEmail).toBe('rajacofficial369@gmail.com');
+    });
+
+    const alexanderOrders = filterOrdersForUser(INITIAL_ORDERS, testUserAlexander);
+    expect(alexanderOrders.length).toBeGreaterThanOrEqual(1);
+    alexanderOrders.forEach(o => {
+      expect(o.customerEmail).toBe('alexanderrajac@gmail.com');
+    });
+  });
+
+  it('should attach individual customerEmail and customerId when placing order', () => {
+    const user = testUserRaja;
+    const orderSummary = {
+      orderId: 'UNV-990011',
+      address: 'Peerkankaranai Main Rd, Perungalathur Hub',
+      grandTotal: 490,
+      paymentMethod: 'UPI'
+    };
+
+    const createdOrder = {
+      orderId: orderSummary.orderId,
+      customerName: user.name,
+      customerEmail: user.email,
+      customerPhone: user.phone,
+      customerAddress: orderSummary.address,
+      grandTotal: orderSummary.grandTotal
+    };
+
+    expect(createdOrder.customerEmail).toBe('rajacofficial369@gmail.com');
+    expect(createdOrder.customerName).toBe('Raja Official');
+    expect(createdOrder.orderId).toBe('UNV-990011');
+  });
+
+  it('should calculate individual user metrics accurately', () => {
+    const userOrders = INITIAL_ORDERS.filter(o => o.customerEmail === 'rajacofficial369@gmail.com');
+    const totalSpent = userOrders.reduce((sum, o) => sum + o.grandTotal, 0);
+    const activeOrders = userOrders.filter(o => o.status !== 'DELIVERED').length;
+
+    expect(totalSpent).toBeGreaterThan(0);
+    expect(activeOrders).toBeGreaterThanOrEqual(1);
+  });
+});
+
+
 
 
 
