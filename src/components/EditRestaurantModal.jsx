@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Store, 
   MapPin, 
@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Flame,
   Percent,
-  Sparkles
+  Sparkles,
+  Upload
 } from 'lucide-react';
 
 const HOTEL_IMAGE_PRESETS = [
@@ -58,6 +59,23 @@ export default function EditRestaurantModal({
 
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo size exceeds 5MB. Please choose a smaller image.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setFormData(prev => ({ ...prev, image: event.target.result }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (restaurant) {
@@ -254,10 +272,31 @@ export default function EditRestaurantModal({
               />
             </div>
 
+            {/* File Upload Button & File Input */}
+            <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={handleFileUpload} 
+              />
+              <button 
+                type="button" 
+                className="btn-upload-photo"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #fed7aa', background: '#fff7ed', color: '#c2410c', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+              >
+                <Upload size={14} color="#ea580c" />
+                <span>Upload Photo from Device / Camera</span>
+              </button>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>PNG, JPG, WEBP up to 5MB</span>
+            </div>
+
             {/* Live Image Preview */}
             {formData.image && (
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '120px', height: '70px', borderRadius: '10px', overflow: 'hidden', border: '2px solid #3b82f6', flexShrink: 0 }}>
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '120px', height: '70px', borderRadius: '10px', overflow: 'hidden', border: '2px solid #ea580c', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
                   <img 
                     src={formData.image} 
                     alt="Preview" 
@@ -266,7 +305,7 @@ export default function EditRestaurantModal({
                   />
                 </div>
                 <span style={{ fontSize: '11px', color: '#64748b' }}>
-                  Live banner preview. You can pick from the presets below or paste any custom web image link.
+                  Live banner preview. You can pick from presets below, paste any link, or upload an image.
                 </span>
               </div>
             )}

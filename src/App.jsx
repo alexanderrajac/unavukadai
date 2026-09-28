@@ -164,11 +164,13 @@ export default function App() {
           category: newItem.category || 'Specialties',
           isVeg: Boolean(newItem.isVeg),
           description: newItem.description?.trim() || 'Freshly prepared specialty dish.',
+          image: newItem.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=80',
+          rating: '4.8',
           votes: 1
         };
         return {
           ...r,
-          menu: [...r.menu, dishItem]
+          menu: [...(r.menu || []), dishItem]
         };
       }
       return r;

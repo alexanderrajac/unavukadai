@@ -13534,6 +13534,317 @@
   border-color: rgba(59, 130, 246, 0.4);
 }
 
+/* ── RESTAURANT REGISTRATION EXTENDED OPTIONS & PHOTO UPLOADS ── */
+.reg-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ea580c;
+  padding-bottom: 6px;
+  border-bottom: 2px solid rgba(234, 88, 12, 0.15);
+}
+
+.dark .reg-form-section-title {
+  color: #fb923c;
+  border-bottom-color: rgba(251, 146, 60, 0.2);
+}
+
+.outlet-photo-uploader-box {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.dark .outlet-photo-uploader-box {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.outlet-photo-preview-wrap {
+  position: relative;
+  width: 140px;
+  height: 90px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #ea580c;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.outlet-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.outlet-photo-badge-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.outlet-photo-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-upload-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-upload-photo:hover {
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+.dark .btn-upload-photo {
+  background: rgba(234, 88, 12, 0.15);
+  border-color: rgba(234, 88, 12, 0.3);
+  color: #fdba74;
+}
+
+/* Dishes List Container in Registration */
+.reg-dishes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reg-dish-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dark .reg-dish-card {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.reg-dish-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.dark .reg-dish-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.reg-dish-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ea580c;
+  text-transform: uppercase;
+}
+
+.reg-dish-veg-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #334155;
+}
+
+.dark .reg-dish-veg-toggle {
+  color: #cbd5e1;
+}
+
+.reg-dish-delete-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.reg-dish-delete-btn:hover {
+  background: #fee2e2;
+}
+
+.dark .reg-dish-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.reg-dish-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 6px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .reg-dish-photo-row {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.reg-dish-thumb-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid #fdba74;
+}
+
+.reg-dish-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-upload-dish-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-upload-dish-photo:hover {
+  background: #ffedd5;
+}
+
+.dark .btn-upload-dish-photo {
+  background: rgba(234, 88, 12, 0.2);
+  border-color: rgba(234, 88, 12, 0.4);
+  color: #fdba74;
+}
+
+.dish-presets-mini-strip {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.dish-preset-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dish-preset-chip:hover,
+.dish-preset-chip.active {
+  border-color: #ea580c;
+  background: #fff7ed;
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.dark .dish-preset-chip {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.dark .dish-preset-chip.active {
+  background: rgba(234, 88, 12, 0.25);
+  border-color: #ea580c;
+  color: #fdba74;
+}
+
+.btn-add-more-dishes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1.5px dashed #ea580c;
+  color: #ea580c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-more-dishes:hover {
+  background: #fff7ed;
+  border-style: solid;
+}
+
+.dark .btn-add-more-dishes {
+  background: rgba(30, 41, 59, 0.4);
+  border-color: #f97316;
+  color: #fb923c;
+}
+
+.dark .btn-add-more-dishes:hover {
+  background: rgba(249, 115, 22, 0.15);
+}
+
+@media (max-width: 600px) {
+  .outlet-photo-uploader-box {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .outlet-photo-preview-wrap {
+    width: 100%;
+    max-width: 220px;
+    height: 120px;
+  }
+}
+
 
 
 

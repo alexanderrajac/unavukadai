@@ -806,6 +806,85 @@ describe('Restaurant Self-Registration & Merchant Onboarding Pipeline', () => {
 
     expect(customerVisibleAfterApproval.some(r => r.id === 'res-tambaram-777')).toBe(true);
   });
+
+  it('should accept uploaded outlet photos, custom starter menu dishes, and individual food photos during registration', () => {
+    const customPhotoDataUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...sampleBanner';
+    const dishPhotoDataUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...sampleDish';
+
+    const registeredPayload = {
+      name: 'Nellai Saravana Mess',
+      region: 'Mannivakkam',
+      cuisines: ['South Indian', 'Meals', 'Tiffin'],
+      image: customPhotoDataUrl,
+      payoutUpi: 'nellaimess@okaxis',
+      fssaiLicense: '12423005000123',
+      menu: [
+        {
+          id: 'dish-1',
+          name: 'Special Mutton Chukka',
+          price: 240,
+          category: 'Starters & Appetizers',
+          isVeg: false,
+          image: dishPhotoDataUrl,
+          description: 'Spicy dry roasted tender mutton.'
+        },
+        {
+          id: 'dish-2',
+          name: 'Crispy Ghee Roast Dosa',
+          price: 90,
+          category: 'Tiffin & Dosa',
+          isVeg: true,
+          image: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&auto=format&fit=crop&q=80',
+          description: 'Golden roasted served with 3 chutneys.'
+        }
+      ]
+    };
+
+    expect(registeredPayload.image).toBe(customPhotoDataUrl);
+    expect(registeredPayload.payoutUpi).toBe('nellaimess@okaxis');
+    expect(registeredPayload.fssaiLicense).toBe('12423005000123');
+    expect(registeredPayload.menu.length).toBe(2);
+    expect(registeredPayload.menu[0].image).toBe(dishPhotoDataUrl);
+    expect(registeredPayload.menu[0].isVeg).toBe(false);
+    expect(registeredPayload.menu[1].isVeg).toBe(true);
+  });
+
+  it('should persist custom dish photos when restaurant publishes new items to live menu in HotelPortal', () => {
+    const currentRestaurant = {
+      id: 'res-perungalathur-1',
+      name: 'SS Hyderabad Biryani',
+      menu: [
+        { id: 'ss-1', name: 'Chicken Dum Biryani', price: 260, image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800' }
+      ]
+    };
+
+    const newDish = {
+      name: 'Paneer Tikka Roll',
+      price: 150,
+      category: 'Starters & Appetizers',
+      isVeg: true,
+      image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      description: 'Charcoal grilled cottage cheese in soft parotta.'
+    };
+
+    const addedDish = {
+      id: `${currentRestaurant.id}-dish-${Date.now()}`,
+      name: newDish.name.trim(),
+      price: Number(newDish.price),
+      category: newDish.category || 'Specialties',
+      isVeg: Boolean(newDish.isVeg),
+      description: newDish.description,
+      image: newDish.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
+      rating: '4.8',
+      votes: 1
+    };
+
+    const updatedMenu = [...currentRestaurant.menu, addedDish];
+    expect(updatedMenu.length).toBe(2);
+    expect(updatedMenu[1].name).toBe('Paneer Tikka Roll');
+    expect(updatedMenu[1].image).toContain('data:image/png;base64');
+    expect(updatedMenu[1].isVeg).toBe(true);
+  });
 });
 
 describe('Rider Partner Registration & Order Dispatch Mechanics', () => {

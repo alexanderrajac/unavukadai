@@ -9,9 +9,19 @@ import {
   TrendingDown, Percent, Copy, CheckSquare, Power, Edit3, Trash2,
   MessageSquare, ThumbsUp, ThumbsDown, MoreVertical, Send, Loader2,
   LayoutGrid, List, ArrowUpRight, ArrowDownLeft, PieChart, Activity,
-  BookOpen, ClipboardList, Coffee, Headphones, LogOut, Siren
+  BookOpen, ClipboardList, Coffee, Headphones, LogOut, Siren,
+  Upload, Image as ImageIcon
 } from 'lucide-react';
 import { RESTAURANTS } from '../data/mockData';
+
+const DISH_PHOTO_PRESETS = [
+  { label: 'Biryani', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop&q=80' },
+  { label: 'Dosa & Tiffin', url: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=500&auto=format&fit=crop&q=80' },
+  { label: 'Chicken & Grill', url: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500&auto=format&fit=crop&q=80' },
+  { label: 'Parotta & Curry', url: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=500&auto=format&fit=crop&q=80' },
+  { label: 'Fried Rice', url: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&auto=format&fit=crop&q=80' },
+  { label: 'Paneer / Veg', url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80' }
+];
 
 // ── Audio chime ──────────────────────────────────────────────────────────────
 function playKitchenChime() {
@@ -124,9 +134,26 @@ export default function HotelPortal({
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [selectedMenuCategory, setSelectedMenuCategory] = useState('ALL');
   const [showAddDishModal, setShowAddDishModal] = useState(false);
-  const [dishForm, setDishForm] = useState({ name: '', price: '', offerPrice: '', category: 'Biryani & Rice', isVeg: false, desc: '', prepTime: '15', tags: '' });
+  const [dishForm, setDishForm] = useState({ name: '', price: '', offerPrice: '', category: 'Biryani & Rice', isVeg: false, desc: '', prepTime: '15', tags: '', image: '' });
   const [priceEdits, setPriceEdits] = useState({});
   const [dishSuccessMsg, setDishSuccessMsg] = useState('');
+  const dishFileInputRef = useRef(null);
+
+  const handleDishPhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo size exceeds 5MB. Please choose a smaller image.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setDishForm(prev => ({ ...prev, image: event.target.result }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // ── Profile State ──────────────────────────────────────────────────────────
   const [profileForm, setProfileForm] = useState({
@@ -216,8 +243,15 @@ export default function HotelPortal({
   const handleAddDish = (e) => {
     e.preventDefault();
     if (!dishForm.name.trim() || !dishForm.price) return;
-    if (onAddMenuItem) onAddMenuItem(currentHotel.id, { name: dishForm.name.trim(), price: Number(dishForm.price), category: dishForm.category, isVeg: dishForm.isVeg, description: dishForm.desc.trim() || `${dishForm.name} freshly prepared.` });
-    setDishForm({ name: '', price: '', offerPrice: '', category: 'Biryani & Rice', isVeg: false, desc: '', prepTime: '15', tags: '' });
+    if (onAddMenuItem) onAddMenuItem(currentHotel.id, { 
+      name: dishForm.name.trim(), 
+      price: Number(dishForm.price), 
+      category: dishForm.category, 
+      isVeg: dishForm.isVeg, 
+      image: dishForm.image || DISH_PHOTO_PRESETS[0].url,
+      description: dishForm.desc.trim() || `${dishForm.name} freshly prepared.` 
+    });
+    setDishForm({ name: '', price: '', offerPrice: '', category: 'Biryani & Rice', isVeg: false, desc: '', prepTime: '15', tags: '', image: '' });
     setShowAddDishModal(false);
     setDishSuccessMsg(`🎉 "${dishForm.name}" published to menu!`);
     setTimeout(() => setDishSuccessMsg(''), 4000);
@@ -698,6 +732,62 @@ export default function HotelPortal({
                         ))}
                       </div>
                     </div>
+                    {/* Food Photo Upload */}
+                    <div className="form-group mb-2">
+                      <label className="field-label-bold">Dish Food Photo</label>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 4 }}>
+                        <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', border: '2px solid #fdba74', background: '#f8fafc', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {dishForm.image ? (
+                            <img src={dishForm.image} alt="Dish" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <UtensilsCrossed size={22} color="#94a3b8" />
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <input 
+                            type="file" 
+                            ref={dishFileInputRef} 
+                            accept="image/*" 
+                            style={{ display: 'none' }} 
+                            onChange={handleDishPhotoUpload} 
+                          />
+                          <button 
+                            type="button" 
+                            className="btn-secondary" 
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontSize: 13, cursor: 'pointer', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}
+                            onClick={() => dishFileInputRef.current?.click()}
+                          >
+                            <Upload size={14} color="#ea580c" />
+                            <span>Upload Dish Photo</span>
+                          </button>
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>From camera or device gallery (PNG, JPG)</div>
+                        </div>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        {DISH_PHOTO_PRESETS.map(p => (
+                          <button 
+                            key={p.label} 
+                            type="button"
+                            onClick={() => setDishForm(f => ({ ...f, image: p.url }))}
+                            style={{
+                              fontSize: 11,
+                              padding: '3px 9px',
+                              borderRadius: 12,
+                              border: dishForm.image === p.url ? '1px solid #ea580c' : '1px solid #cbd5e1',
+                              background: dishForm.image === p.url ? '#fff7ed' : '#ffffff',
+                              color: dishForm.image === p.url ? '#c2410c' : '#475569',
+                              cursor: 'pointer',
+                              fontWeight: 500
+                            }}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="form-group mb-3">
                       <label className="field-label-bold">Description</label>
                       <textarea className="styled-input" rows={2} placeholder="Taste notes, ingredients…" value={dishForm.desc} onChange={e => setDishForm(f => ({...f, desc: e.target.value}))}/>
@@ -723,6 +813,11 @@ export default function HotelPortal({
                   <div key={item.id} className={`mp-menu-card ${!inStock ? 'out-of-stock' : ''}`}>
                     <div className="mp-mc-top">
                       <span className={item.isVeg ? 'mp-veg-dot' : 'mp-nonveg-dot'}/>
+                      {item.image && (
+                        <div style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: '1px solid #e2e8f0' }}>
+                          <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                      )}
                       <div className="mp-mc-info">
                         <div className="mp-mc-name">{item.name}</div>
                         <div className="mp-mc-cat">{item.category}</div>
