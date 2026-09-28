@@ -193,27 +193,17 @@ export default function UserOrdersPage({
           </div>
         </div>
 
-        {/* Quick Profile Switcher for Testing / Pair Access */}
+        {/* Account Switcher / Sign Out */}
         <div className="user-profile-card-right">
-          <div className="quick-switch-label">Switch Individual Account:</div>
-          <div className="quick-switch-pills">
-            <button 
-              type="button"
-              className={`quick-switch-pill ${user.email === 'rajacofficial369@gmail.com' ? 'active' : ''}`}
-              onClick={() => onSwitchUser && onSwitchUser('rajacofficial369@gmail.com')}
-            >
-              <span>👑 Raja Official</span>
-              <span className="pill-sub-email">rajacofficial369@gmail.com</span>
-            </button>
-            <button 
-              type="button"
-              className={`quick-switch-pill ${user.email === 'alexanderrajac@gmail.com' ? 'active' : ''}`}
-              onClick={() => onSwitchUser && onSwitchUser('alexanderrajac@gmail.com')}
-            >
-              <span>🍲 Alexander Raja</span>
-              <span className="pill-sub-email">alexanderrajac@gmail.com</span>
-            </button>
-          </div>
+          <div className="quick-switch-label">Active Account</div>
+          <button 
+            type="button"
+            className="btn-secondary"
+            style={{ fontSize: '12px', padding: '6px 14px' }}
+            onClick={() => onOpenAuth ? onOpenAuth('login') : null}
+          >
+            <span>Switch Account / Sign In</span>
+          </button>
         </div>
       </section>
 

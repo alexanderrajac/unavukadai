@@ -425,43 +425,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
               </div>
             )}
 
-            {/* Instant 1-Click Saved Google Profiles */}
-            <div className="quick-google-accounts-box mb-3">
-              <label className="quick-acc-label">⚡ 1-Click Fast Sign In:</label>
-              
-              <button 
-                type="button"
-                className="google-profile-quick-btn mb-2"
-                onClick={() => handleGoogleSignInWithEmail('rajacofficial369@gmail.com', 'Raja Official')}
-                disabled={isLoading}
-              >
-                <div className="google-quick-avatar bg-blue-subtle">
-                  <span>👑</span>
-                </div>
-                <div className="google-quick-info">
-                  <span className="google-quick-name">Raja Official (Master Admin)</span>
-                  <span className="google-quick-email">rajacofficial369@gmail.com</span>
-                </div>
-                <span className="quick-signin-tag">Sign In ➔</span>
-              </button>
-
-              <button 
-                type="button"
-                className="google-profile-quick-btn"
-                onClick={() => handleGoogleSignInWithEmail('alexanderrajac@gmail.com', 'Alexander Raja')}
-                disabled={isLoading}
-              >
-                <div className="google-quick-avatar bg-purple-subtle">
-                  <span>🍲</span>
-                </div>
-                <div className="google-quick-info">
-                  <span className="google-quick-name">Alexander Raja (Foodie Customer)</span>
-                  <span className="google-quick-email">alexanderrajac@gmail.com</span>
-                </div>
-                <span className="quick-signin-tag">Sign In ➔</span>
-              </button>
-            </div>
-
             {/* Official 1-Tap Google OAuth button */}
             <button 
               type="button" 

@@ -355,25 +355,9 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('unavu_user');
-      return saved ? JSON.parse(saved) : {
-        name: 'Alexander Raja',
-        email: 'alexanderrajac@gmail.com',
-        phone: '+91 98401 23456',
-        avatar: '👨‍💻',
-        role: 'customer',
-        authProvider: 'google',
-        isVerified: true
-      };
+      return saved ? JSON.parse(saved) : null;
     } catch {
-      return {
-        name: 'Alexander Raja',
-        email: 'alexanderrajac@gmail.com',
-        phone: '+91 98401 23456',
-        avatar: '👨‍💻',
-        role: 'customer',
-        authProvider: 'google',
-        isVerified: true
-      };
+      return null;
     }
   });
 
