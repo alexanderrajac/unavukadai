@@ -138,7 +138,7 @@ export default function Header({
                         <Crosshair size={16} className="icon-crimson" />
                         <div className="detect-text-box">
                           <span className="detect-title">🎯 Detect My Location</span>
-                          <span className="detect-sub">Using GPS (Perungalathur / Vandalur / Mannivakkam)</span>
+                          <span className="detect-sub">GPS Auto-detect (Chennai &amp; Suburbs)</span>
                         </div>
                       </>
                     )}

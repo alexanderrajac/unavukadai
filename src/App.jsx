@@ -199,7 +199,7 @@ export default function App() {
 
   // Customer Navigation & Location (Defaults to Perungalathur Hub)
   const [activeTab, setActiveTab] = useState('delivery');
-  const [selectedCity, setSelectedCity] = useState(CITIES[0]); // Perungalathur
+  const [selectedCity, setSelectedCity] = useState(CITIES[0]); // All Locations (Chennai)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -290,7 +290,7 @@ export default function App() {
       locality: 'Perungalathur',
       city: 'Chennai',
       coords: [12.9095, 80.0895],
-      suburb: CITIES[0],
+      suburb: CITIES.find(c => c.id === 'perungalathur') || CITIES[0],
       formattedAddress: 'Door 4B, Peerkankaranai Main Road, Near Lake, Perungalathur Hub'
     },
     {
@@ -302,7 +302,7 @@ export default function App() {
       locality: 'Vandalur',
       city: 'Chennai',
       coords: [12.8893, 80.0815],
-      suburb: CITIES[1],
+      suburb: CITIES.find(c => c.id === 'vandalur') || CITIES[1],
       formattedAddress: 'Tower B, GST Road, Opp. Zoo Gate, Vandalur Hub'
     }
   ];
@@ -555,10 +555,10 @@ export default function App() {
   // Filter & Sort Logic for Customer App
   const filteredRestaurants = useMemo(() => {
     return RESTAURANTS.filter(res => {
-      // Filter by suburban locality if a suburban city is selected
-      if (selectedCity?.isSuburban) {
+      // Filter by locality if a specific location/suburb is selected (skip if "All Locations")
+      if (selectedCity && !selectedCity.isAll) {
         if (res.region && !res.region.toLowerCase().includes(selectedCity.name.toLowerCase())) {
-          // If searching or user clicked a category, allow cross-suburb items
+          // If searching or user clicked a category, allow cross-area items
           if (!searchQuery && !selectedCategory) return false;
         }
       }
@@ -702,9 +702,10 @@ export default function App() {
             <div className="container restaurant-section">
               <div className="results-headline-row">
                 <h2 className="results-title">
-                  {activeTab === 'delivery' && 'Suburban Food Delivery in ' + selectedCity.name}
-                  {activeTab === 'dining' && 'Best Dining Spots in ' + selectedCity.name}
-                  {activeTab === 'nightlife' && 'Nightlife & Pubs in ' + selectedCity.name}
+                  {selectedCity?.isAll
+                    ? (activeTab === 'delivery' ? 'Top Rated Food Delivery in Chennai' : activeTab === 'dining' ? 'Best Dining Spots in Chennai' : 'Nightlife & Pubs in Chennai')
+                    : (activeTab === 'delivery' ? 'Food Delivery in ' + selectedCity.name : activeTab === 'dining' ? 'Best Dining Spots in ' + selectedCity.name : 'Nightlife & Pubs in ' + selectedCity.name)
+                  }
                   {selectedCategory && ` (${selectedCategory})`}
                 </h2>
                 <span className="results-count">

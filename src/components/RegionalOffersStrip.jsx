@@ -12,12 +12,12 @@ export default function RegionalOffersStrip({
       <div className="regional-offers-header">
         <div className="section-title-group">
           <div className="badge-local-hub">
-            <MapPin size={13} />
-            <span>South Chennai Suburban Zone</span>
+            <Sparkles size={13} />
+            <span>Featured Neighborhood Deals</span>
           </div>
-          <h2 className="section-title">Exclusive Regional Offers & Banners</h2>
+          <h2 className="section-title">Top Regional Offers &amp; Promo Codes</h2>
           <p className="section-subtitle">
-            Special discounts tailored for <strong>Perungalathur</strong>, <strong>Vandalur</strong> &amp; <strong>Mannivakkam</strong> residents
+            Instant savings &amp; discounts across <strong>Perungalathur</strong>, <strong>Vandalur</strong>, <strong>Mannivakkam</strong> &amp; Greater Chennai
           </p>
         </div>
       </div>
