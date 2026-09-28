@@ -449,30 +449,45 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
               <div className="auth-input-group mb-2">
                 <div className="flex-between-label">
-                  <label>Or Enter Gmail Address Directly:</label>
-                  <span className="google-tag-pill">Instant Sign-In</span>
+                  <label>Instant Direct Google / Gmail Login:</label>
+                  <span className="google-tag-pill">No Redirect Needed</span>
                 </div>
                 <div className="gmail-input-wrap">
                   <Mail size={16} className="input-adornment" />
                   <input 
                     type="email" 
                     className="auth-input-field with-icon"
-                    placeholder="Enter your Gmail (e.g. name@gmail.com)" 
+                    placeholder="e.g. rajacofficial369@gmail.com" 
                     value={customEmail}
                     onChange={(e) => setCustomEmail(e.target.value)}
                   />
                 </div>
               </div>
 
-              {customEmail && customEmail.includes('@') && (
-                <button 
-                  type="submit" 
-                  className="btn-primary w-full animate-fade"
-                  disabled={isLoading}
-                >
-                  <span>Sign In Directly as {selectedRole.toUpperCase()}</span>
-                </button>
+              {/* Quick suggestion button */}
+              {!customEmail && (
+                <div className="gmail-quick-chips mb-2" style={{ display: 'flex', gap: '6px' }}>
+                  <button 
+                    type="button" 
+                    className="filter-pill-btn"
+                    style={{ fontSize: '11.5px', padding: '4px 10px', background: '#eff6ff', borderColor: '#bfdbfe', color: '#1d4ed8' }}
+                    onClick={() => {
+                      setCustomEmail('rajacofficial369@gmail.com');
+                      setEmailName('Raja Official');
+                    }}
+                  >
+                    <span>⚡ Fill rajacofficial369@gmail.com</span>
+                  </button>
+                </div>
               )}
+
+              <button 
+                type="submit" 
+                className="btn-primary w-full animate-fade"
+                disabled={isLoading || !customEmail || !customEmail.includes('@')}
+              >
+                <span>⚡ Instant Sign In as {selectedRole.toUpperCase()}</span>
+              </button>
             </form>
           </div>
         )}
