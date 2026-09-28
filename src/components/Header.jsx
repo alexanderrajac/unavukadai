@@ -18,7 +18,8 @@ import {
   Home,
   Check,
   Mail,
-  Sparkles
+  Sparkles,
+  Store
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
@@ -43,7 +44,8 @@ export default function Header({
   onOpenAddressBook,
   onLogout,
   currentPortal = 'customer',
-  onSwitchPortal = () => {}
+  onSwitchPortal = () => {},
+  onOpenRegisterRestaurant = () => {}
 }) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -251,6 +253,16 @@ export default function Header({
               )}
             </button>
 
+            {/* Partner / Register Restaurant Button */}
+            <button 
+              className="partner-btn-trigger"
+              onClick={onOpenRegisterRestaurant}
+              title="Partner with Unavukadai - Register Restaurant"
+            >
+              <Store size={15} />
+              <span>Partner</span>
+            </button>
+
             {/* Cart Trigger */}
             <button 
               className={`cart-btn-trigger ${cartCount > 0 ? 'has-items' : ''}`}
@@ -288,6 +300,9 @@ export default function Header({
                         {user.authProvider === 'google' && (
                           <span className="google-verified-tag">✓ Google Verified</span>
                         )}
+                        <span className="dropdown-role-tag">
+                          {user.role === 'admin' ? '👑 Master Admin' : user.role === 'restaurant' ? '👨‍🍳 Merchant' : user.role === 'rider' ? '🛵 Rider' : '🍲 Foodie'}
+                        </span>
                       </div>
                     </div>
 
@@ -318,6 +333,34 @@ export default function Header({
                       <span>My Orders</span>
                       {activeOrdersCount > 0 && <span className="active-dot-mini" />}
                     </button>
+
+                    {/* Merchant Kitchen shortcut for restaurant or admin */}
+                    {(user?.role === 'restaurant' || user?.role === 'admin') && (
+                      <button 
+                        type="button" 
+                        className={`user-dropdown-item ${currentPortal === 'hotel' ? 'active-portal-item' : ''}`}
+                        onClick={() => { setIsUserMenuOpen(false); onSwitchPortal('hotel'); }}
+                      >
+                        <Store size={15} style={{ color: '#f97316' }} />
+                        <span>👨‍🍳 Merchant Kitchen Portal</span>
+                        {currentPortal === 'hotel' && <Check size={14} className="text-green" />}
+                      </button>
+                    )}
+
+                    {/* Register Restaurant link for customers */}
+                    {user?.role !== 'restaurant' && (
+                      <button 
+                        type="button" 
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenRegisterRestaurant();
+                        }}
+                      >
+                        <Store size={15} style={{ color: '#3b82f6' }} />
+                        <span>🏪 Register Restaurant</span>
+                      </button>
+                    )}
 
                     {user?.role === 'admin' && (
                       <>

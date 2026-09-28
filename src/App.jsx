@@ -16,6 +16,8 @@ import AuthModal from './components/AuthModal';
 import AddressBookModal from './components/AddressBookModal';
 import MobileBottomNav from './components/MobileBottomNav';
 import Footer from './components/Footer';
+import RegisterRestaurantModal from './components/RegisterRestaurantModal';
+import { ArrowRight, Flame } from 'lucide-react';
 
 import HotelPortal from './components/HotelPortal';
 import RiderPortal from './components/RiderPortal';
@@ -201,6 +203,62 @@ export default function App() {
       }
       return r;
     }));
+  };
+
+  // Restaurant Registration & Merchant Promotion
+  const [isRegisterRestaurantOpen, setIsRegisterRestaurantOpen] = useState(false);
+
+  const handleRegisterRestaurant = (newRestaurant, ownerInfo) => {
+    // 1. Add restaurant to dynamic list
+    setRestaurantsList(prev => [newRestaurant, ...prev]);
+
+    // 2. Automatically upgrade/create merchant role in master registered users
+    if (ownerInfo) {
+      const normalizedEmail = ownerInfo.email?.toLowerCase().trim();
+      const normalizedPhone = ownerInfo.phone?.replace(/\D/g, '');
+
+      setUsersList(prev => {
+        const existingIdx = prev.findIndex(u => 
+          (normalizedEmail && u.email?.toLowerCase().trim() === normalizedEmail) ||
+          (normalizedPhone && u.phone && u.phone.replace(/\D/g, '') === normalizedPhone)
+        );
+
+        if (existingIdx !== -1) {
+          const updated = [...prev];
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            role: 'restaurant',
+            restaurantId: newRestaurant.id,
+            restaurantName: newRestaurant.name
+          };
+          return updated;
+        } else {
+          const newMerchant = {
+            id: 'usr-merchant-' + Date.now(),
+            name: ownerInfo.name || newRestaurant.name + ' Owner',
+            email: ownerInfo.email || `${newRestaurant.id}@unavukadai.com`,
+            phone: ownerInfo.phone || '+91 98401 22222',
+            role: 'restaurant',
+            restaurantId: newRestaurant.id,
+            restaurantName: newRestaurant.name,
+            status: 'ACTIVE',
+            createdAt: '28 Sep, 2026'
+          };
+          return [newMerchant, ...prev];
+        }
+      });
+
+      // If active session matches, upgrade session user & switch to hotel merchant portal
+      if (user) {
+        const updatedUser = {
+          ...user,
+          role: 'restaurant',
+          restaurantId: newRestaurant.id,
+          restaurantName: newRestaurant.name
+        };
+        setUser(updatedUser);
+      }
+    }
   };
 
   // Platform Settings (Merchant UPI ID & Name)
@@ -960,6 +1018,7 @@ export default function App() {
             onLogout={handleLogout}
             currentPortal={currentPortal}
             onSwitchPortal={setCurrentPortal}
+            onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
           />
 
           {activeTab === 'orders' ? (
@@ -1006,6 +1065,46 @@ export default function App() {
                     setIsCartOpen(true);
                   }}
                 />
+
+                {/* Quick Foodie Cravings Filter Bar */}
+                <div className="home-quick-cravings-bar animate-fade">
+                  <div className="cravings-label">
+                    <Flame size={16} className="cravings-fire-icon" />
+                    <span>Quick Cravings:</span>
+                  </div>
+                  <div className="cravings-chips-scroll">
+                    {[
+                      { label: '🍗 Biryani', query: 'biryani' },
+                      { label: '🥞 Dosa & Tiffin', query: 'dosa' },
+                      { label: '🥘 Parotta & Salna', query: 'parotta' },
+                      { label: '🍢 Shawarma & Grill', query: 'shawarma' },
+                      { label: '🌱 Pure Veg', filter: 'pureVeg' },
+                      { label: '⚡ Fast Delivery (20m)', filter: 'fastDelivery' },
+                      { label: '🏷️ Top Offers', filter: 'offers' },
+                      { label: '⭐ Rating 4.0+', filter: 'rating4Plus' }
+                    ].map((chip) => {
+                      const isActive = chip.query 
+                        ? searchQuery.toLowerCase().includes(chip.query) 
+                        : (chip.filter ? filters[chip.filter] : false);
+                      return (
+                        <button
+                          key={chip.label}
+                          type="button"
+                          className={`cravings-chip ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            if (chip.query) {
+                              setSearchQuery(searchQuery.toLowerCase() === chip.query ? '' : chip.query);
+                            } else if (chip.filter) {
+                              setFilters(prev => ({ ...prev, [chip.filter]: !prev[chip.filter] }));
+                            }
+                          }}
+                        >
+                          {chip.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* Inspiration Category Carousel */}
                 {activeTab === 'delivery' && (
@@ -1071,6 +1170,25 @@ export default function App() {
                     </button>
                   </div>
                 )}
+
+                {/* Merchant Onboarding CTA Banner */}
+                <div className="merchant-onboarding-home-banner animate-fade">
+                  <div className="mo-banner-content">
+                    <div className="mo-banner-icon">🏪</div>
+                    <div className="mo-banner-text">
+                      <h3>Are you a Restaurant or Cloud Kitchen Owner?</h3>
+                      <p>Partner with <strong>Unavukadai</strong> across Perungalathur, Vandalur, Mannivakkam &amp; Tambaram. Get live WhatsApp KOTs, automated fleet delivery, and zero listing fee.</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    className="btn-primary mo-banner-btn"
+                    onClick={() => setIsRegisterRestaurantOpen(true)}
+                  >
+                    <span>Register Restaurant Free</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
               </div>
             </main>
           )}
@@ -1163,6 +1281,15 @@ export default function App() {
             onDeleteAddress={handleDeleteAddress}
           />
 
+          {/* Restaurant Registration & Merchant Onboarding Modal */}
+          <RegisterRestaurantModal
+            isOpen={isRegisterRestaurantOpen}
+            onClose={() => setIsRegisterRestaurantOpen(false)}
+            onRegisterRestaurant={handleRegisterRestaurant}
+            currentUser={user}
+            isAdmin={user?.role === 'admin'}
+          />
+
           {/* Mobile-Native Bottom Navigation Bar */}
           <MobileBottomNav
             activeTab={activeTab}
@@ -1228,6 +1355,8 @@ export default function App() {
           onToggleUserStatus={handleToggleUserStatus}
           currentUser={user}
           onSwitchPortal={setCurrentPortal}
+          restaurantsList={restaurantsList}
+          onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
         />
       )}
     </div>

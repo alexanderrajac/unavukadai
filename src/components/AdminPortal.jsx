@@ -23,7 +23,9 @@ export default function AdminPortal({
   onUpdateUserRole = () => {},
   onToggleUserStatus = () => {},
   currentUser,
-  onSwitchPortal = () => {}
+  onSwitchPortal = () => {},
+  restaurantsList = RESTAURANTS,
+  onOpenRegisterRestaurant = () => {}
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [filterLocality, setFilterLocality] = useState('ALL');
@@ -416,9 +418,22 @@ export default function AdminPortal({
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === 'restaurants' && (
           <div className="adm-partners-page">
-            <div className="adm-section-title">Partner Restaurants ({RESTAURANTS.length})</div>
+            <div className="adm-partners-header-row">
+              <div>
+                <div className="adm-section-title">Partner Restaurants ({restaurantsList.length})</div>
+                <p className="adm-section-sub">Active outlets taking orders across Perungalathur, Vandalur, Mannivakkam &amp; Tambaram</p>
+              </div>
+              <button 
+                className="btn-primary adm-add-partner-btn"
+                onClick={onOpenRegisterRestaurant}
+              >
+                <Plus size={16} />
+                <span>+ Register New Restaurant</span>
+              </button>
+            </div>
+
             <div className="adm-partner-cards">
-              {RESTAURANTS.map(r => (
+              {restaurantsList.map(r => (
                 <div key={r.id} className="adm-partner-card">
                   <img src={r.image} alt={r.name} className="adm-partner-thumb" onError={e => e.target.style.display='none'}/>
                   <div className="adm-partner-info">
@@ -428,7 +443,18 @@ export default function AdminPortal({
                       <span>⭐ {r.rating}</span>
                       <span>{r.menu?.length || 0} dishes</span>
                       <span>{r.ratingCount} reviews</span>
+                      <span>₹{r.costForTwo} for two</span>
                     </div>
+                  </div>
+                  <div className="adm-partner-actions">
+                    <button 
+                      className="adm-inspect-btn"
+                      onClick={() => onSwitchPortal('hotel')}
+                      title="Open Restaurant Kitchen Portal"
+                    >
+                      <Store size={13} />
+                      <span>Open Kitchen</span>
+                    </button>
                   </div>
                 </div>
               ))}

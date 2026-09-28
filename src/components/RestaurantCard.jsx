@@ -93,13 +93,29 @@ export default function RestaurantCard({
           <span className="price-for-two">₹{costForTwo} for two</span>
         </div>
 
+        {/* Popular Dishes Preview */}
+        {restaurant.menu && restaurant.menu.length > 0 && (
+          <div className="card-dishes-preview">
+            <span className="card-dishes-label">Must try:</span>
+            <div className="card-dishes-tags">
+              {restaurant.menu.slice(0, 2).map(dish => (
+                <span key={dish.id} className="card-dish-tag">
+                  {dish.isVeg ? '🌱' : '🍗'} {dish.name} (₹{dish.price})
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Safety & Ratings Count */}
         <div className="card-subfooter">
           <div className="safety-note">
             <ShieldCheck size={13} className="safety-icon" />
             <span>{safetyScore || 'FSSAI Certified'}</span>
           </div>
-          <span className="rating-count-label">{ratingCount} reviews</span>
+          <span className="card-explore-btn">
+            View Menu &rarr;
+          </span>
         </div>
       </div>
     </div>
