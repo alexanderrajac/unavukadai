@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Store, 
   ChefHat, 
@@ -14,9 +14,13 @@ import {
   Plus,
   Save,
   Check,
-  Edit2,
-  Navigation,
-  DollarSign
+  Search,
+  Filter,
+  DollarSign,
+  ArrowRight,
+  Flame,
+  Award,
+  AlertCircle
 } from 'lucide-react';
 import { RESTAURANTS } from '../data/mockData';
 
@@ -77,7 +81,11 @@ export default function HotelPortal({
   const completedOrders = hotelOrders.filter(o => o.status === 'DELIVERED');
   const totalRevenue = hotelOrders.reduce((acc, o) => acc + o.itemTotal, 0);
 
-  // Add Item Form State
+  // Menu Search & Filter State
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [selectedMenuCategory, setSelectedMenuCategory] = useState('ALL');
+
+  // Add Item Modal & Form State
   const [showAddDishModal, setShowAddDishModal] = useState(false);
   const [dishName, setDishName] = useState('');
   const [dishPrice, setDishPrice] = useState('');
@@ -89,7 +97,7 @@ export default function HotelPortal({
   // Editable prices map
   const [priceEdits, setPriceEdits] = useState({});
 
-  // Restaurant Location & Profile Form State
+  // Restaurant Profile & Location State
   const [profileName, setProfileName] = useState(currentHotel.name || '');
   const [profileAddress, setProfileAddress] = useState(currentHotel.address || '');
   const [profileRegion, setProfileRegion] = useState(currentHotel.region || 'Perungalathur');
@@ -99,7 +107,7 @@ export default function HotelPortal({
   const [profileLng, setProfileLng] = useState(currentHotel.coords?.[1] || 80.0832);
   const [locationSuccessMsg, setLocationSuccessMsg] = useState('');
 
-  // Sync profile form when currentHotel changes
+  // Synchronize profile inputs when outlet changes
   useEffect(() => {
     if (currentHotel) {
       setProfileName(currentHotel.name);
@@ -114,6 +122,26 @@ export default function HotelPortal({
     }
   }, [currentHotel]);
 
+  // Categories list for current hotel
+  const menuCategories = useMemo(() => {
+    const set = new Set();
+    currentHotel.menu?.forEach(m => {
+      if (m.category) set.add(m.category);
+    });
+    return ['ALL', ...Array.from(set)];
+  }, [currentHotel]);
+
+  // Filtered menu items
+  const filteredMenuItems = useMemo(() => {
+    return (currentHotel.menu || []).filter(item => {
+      const matchCat = selectedMenuCategory === 'ALL' || item.category === selectedMenuCategory;
+      const matchSearch = !menuSearchQuery.trim() || 
+        item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(menuSearchQuery.toLowerCase()));
+      return matchCat && matchSearch;
+    });
+  }, [currentHotel, selectedMenuCategory, menuSearchQuery]);
+
   // Handle Add New Food Item
   const handleAddNewDish = (e) => {
     e.preventDefault();
@@ -125,7 +153,7 @@ export default function HotelPortal({
         price: Number(dishPrice),
         category: dishCategory,
         isVeg: dishIsVeg,
-        description: dishDesc.trim() || `${dishName} made fresh with authentic ingredients.`
+        description: dishDesc.trim() || `${dishName} freshly cooked with fine ingredients.`
       });
     }
 
@@ -133,8 +161,18 @@ export default function HotelPortal({
     setDishPrice('');
     setDishDesc('');
     setShowAddDishModal(false);
-    setDishSuccessMsg(`🎉 Successfully added "${dishName}" to ${currentHotel.name}'s live menu!`);
+    setDishSuccessMsg(`🎉 Successfully published "${dishName}" to your live menu!`);
     setTimeout(() => setDishSuccessMsg(''), 4500);
+  };
+
+  // Quick price nudge (+₹10 or -₹10)
+  const handleNudgePrice = (item, delta) => {
+    const currentVal = priceEdits[item.id] !== undefined ? Number(priceEdits[item.id]) : item.price;
+    const nextVal = Math.max(10, currentVal + delta);
+    setPriceEdits({ ...priceEdits, [item.id]: nextVal });
+    if (onUpdateMenuItemPrice) {
+      onUpdateMenuItemPrice(currentHotel.id, item.id, nextVal);
+    }
   };
 
   // Handle Save Price Edit
@@ -166,31 +204,36 @@ export default function HotelPortal({
         coords: [Number(profileLat), Number(profileLng)]
       });
     }
-    setLocationSuccessMsg(`📍 Successfully updated ${profileName}'s exact address & GPS coordinates!`);
+    setLocationSuccessMsg(`📍 Successfully updated ${profileName}'s address & GPS coordinates!`);
     setTimeout(() => setLocationSuccessMsg(''), 4000);
   };
 
   return (
     <div className="portal-page-container">
-      {/* Hotel Portal Header */}
-      <div className="portal-header-card">
+      {/* Merchant Header Hero Card */}
+      <div className="portal-header-card merchant-hero-bg">
         <div className="portal-header-left">
-          <div className="portal-badge-label">
+          <div className="portal-badge-label merchant-glow-badge">
             <Store size={14} />
-            <span>HOTEL & RESTAURANT MERCHANT PORTAL</span>
+            <span>KITCHEN &amp; RESTAURANT MERCHANT SUITE</span>
           </div>
-          <h1 className="portal-main-heading">{currentHotel.name}</h1>
+          <div className="merchant-title-row">
+            <h1 className="portal-main-heading">{currentHotel.name}</h1>
+            <span className="merchant-star-rating">⭐ {currentHotel.rating} (Verified Partner)</span>
+          </div>
           <p className="portal-sub-location">
             <MapPin size={14} className="icon-crimson" />
-            <span>{currentHotel.address} • <strong>{currentHotel.region} Hub</strong></span>
+            <span>{currentHotel.address} • <strong>{currentHotel.region}</strong></span>
             {currentHotel.coords && (
-              <span className="gps-tag ml-2">📍 {currentHotel.coords[0].toFixed(4)}, {currentHotel.coords[1].toFixed(4)}</span>
+              <span className="merchant-coords-chip">
+                📍 {currentHotel.coords[0].toFixed(4)}, {currentHotel.coords[1].toFixed(4)}
+              </span>
             )}
           </p>
         </div>
 
         <div className="portal-header-actions">
-          {/* Audio Chime Unlock Button for Kitchen Tablet */}
+          {/* Audio Chime Unlock Button */}
           <button 
             type="button" 
             className={`btn-audio-toggle ${isAudioUnlocked ? 'audio-unlocked' : ''}`}
@@ -198,15 +241,15 @@ export default function HotelPortal({
               playKitchenChime();
               setIsAudioUnlocked(true);
             }}
-            title={isAudioUnlocked ? "Kitchen chime alerts active" : "Tap once to unlock browser audio for new orders"}
+            title={isAudioUnlocked ? "Kitchen chime alerts active" : "Tap once to enable audio chime for new orders"}
           >
-            <Volume2 size={15} />
-            <span>{isAudioUnlocked ? '🔔 Audio Chime ON' : '🔇 Enable Kitchen Audio'}</span>
+            <Volume2 size={16} />
+            <span>{isAudioUnlocked ? '🔔 Kitchen Audio: ON' : '🔇 Enable Kitchen Chime'}</span>
           </button>
 
-          {/* Switch Hotel Selector */}
+          {/* Switch Outlet Selector */}
           <div className="hotel-select-box">
-            <label>Switch Outlet:</label>
+            <label>Manage Outlet:</label>
             <select 
               value={selectedHotelId} 
               onChange={(e) => setSelectedHotelId(e.target.value)}
@@ -222,6 +265,7 @@ export default function HotelPortal({
 
           {/* Test Order Trigger */}
           <button 
+            type="button"
             className="btn-simulate-order"
             onClick={() => {
               onSimulateNewOrder(currentHotel);
@@ -234,16 +278,16 @@ export default function HotelPortal({
         </div>
       </div>
 
-      {/* Hotel Metrics Row */}
+      {/* KPI Performance Bar */}
       <div className="portal-kpi-grid">
         <div className="kpi-card">
           <div className="kpi-icon-wrap bg-green-subtle">
             <TrendingUp size={22} className="text-green" />
           </div>
           <div className="kpi-details">
-            <span className="kpi-label">Today's Restaurant Sales</span>
+            <span className="kpi-label">Today's Kitchen GMV</span>
             <h3 className="kpi-value">₹{totalRevenue}</h3>
-            <span className="kpi-trend">Live Kitchen GMV</span>
+            <span className="kpi-trend text-green">Live Today</span>
           </div>
         </div>
 
@@ -252,9 +296,9 @@ export default function HotelPortal({
             <ChefHat size={22} className="text-orange" />
           </div>
           <div className="kpi-details">
-            <span className="kpi-label">Active Kitchen Tickets</span>
+            <span className="kpi-label">Active Cooking Tickets</span>
             <h3 className="kpi-value">{activeKOTs.length}</h3>
-            <span className="kpi-trend text-orange">{activeKOTs.filter(o => o.status === 'PREPARING').length} Currently Cooking</span>
+            <span className="kpi-trend text-orange">{activeKOTs.filter(o => o.status === 'PREPARING').length} In Wok/Oven</span>
           </div>
         </div>
 
@@ -263,9 +307,11 @@ export default function HotelPortal({
             <UtensilsCrossed size={22} className="text-blue" />
           </div>
           <div className="kpi-details">
-            <span className="kpi-label">Menu Dishes Count</span>
-            <h3 className="kpi-value">{currentHotel.menu?.length || 0}</h3>
-            <span className="kpi-trend">Available for order</span>
+            <span className="kpi-label">Live Menu Catalog</span>
+            <h3 className="kpi-value">{currentHotel.menu?.length || 0} Dishes</h3>
+            <span className="kpi-trend text-blue">
+              {currentHotel.menu?.filter(m => restaurantStock[m.id] !== false).length || 0} Ready to Serve
+            </span>
           </div>
         </div>
 
@@ -274,37 +320,44 @@ export default function HotelPortal({
             <Clock size={22} className="text-blue" />
           </div>
           <div className="kpi-details">
-            <span className="kpi-label">Average Prep Time</span>
+            <span className="kpi-label">Kitchen Prep Pace</span>
             <h3 className="kpi-value">{currentHotel.deliveryTimeMins || 20} Mins</h3>
-            <span className="kpi-trend text-blue">Pickup Ready</span>
+            <span className="kpi-trend text-blue">Optimal Dispatch</span>
           </div>
         </div>
       </div>
 
-      {/* Restaurant Admin Navigation Tabs */}
-      <div className="rider-subnav-tabs" style={{ marginBottom: '20px' }}>
+      {/* Modern Subnav Tabs */}
+      <div className="merchant-subnav-tabs">
         <button 
-          className={`subnav-tab ${activeTab === 'kots' ? 'active' : ''}`}
+          type="button"
+          className={`merchant-nav-tab ${activeTab === 'kots' ? 'active' : ''}`}
           onClick={() => setActiveTab('kots')}
         >
-          <ChefHat size={16} />
-          <span>Live Kitchen Orders ({activeKOTs.length})</span>
+          <ChefHat size={17} />
+          <span>Live Kitchen KOT Queue</span>
+          {activeKOTs.length > 0 && (
+            <span className="merchant-tab-badge pulse-red">{activeKOTs.length} Orders</span>
+          )}
         </button>
 
         <button 
-          className={`subnav-tab ${activeTab === 'menu' ? 'active' : ''}`}
+          type="button"
+          className={`merchant-nav-tab ${activeTab === 'menu' ? 'active' : ''}`}
           onClick={() => setActiveTab('menu')}
         >
-          <UtensilsCrossed size={16} />
-          <span>Menu & Pricing Management ({currentHotel.menu?.length || 0})</span>
+          <UtensilsCrossed size={17} />
+          <span>Menu &amp; Dish Pricing Studio</span>
+          <span className="merchant-tab-badge secondary">{currentHotel.menu?.length || 0}</span>
         </button>
 
         <button 
-          className={`subnav-tab ${activeTab === 'location' ? 'active' : ''}`}
+          type="button"
+          className={`merchant-nav-tab ${activeTab === 'location' ? 'active' : ''}`}
           onClick={() => setActiveTab('location')}
         >
-          <MapPin size={16} />
-          <span>Restaurant Location & Coordinates</span>
+          <MapPin size={17} />
+          <span>Outlet Address &amp; GPS Setup</span>
         </button>
       </div>
 
@@ -320,29 +373,36 @@ export default function HotelPortal({
         </div>
       )}
 
-      {/* TAB 1: LIVE ORDERS & KITCHEN KOT TICKETS */}
+      {/* TAB 1: LIVE KITCHEN QUEUE */}
       {activeTab === 'kots' && (
         <div className="hotel-portal-layout">
           <div className="kots-column">
             <div className="kots-column-header">
-              <h2>Kitchen Order Tickets (KOT)</h2>
-              <span className="kot-count-pill">{activeKOTs.length} Active Orders</span>
+              <div>
+                <h2>Live Kitchen Order Tickets (KOT)</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                  Orders update in real-time. Sound chime alerts your staff on incoming requests.
+                </p>
+              </div>
+              <span className="kot-count-pill">{activeKOTs.length} Active in Kitchen</span>
             </div>
 
             <div className="kots-list">
               {activeKOTs.length === 0 ? (
                 <div className="kot-empty-state">
-                  <ChefHat size={48} className="text-muted" />
+                  <ChefHat size={54} className="text-muted mb-2" />
                   <h3>No Active Orders Right Now</h3>
-                  <p>Incoming customer orders from Chennai &amp; suburbs will sound a chime and appear here.</p>
+                  <p>Incoming orders from hungry customers in Chennai will chime and appear here instantly.</p>
                   <button 
+                    type="button"
                     className="btn-primary mt-3"
                     onClick={() => {
                       onSimulateNewOrder(currentHotel);
                       playKitchenChime();
                     }}
                   >
-                    Simulate Sample Order
+                    <Sparkles size={16} />
+                    <span>Simulate Incoming Customer Order</span>
                   </button>
                 </div>
               ) : (
@@ -365,11 +425,11 @@ export default function HotelPortal({
                       </div>
 
                       <div className="kot-customer-info">
-                        <strong>Customer: {order.customerName}</strong>
-                        <span>Drop Locality: {order.locality}</span>
+                        <strong>Customer: {order.customerName} ({order.customerPhone})</strong>
+                        <span>Drop Destination: {order.customerAddress || order.address} ({order.locality})</span>
                         {order.cookingNote && (
                           <div className="kot-cooking-instruction">
-                            ⚠️ Note: {order.cookingNote}
+                            ⚠️ Customer Note: {order.cookingNote}
                           </div>
                         )}
                       </div>
@@ -390,25 +450,27 @@ export default function HotelPortal({
                           <strong>₹{order.itemTotal}</strong>
                         </div>
 
-                        {/* Dynamic Action Buttons */}
+                        {/* Action buttons */}
                         <div className="kot-actions-group">
                           {isPlaced && (
                             <button 
+                              type="button"
                               className="btn-kot-action start-cooking"
                               onClick={() => onUpdateOrderStatus(order.orderId, 'PREPARING')}
                             >
-                              <ChefHat size={15} />
+                              <ChefHat size={16} />
                               <span>Accept &amp; Start Cooking</span>
                             </button>
                           )}
 
                           {isPreparing && (
                             <button 
+                              type="button"
                               className="btn-kot-action mark-ready"
                               onClick={() => onUpdateOrderStatus(order.orderId, 'READY_FOR_PICKUP')}
                             >
-                              <CheckCircle size={15} />
-                              <span>Mark Food Ready (Alert Rider)</span>
+                              <CheckCircle size={16} />
+                              <span>Food Ready → Alert Rider</span>
                             </button>
                           )}
 
@@ -430,10 +492,10 @@ export default function HotelPortal({
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="btn-whatsapp-order"
-                            title="Share order directly with kitchen staff or rider on WhatsApp"
+                            title="Share KOT slip directly with kitchen cooks or rider on WhatsApp"
                           >
-                            <MessageCircle size={14} />
-                            <span>WhatsApp KOT</span>
+                            <MessageCircle size={15} />
+                            <span>WhatsApp Slip</span>
                           </a>
                         </div>
                       </div>
@@ -468,6 +530,7 @@ export default function HotelPortal({
                     </div>
 
                     <button 
+                      type="button"
                       className={`stock-toggle-btn ${isItemInStock ? 'in-stock' : 'out-of-stock'}`}
                       onClick={() => onToggleItemStock(item.id)}
                     >
@@ -491,25 +554,52 @@ export default function HotelPortal({
         </div>
       )}
 
-      {/* TAB 2: MENU & DISH PRICING MANAGEMENT */}
+      {/* TAB 2: MENU & DISH PRICING STUDIO */}
       {activeTab === 'menu' && (
         <div className="hotel-menu-management-card">
           <div className="menu-mgmt-top-bar">
             <div>
-              <h2>{currentHotel.name} — Full Menu Catalog</h2>
-              <p>Add new food items, update dish prices in real-time, and control item availability.</p>
+              <h2>{currentHotel.name} — Menu Studio</h2>
+              <p>Add new dishes, modify prices on the fly, and toggle live availability for customers.</p>
             </div>
             <button 
               type="button" 
-              className="btn-primary"
+              className="btn-primary btn-add-dish-top"
               onClick={() => setShowAddDishModal(true)}
             >
-              <Plus size={16} />
-              <span>+ Add New Food Item / Dish</span>
+              <Plus size={18} />
+              <span>+ Add New Food Item</span>
             </button>
           </div>
 
-          {/* Modal / Form to Add New Food Item */}
+          {/* Search & Category Filter Toolbar */}
+          <div className="menu-studio-toolbar">
+            <div className="menu-search-input-wrap">
+              <Search size={16} className="search-icon-muted" />
+              <input 
+                type="text" 
+                placeholder="Search dishes by name or ingredients..." 
+                value={menuSearchQuery}
+                onChange={e => setMenuSearchQuery(e.target.value)}
+                className="menu-search-field"
+              />
+            </div>
+
+            <div className="menu-category-pills">
+              {menuCategories.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`menu-cat-pill ${selectedMenuCategory === cat ? 'active' : ''}`}
+                  onClick={() => setSelectedMenuCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Add Dish Modal */}
           {showAddDishModal && (
             <div className="modal-backdrop animate-fade" onClick={() => setShowAddDishModal(false)}>
               <div className="collect-otp-modal animate-scale" onClick={e => e.stopPropagation()}>
@@ -519,17 +609,17 @@ export default function HotelPortal({
                   </div>
                   <h3>Add New Dish to Menu</h3>
                   <p className="collect-otp-subtitle">
-                    New dish will be immediately visible for customer ordering at {currentHotel.name}.
+                    Publish a delicious new recipe with price and category to {currentHotel.name}.
                   </p>
                 </div>
 
                 <form onSubmit={handleAddNewDish} className="collect-otp-form">
                   <div className="form-group mb-2">
-                    <label className="field-label-bold">Dish / Item Name</label>
+                    <label className="field-label-bold">Dish Name</label>
                     <input 
                       type="text" 
                       className="styled-input" 
-                      placeholder="e.g. Special Chettinad Mutton Sukka" 
+                      placeholder="e.g. Kongu Mutton Sukka or Ghee Roast Dosa" 
                       value={dishName}
                       onChange={e => setDishName(e.target.value)}
                       required 
@@ -537,13 +627,13 @@ export default function HotelPortal({
                     />
                   </div>
 
-                  <div className="form-group-row mb-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-grid-2col mb-2">
                     <div>
-                      <label className="field-label-bold">Price (₹)</label>
+                      <label className="field-label-bold">Selling Price (₹)</label>
                       <input 
                         type="number" 
                         className="styled-input" 
-                        placeholder="e.g. 280" 
+                        placeholder="e.g. 260" 
                         value={dishPrice}
                         onChange={e => setDishPrice(e.target.value)}
                         required 
@@ -557,32 +647,32 @@ export default function HotelPortal({
                         value={dishCategory}
                         onChange={e => setDishCategory(e.target.value)}
                       >
-                        <option value="Biryani & Rice">Biryani & Rice</option>
-                        <option value="Starters & Appetizers">Starters & Appetizers</option>
+                        <option value="Biryani & Rice">Biryani &amp; Rice</option>
+                        <option value="Starters & Appetizers">Starters &amp; Appetizers</option>
                         <option value="South Indian Meals">South Indian Meals</option>
-                        <option value="Tiffin & Dosa">Tiffin & Dosa</option>
-                        <option value="Chinese & Rolls">Chinese & Rolls</option>
-                        <option value="Beverages & Desserts">Beverages & Desserts</option>
+                        <option value="Tiffin & Dosa">Tiffin &amp; Dosa</option>
+                        <option value="Chinese & Rolls">Chinese &amp; Rolls</option>
+                        <option value="Beverages & Desserts">Beverages &amp; Desserts</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="form-group mb-2">
-                    <label className="field-label-bold">Food Type</label>
-                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <label className="field-label-bold">Dietary Classification</label>
+                    <div style={{ display: 'flex', gap: '20px', marginTop: '6px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
                         <input 
                           type="radio" 
-                          name="vegStatus" 
+                          name="vegDiet" 
                           checked={dishIsVeg === false} 
                           onChange={() => setDishIsVeg(false)} 
                         />
                         <span>🍗 Non-Vegetarian</span>
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
                         <input 
                           type="radio" 
-                          name="vegStatus" 
+                          name="vegDiet" 
                           checked={dishIsVeg === true} 
                           onChange={() => setDishIsVeg(true)} 
                         />
@@ -592,11 +682,11 @@ export default function HotelPortal({
                   </div>
 
                   <div className="form-group mb-3">
-                    <label className="field-label-bold">Description / Ingredients</label>
+                    <label className="field-label-bold">Description / Taste Notes</label>
                     <textarea 
                       className="styled-input" 
                       rows={2}
-                      placeholder="e.g. Tender lamb pieces roasted with authentic spices, shallots, and fresh curry leaves."
+                      placeholder="e.g. Cooked slowly with shallots, crushed pepper, and rich spices."
                       value={dishDesc}
                       onChange={e => setDishDesc(e.target.value)}
                     />
@@ -616,7 +706,7 @@ export default function HotelPortal({
                       disabled={!dishName.trim() || !dishPrice}
                     >
                       <Plus size={16} />
-                      <span>Publish Dish</span>
+                      <span>Publish to Menu</span>
                     </button>
                   </div>
                 </form>
@@ -626,30 +716,30 @@ export default function HotelPortal({
 
           {/* Dishes Table */}
           <div className="menu-dishes-table-wrap">
-            <table className="admin-table">
+            <table className="admin-table menu-studio-table">
               <thead>
                 <tr>
-                  <th>Dish Name</th>
+                  <th>Dish &amp; Description</th>
                   <th>Category</th>
-                  <th>Type</th>
-                  <th>Price (₹)</th>
+                  <th>Diet</th>
+                  <th>Price Modifier (₹)</th>
                   <th>Availability</th>
-                  <th>Quick Action</th>
                 </tr>
               </thead>
               <tbody>
-                {currentHotel.menu?.map((item) => {
+                {filteredMenuItems.map((item) => {
                   const isItemInStock = restaurantStock[item.id] !== false;
-                  const isEditing = priceEdits[item.id] !== undefined;
+                  const currentPrice = priceEdits[item.id] !== undefined ? priceEdits[item.id] : item.price;
+                  const isChanged = priceEdits[item.id] !== undefined && Number(priceEdits[item.id]) !== item.price;
 
                   return (
-                    <tr key={item.id}>
+                    <tr key={item.id} className={!isItemInStock ? 'row-sold-out' : ''}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="menu-dish-item-cell">
                           <span className={item.isVeg ? 'veg-badge-mini' : 'nonveg-badge-mini'} />
                           <div>
-                            <strong>{item.name}</strong>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>{item.description || 'Specialty item'}</p>
+                            <strong className="dish-name-label">{item.name}</strong>
+                            <p className="dish-desc-sub">{item.description || 'Prepared fresh on order'}</p>
                           </div>
                         </div>
                       </td>
@@ -657,56 +747,62 @@ export default function HotelPortal({
                         <span className="category-pill-mini">{item.category}</span>
                       </td>
                       <td>
-                        {item.isVeg ? '🥬 Pure Veg' : '🍗 Non-Veg'}
+                        {item.isVeg ? (
+                          <span className="diet-tag veg">🥬 Veg</span>
+                        ) : (
+                          <span className="diet-tag nonveg">🍗 Non-Veg</span>
+                        )}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>₹</span>
-                          <input 
-                            type="number" 
-                            className="inline-price-input"
-                            value={priceEdits[item.id] !== undefined ? priceEdits[item.id] : item.price}
-                            onChange={(e) => setPriceEdits({ ...priceEdits, [item.id]: e.target.value })}
-                            style={{ width: '80px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                          />
-                          {isEditing && (
+                        <div className="price-stepper-box">
+                          <button 
+                            type="button" 
+                            className="btn-stepper minus"
+                            onClick={() => handleNudgePrice(item, -10)}
+                            title="Decrease price by ₹10"
+                          >
+                            −
+                          </button>
+                          <div className="price-input-adornment">
+                            <span>₹</span>
+                            <input 
+                              type="number" 
+                              className="inline-price-input"
+                              value={currentPrice}
+                              onChange={(e) => setPriceEdits({ ...priceEdits, [item.id]: e.target.value })}
+                            />
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn-stepper plus"
+                            onClick={() => handleNudgePrice(item, 10)}
+                            title="Increase price by ₹10"
+                          >
+                            +
+                          </button>
+                          {isChanged && (
                             <button 
                               type="button" 
                               className="btn-save-price-mini"
                               onClick={() => handleSavePrice(item.id)}
-                              title="Save new price"
+                              title="Save Price"
                             >
                               <Save size={13} />
+                              <span>Save</span>
                             </button>
                           )}
                         </div>
                       </td>
                       <td>
                         <button 
-                          className={`stock-toggle-btn ${isItemInStock ? 'in-stock' : 'out-of-stock'}`}
-                          onClick={() => onToggleItemStock(item.id)}
-                        >
-                          {isItemInStock ? (
-                            <>
-                              <CheckCircle size={14} />
-                              <span>In Stock</span>
-                            </>
-                          ) : (
-                            <>
-                              <Package size={14} />
-                              <span>Sold Out</span>
-                            </>
-                          )}
-                        </button>
-                      </td>
-                      <td>
-                        <button 
                           type="button"
-                          className="btn-secondary"
-                          style={{ padding: '4px 10px', fontSize: '12px' }}
+                          className={`stock-toggle-switch ${isItemInStock ? 'in-stock' : 'out-of-stock'}`}
                           onClick={() => onToggleItemStock(item.id)}
                         >
-                          Toggle Stock
+                          <span className="toggle-switch-thumb" />
+                          <span className="toggle-switch-label">
+                            {isItemInStock ? 'In Stock' : 'Sold Out'}
+                          </span>
                         </button>
                       </td>
                     </tr>
@@ -722,14 +818,14 @@ export default function HotelPortal({
       {activeTab === 'location' && (
         <div className="hotel-location-profile-card">
           <div className="section-title-group mb-3">
-            <h2>Restaurant Outlet & Exact GPS Coordinates</h2>
-            <p>Set your exact restaurant location coordinates for the customer map and delivery radius calculation.</p>
+            <h2>Restaurant Profile &amp; Exact GPS Coordinates</h2>
+            <p>Accurate coordinates ensure correct customer delivery radius calculation and interactive map navigation.</p>
           </div>
 
           <form onSubmit={handleSaveLocation} className="hotel-profile-form">
-            <div className="form-grid-2col">
+            <div className="form-grid-2col mb-3">
               <div className="form-group">
-                <label className="field-label-bold">Restaurant Name</label>
+                <label className="field-label-bold">Restaurant Outlet Name</label>
                 <input 
                   type="text" 
                   className="styled-input" 
@@ -740,7 +836,7 @@ export default function HotelPortal({
               </div>
 
               <div className="form-group">
-                <label className="field-label-bold">Target Hub / Region</label>
+                <label className="field-label-bold">Chennai Delivery Hub / Area</label>
                 <select 
                   className="styled-input" 
                   value={profileRegion} 
@@ -760,7 +856,7 @@ export default function HotelPortal({
             </div>
 
             <div className="form-group mb-3">
-              <label className="field-label-bold">Full Street Address</label>
+              <label className="field-label-bold">Full Door &amp; Street Address</label>
               <input 
                 type="text" 
                 className="styled-input" 
@@ -770,29 +866,36 @@ export default function HotelPortal({
               />
             </div>
 
-            <div className="form-grid-2col mb-3">
-              <div className="form-group">
-                <label className="field-label-bold">📍 Latitude Coordinate</label>
-                <input 
-                  type="number" 
-                  step="0.000001" 
-                  className="styled-input" 
-                  value={profileLat} 
-                  onChange={e => setProfileLat(e.target.value)} 
-                  required 
-                />
+            <div className="coordinates-preview-box mb-3">
+              <div className="form-grid-2col">
+                <div className="form-group">
+                  <label className="field-label-bold">📍 Latitude Coordinate</label>
+                  <input 
+                    type="number" 
+                    step="0.000001" 
+                    className="styled-input" 
+                    value={profileLat} 
+                    onChange={e => setProfileLat(e.target.value)} 
+                    required 
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="field-label-bold">📍 Longitude Coordinate</label>
+                  <input 
+                    type="number" 
+                    step="0.000001" 
+                    className="styled-input" 
+                    value={profileLng} 
+                    onChange={e => setProfileLng(e.target.value)} 
+                    required 
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="field-label-bold">📍 Longitude Coordinate</label>
-                <input 
-                  type="number" 
-                  step="0.000001" 
-                  className="styled-input" 
-                  value={profileLng} 
-                  onChange={e => setProfileLng(e.target.value)} 
-                  required 
-                />
+              <div className="coords-live-preview-pill">
+                <span>📍 Live Coordinates: <strong>{Number(profileLat).toFixed(4)}, {Number(profileLng).toFixed(4)}</strong></span>
+                <span className="text-green">✓ Customer Pin Validated</span>
               </div>
             </div>
 
@@ -809,7 +912,7 @@ export default function HotelPortal({
               </div>
 
               <div className="form-group">
-                <label className="field-label-bold">Average Kitchen Prep Time (Mins)</label>
+                <label className="field-label-bold">Kitchen Prep Time (Minutes)</label>
                 <input 
                   type="number" 
                   className="styled-input" 
@@ -820,9 +923,9 @@ export default function HotelPortal({
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ minWidth: '220px' }}>
-              <Save size={16} />
-              <span>Save Restaurant Profile & Coordinates</span>
+            <button type="submit" className="btn-primary btn-save-profile-large">
+              <Save size={18} />
+              <span>Save Restaurant Profile &amp; Coordinates</span>
             </button>
           </form>
         </div>

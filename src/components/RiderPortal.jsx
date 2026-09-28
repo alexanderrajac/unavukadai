@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bike, 
   MapPin, 
@@ -11,7 +11,14 @@ import {
   Power,
   ChevronRight,
   KeyRound,
-  X
+  X,
+  CreditCard,
+  ArrowDownLeft,
+  ArrowUpRight,
+  TrendingUp,
+  Award,
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 
 export default function RiderPortal({
@@ -43,6 +50,54 @@ export default function RiderPortal({
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
+  // Trips currently assigned to this rider
+  const currentRiderId = 'rider-1';
+  const myActiveTrips = orders.filter(
+    o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status !== 'DELIVERED'
+  );
+
+  // Available trips waiting for delivery partner pickup
+  const availableTrips = orders.filter(
+    o => (!o.riderId || o.riderId === '') && o.status !== 'DELIVERED' && o.status !== 'CANCELLED'
+  );
+
+  // Completed trips by this rider
+  const completedTrips = orders.filter(
+    o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status === 'DELIVERED'
+  );
+
+  // Base earnings calculated from delivered trips
+  const deliveredEarnings = completedTrips.reduce((acc, t) => acc + (t.riderEarnings || 65), 0);
+  const todayEarnings = deliveredEarnings > 0 ? deliveredEarnings + 60 : 380;
+
+  // Real-time Rider Wallet State (persisted in localStorage)
+  const [walletBalance, setWalletBalance] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_rider_wallet');
+      return saved ? Number(saved) : 620;
+    } catch {
+      return 620;
+    }
+  });
+
+  const [walletTransactions, setWalletTransactions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_rider_txns');
+      return saved ? JSON.parse(saved) : [
+        { id: 'tx-1', title: 'Trip Payout #UK-4821', type: 'CREDIT', amount: 65, time: '12:35 PM', desc: 'Perungalathur to Peerkankaranai drop' },
+        { id: 'tx-2', title: 'Monsoon Rain Incentive', type: 'CREDIT', amount: 35, time: '01:10 PM', desc: 'Peak weather surge bonus' },
+        { id: 'tx-3', title: 'Customer Doorstep Tip', type: 'CREDIT', amount: 20, time: '01:45 PM', desc: 'Order #UK-4821 Tip' }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawUpiId, setWithdrawUpiId] = useState('8248651695@ybl');
+  const [withdrawAmount, setWithdrawAmount] = useState('300');
+  const [withdrawNotice, setWithdrawNotice] = useState('');
 
   const handleOpenOtpModal = (trip) => {
     setOtpModalTrip(trip);
@@ -93,54 +148,7 @@ export default function RiderPortal({
     }
   };
 
-  // Trips currently assigned to this rider
-  const currentRiderId = 'rider-1';
-  const myActiveTrips = orders.filter(
-    o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status !== 'DELIVERED'
-  );
-
-  // Available trips waiting for delivery partner pickup
-  const availableTrips = orders.filter(
-    o => (!o.riderId || o.riderId === '') && o.status !== 'DELIVERED' && o.status !== 'CANCELLED'
-  );
-
-  // Completed trips by this rider
-  const completedTrips = orders.filter(
-    o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status === 'DELIVERED'
-  );
-
-  // Base earnings calculated from delivered trips
-  const deliveredEarnings = completedTrips.reduce((acc, t) => acc + (t.riderEarnings || 65), 0);
-  const todayEarnings = deliveredEarnings > 0 ? deliveredEarnings + 60 : 380;
-
-  // Real-time Rider Wallet State (persisted in localStorage)
-  const [walletBalance, setWalletBalance] = useState(() => {
-    try {
-      const saved = localStorage.getItem('unavu_rider_wallet');
-      return saved ? Number(saved) : 620;
-    } catch {
-      return 620;
-    }
-  });
-
-  const [walletTransactions, setWalletTransactions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('unavu_rider_txns');
-      return saved ? JSON.parse(saved) : [
-        { id: 'tx-1', title: 'Trip Payout #UK-4821', type: 'CREDIT', amount: 65, time: '12:35 PM', desc: 'Perungalathur to Peerkankaranai drop' },
-        { id: 'tx-2', title: 'Peak Rain Incentive', type: 'CREDIT', amount: 35, time: '01:10 PM', desc: 'Monsoon bonus for South Chennai' },
-        { id: 'tx-3', title: 'Customer Doorstep Tip', type: 'CREDIT', amount: 20, time: '01:45 PM', desc: 'Order #UK-4821 Tip' }
-      ];
-    } catch {
-      return [];
-    }
-  });
-
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
-  const [withdrawUpiId, setWithdrawUpiId] = useState('8248651695@ybl');
-  const [withdrawAmount, setWithdrawAmount] = useState('300');
-  const [withdrawNotice, setWithdrawNotice] = useState('');
-
+  // Instant UPI Cash Out
   const handleWithdrawFunds = (e) => {
     e.preventDefault();
     const amt = Number(withdrawAmount);
@@ -170,13 +178,12 @@ export default function RiderPortal({
   };
 
   // Background GPS Watcher (Hardware GPS with Mobile HTTP Simulation Fallback)
-  React.useEffect(() => {
+  useEffect(() => {
     if (!gpsActive || !isOnline) return;
 
     const isSecure = typeof window !== 'undefined' && (window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
     if (!isSecure) {
-      // Mobile HTTP blocks navigator.geolocation - automatically activate simulation mode
       setGpsMode('simulation');
       return;
     }
@@ -203,8 +210,7 @@ export default function RiderPortal({
           }
         },
         (err) => {
-          console.warn('Browser GPS permission not granted or non-secure origin:', err.message);
-          // Fall back gracefully to simulation mode so app continues working seamlessly
+          console.warn('Browser GPS permission not granted:', err.message);
           setGpsMode('simulation');
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 4000 }
@@ -216,11 +222,10 @@ export default function RiderPortal({
     }
   }, [gpsActive, isOnline, myActiveTrips, onUpdateLocation, riderName]);
 
-  // Route Simulation helper: moves smoothly towards customer drop or along GST road
-  const stepSimulatedPosition = React.useCallback(() => {
+  // Route Simulation helper: moves smoothly towards customer drop
+  const stepSimulatedPosition = useCallback(() => {
     setGpsLat((prevLat) => {
       setGpsLng((prevLng) => {
-        // Small realistic GPS delta (~35-45 meters per step)
         const dLat = (Math.random() * 0.0006) - 0.0001;
         const dLng = (Math.random() * 0.0006) - 0.0001;
         const nextLat = Number((prevLat + dLat).toFixed(5));
@@ -244,7 +249,7 @@ export default function RiderPortal({
   }, [currentRiderId, myActiveTrips, onUpdateLocation, riderName]);
 
   // Auto-Drive Telemetry Loop: emits live simulated GPS every 3 seconds
-  React.useEffect(() => {
+  useEffect(() => {
     if (!autoDriveActive || !isOnline) return;
 
     const interval = setInterval(() => {
@@ -254,53 +259,54 @@ export default function RiderPortal({
     return () => clearInterval(interval);
   }, [autoDriveActive, isOnline, stepSimulatedPosition]);
 
-  // Manual Nudge GPS button
-  const handleSimulateBikeMovement = () => {
-    stepSimulatedPosition();
-  };
-
   return (
     <div className="portal-page-container rider-theme">
-      {/* Rider Header */}
+      {/* Rider Header Hero Card */}
       <div className="portal-header-card rider-header-bg">
         <div className="portal-header-left">
           <div className="portal-badge-label rider-badge">
             <Bike size={14} />
-            <span>DELIVERY PARTNER FLEET APP</span>
+            <span>FLEET PARTNER CAPTAIN APP</span>
           </div>
-          <h1 className="portal-main-heading">{riderName}</h1>
+          <div className="rider-title-row">
+            <h1 className="portal-main-heading">{riderName}</h1>
+            <span className="rider-rating-pill">⭐ 4.9 (Top Rated Captain)</span>
+          </div>
           <p className="portal-sub-location">
-            <span>Primary Zone: <strong>Perungalathur • Vandalur • Mannivakkam Belt</strong></span>
+            <span>Primary Corridor: <strong>Chennai Metros &amp; Suburban Hubs</strong></span>
           </p>
         </div>
 
         <div className="portal-header-actions">
-          {/* Online/Offline Toggle */}
+          {/* Online/Offline Shift Toggle */}
           <button 
+            type="button"
             className={`rider-shift-toggle-btn ${isOnline ? 'online' : 'offline'}`}
             onClick={() => setIsOnline(!isOnline)}
           >
-            <Power size={16} />
-            <span>{isOnline ? 'ONLINE & ACCEPTING TRIPS' : 'OFFLINE'}</span>
+            <Power size={17} />
+            <span>{isOnline ? '🟢 ONLINE & ACCEPTING' : '⚪ OFFLINE (ON BREAK)'}</span>
           </button>
         </div>
       </div>
 
-      {/* Rider Stats Bar with Live Telemetry Mode */}
+      {/* Rider Telemetry Status Bar */}
       <div className="rider-status-bar">
         <div className="status-chip">
           <Zap size={14} className="text-orange" />
-          <span>Vehicle: <strong>Hero Electric Optima (TN-19)</strong></span>
+          <span>Vehicle: <strong>Hero Optima Electric (TN-19)</strong></span>
         </div>
+
         <div className="status-chip">
           <Battery size={14} className="text-green" />
           <span>Battery: <strong>88% (Good for 60 km)</strong></span>
         </div>
+
         <div 
           className="status-chip" 
           onClick={() => setGpsActive(!gpsActive)}
           style={{ cursor: 'pointer' }}
-          title="Click to pause or resume GPS broadcast"
+          title="Click to toggle GPS broadcast"
         >
           <Navigation size={14} className={gpsActive ? 'text-green' : 'text-muted'} />
           <span>
@@ -309,7 +315,7 @@ export default function RiderPortal({
           </span>
         </div>
 
-        {/* Auto-Drive Real-time Telemetry Toggle */}
+        {/* Auto-Drive Simulation Toggle */}
         <button 
           type="button"
           className={`btn-gps-nudge ${autoDriveActive ? 'active-autodrive' : ''}`}
@@ -318,72 +324,99 @@ export default function RiderPortal({
             backgroundColor: autoDriveActive ? '#16a34a' : 'rgba(226, 55, 68, 0.12)',
             color: autoDriveActive ? '#ffffff' : '#e23744',
             border: autoDriveActive ? '1px solid #15803d' : '1px solid rgba(226, 55, 68, 0.3)',
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: 'pointer'
           }}
           title="Continuously broadcasts moving coordinates to customer live map every 3s"
         >
-          {autoDriveActive ? '🟢 Auto-Drive Active (3s ping)' : '🛵 Start Auto-Drive'}
+          {autoDriveActive ? '🟢 Auto-Drive Moving (3s)' : '🛵 Start Auto-Drive'}
         </button>
 
         <button 
           type="button"
           className="btn-gps-nudge"
-          onClick={handleSimulateBikeMovement}
+          onClick={stepSimulatedPosition}
           title="Step bike GPS position once"
         >
           ⚡ Step GPS
         </button>
       </div>
 
-      {/* Tabs */}
+      {/* Subnav Navigation Tabs */}
       <div className="rider-subnav-tabs">
         <button 
+          type="button"
           className={`subnav-tab ${activeTab === 'radar' ? 'active' : ''}`}
           onClick={() => setActiveTab('radar')}
         >
-          <span>Delivery Trips Radar</span>
+          <Bike size={17} />
+          <span>Delivery Radar &amp; Trips</span>
           {availableTrips.length > 0 && (
-            <span className="badge-pulse">{availableTrips.length} New</span>
+            <span className="badge-pulse">{availableTrips.length} Available</span>
           )}
         </button>
 
         <button 
+          type="button"
           className={`subnav-tab ${activeTab === 'earnings' ? 'active' : ''}`}
           onClick={() => setActiveTab('earnings')}
         >
-          <span>💼 Rider Wallet & Earnings</span>
+          <CreditCard size={17} />
+          <span>Rider Wallet &amp; Payouts</span>
           <span className="badge-earning">₹{walletBalance}</span>
         </button>
 
         <button 
+          type="button"
           className={`subnav-tab ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
+          <Clock size={17} />
           <span>Shift History ({completedTrips.length})</span>
         </button>
       </div>
 
+      {/* TAB 1: RADAR & DELIVERY TRIPS */}
       {activeTab === 'radar' && (
         <div className="rider-radar-body">
-          {/* Active Trip currently in progress */}
+          {/* Active Trip in Progress Card */}
           {myActiveTrips.length > 0 && (
             <div className="active-trip-hero-card">
               <div className="active-trip-header">
                 <div className="active-pulse-indicator">
                   <span className="live-dot-pulse"></span>
-                  <span>ACTIVE DELIVERY IN PROGRESS</span>
+                  <span>ACTIVE TRIP IN PROGRESS</span>
                 </div>
                 <div className="active-trip-id">#{myActiveTrips[0].orderId}</div>
+              </div>
+
+              {/* Progress Milestones Tracker */}
+              <div className="rider-order-steps-flow">
+                <div className="flow-step done">
+                  <span className="flow-step-icon">✓</span>
+                  <span>Accepted</span>
+                </div>
+                <div className={`flow-step ${myActiveTrips[0].status === 'OUT_FOR_DELIVERY' ? 'done' : 'current'}`}>
+                  <span className="flow-step-icon">🏪</span>
+                  <span>Kitchen Pickup</span>
+                </div>
+                <div className={`flow-step ${myActiveTrips[0].status === 'OUT_FOR_DELIVERY' ? 'current' : ''}`}>
+                  <span className="flow-step-icon">🛵</span>
+                  <span>On the Way</span>
+                </div>
+                <div className="flow-step">
+                  <span className="flow-step-icon">📍</span>
+                  <span>Doorstep Hand-Off</span>
+                </div>
               </div>
 
               <div className="trip-locations-flow">
                 <div className="trip-flow-point">
                   <div className="point-icon pickup">🏪</div>
                   <div className="point-meta">
-                    <small>PICKUP POINT (HOTEL)</small>
+                    <small>PICKUP POINT (RESTAURANT)</small>
                     <strong>{myActiveTrips[0].restaurantName}</strong>
-                    <span>{myActiveTrips[0].restaurantAddress}</span>
+                    <span>{myActiveTrips[0].restaurantAddress || myActiveTrips[0].restaurantLocality}</span>
                   </div>
                 </div>
 
@@ -393,8 +426,8 @@ export default function RiderPortal({
                   <div className="point-icon drop">📍</div>
                   <div className="point-meta">
                     <small>DELIVERY DESTINATION (CUSTOMER)</small>
-                    <strong>{myActiveTrips[0].customerName} ({myActiveTrips[0].customerPhone})</strong>
-                    <span>{myActiveTrips[0].customerAddress}</span>
+                    <strong>{myActiveTrips[0].customerName} ({myActiveTrips[0].customerPhone || '+91 98401 23456'})</strong>
+                    <span>{myActiveTrips[0].customerAddress || myActiveTrips[0].address}</span>
                   </div>
                 </div>
               </div>
@@ -404,9 +437,10 @@ export default function RiderPortal({
                 {(myActiveTrips[0].status === 'PLACED' || myActiveTrips[0].status === 'PREPARING') && (
                   <div className="kot-trip-prep-notice">
                     <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#64748b' }}>
-                      👨‍🍳 Food is currently being prepared at kitchen. Ride towards {myActiveTrips[0].restaurantName}.
+                      👨‍🍳 Food is being freshly cooked. Ride towards {myActiveTrips[0].restaurantName}.
                     </p>
                     <button 
+                      type="button"
                       className="btn-rider-step pickup"
                       onClick={() => onUpdateOrderStatus(myActiveTrips[0].orderId, 'OUT_FOR_DELIVERY')}
                     >
@@ -418,6 +452,7 @@ export default function RiderPortal({
 
                 {myActiveTrips[0].status === 'READY_FOR_PICKUP' && (
                   <button 
+                    type="button"
                     className="btn-rider-step pickup"
                     onClick={() => onUpdateOrderStatus(myActiveTrips[0].orderId, 'OUT_FOR_DELIVERY')}
                   >
@@ -428,15 +463,17 @@ export default function RiderPortal({
 
                 {myActiveTrips[0].status === 'OUT_FOR_DELIVERY' && (
                   <button 
+                    type="button"
                     className="btn-rider-step deliver"
                     onClick={() => handleOpenOtpModal(myActiveTrips[0])}
                   >
                     <CheckCircle2 size={18} />
-                    <span>Customer Received Order → Collect OTP & Mark Delivered</span>
+                    <span>Customer Received Order → Collect OTP &amp; Mark Delivered</span>
                   </button>
                 )}
 
                 <button 
+                  type="button"
                   className="btn-rider-nav"
                   onClick={() => {
                     const trip = myActiveTrips[0];
@@ -457,7 +494,7 @@ export default function RiderPortal({
                   style={{ textDecoration: 'none' }}
                 >
                   <Phone size={15} />
-                  <span>Call Customer ({myActiveTrips[0].customerPhone})</span>
+                  <span>Call Customer</span>
                 </a>
               </div>
             </div>
@@ -466,21 +503,26 @@ export default function RiderPortal({
           {/* Available Delivery Requests Radar */}
           <div className="available-trips-section">
             <div className="section-title-row">
-              <h3>Available Orders for Pickup in Perungalathur &amp; Vandalur</h3>
-              <span>{availableTrips.length} requests waiting</span>
+              <div>
+                <h3>Available Orders for Pickup (Chennai Hubs)</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                  Tap "Accept Delivery Trip" to lock the delivery and earn guaranteed payout.
+                </p>
+              </div>
+              <span className="available-count-pill">{availableTrips.length} Requests Waiting</span>
             </div>
 
             {!isOnline ? (
               <div className="rider-offline-state">
-                <Power size={36} className="text-muted" />
+                <Power size={42} className="text-muted mb-2" />
                 <h3>You are currently Offline</h3>
-                <p>Toggle your status to ONLINE at the top right to start receiving delivery requests.</p>
+                <p>Toggle your status to ONLINE at the top right to start receiving order pickup pings.</p>
               </div>
             ) : availableTrips.length === 0 ? (
               <div className="rider-empty-trips">
-                <Clock size={36} className="text-muted" />
-                <h3>Searching for nearby food orders...</h3>
-                <p>GPS pinging restaurants across Perungalathur, Vandalur, and Mannivakkam corridor.</p>
+                <Clock size={42} className="text-muted mb-2" />
+                <h3>Scanning for Nearby Food Orders...</h3>
+                <p>Live GPS pinging active restaurants across Chennai metro &amp; suburban kitchens.</p>
               </div>
             ) : (
               <div className="trips-grid">
@@ -489,38 +531,39 @@ export default function RiderPortal({
                     <div className="trip-offer-top">
                       <div className="trip-earning-pill">
                         <small>Guaranteed Payout</small>
-                        <strong>₹{trip.riderEarnings || 60}</strong>
+                        <strong>₹{trip.riderEarnings || 65}</strong>
                       </div>
                       <span className="trip-distance-badge">~2.4 km distance</span>
                     </div>
 
                     <div className="trip-card-places">
                       <div className="place-row">
-                        <MapPin size={14} className="text-orange" />
+                        <MapPin size={15} className="text-orange" />
                         <div>
                           <strong>{trip.restaurantName}</strong>
-                          <p>{trip.restaurantAddress}</p>
+                          <p>{trip.restaurantAddress || trip.locality}</p>
                         </div>
                       </div>
                       <div className="place-row">
-                        <MapPin size={14} className="icon-crimson" />
+                        <MapPin size={15} className="icon-crimson" />
                         <div>
                           <strong>Drop: {trip.locality} Hub</strong>
-                          <p>{trip.customerAddress}</p>
+                          <p>{trip.customerAddress || trip.address}</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="trip-items-preview">
-                      <span>Order #{trip.orderId} • {trip.items.length} items (₹{trip.grandTotal})</span>
+                      <span>Order #{trip.orderId} • {trip.items?.length || 1} items (Bill: ₹{trip.grandTotal})</span>
                     </div>
 
                     <button 
+                      type="button"
                       className="btn-accept-trip"
                       onClick={() => onAcceptTrip(trip.orderId)}
                     >
                       <span>Accept Delivery Trip</span>
-                      <ChevronRight size={16} />
+                      <ChevronRight size={17} />
                     </button>
                   </div>
                 ))}
@@ -530,31 +573,32 @@ export default function RiderPortal({
         </div>
       )}
 
-      {/* Rider Wallet & Earnings View */}
+      {/* TAB 2: RIDER WALLET & FAST PAYOUTS */}
       {activeTab === 'earnings' && (
         <div className="rider-earnings-body">
-          {/* Main Wallet Balance Card */}
-          <div className="earnings-hero-card wallet-hero-card">
+          {/* Main Wallet Hero Card */}
+          <div className="wallet-hero-card">
             <div className="wallet-hero-top">
               <div>
-                <span className="earnings-hero-caption">💼 Live Rider Wallet Balance</span>
+                <span className="earnings-hero-caption">💼 Live Captain Wallet Balance</span>
                 <h2 className="earnings-hero-amount">₹{walletBalance}</h2>
-                <small className="wallet-auto-sub">Instant transfers to Bank UPI • 0% Fee</small>
+                <small className="wallet-auto-sub">Instant Bank Payouts via UPI • Zero Platform Deductions</small>
               </div>
               <button 
                 type="button" 
                 className="btn-withdraw-upi"
                 onClick={() => setIsWithdrawModalOpen(true)}
               >
-                ⚡ Withdraw to UPI
+                <Zap size={16} />
+                <span>⚡ Instant UPI Cashout</span>
               </button>
             </div>
 
             <div className="earnings-breakdown-chips">
-              <span className="chip">Shift Fares: ₹{deliveredEarnings || 320}</span>
-              <span className="chip">Surge / Rain Bonus: ₹35</span>
+              <span className="chip">Delivered Today: {completedTrips.length} Trips</span>
+              <span className="chip">Trip Fares: ₹{deliveredEarnings || 320}</span>
+              <span className="chip">Rain Surge: ₹35</span>
               <span className="chip">Customer Tips: ₹20</span>
-              <span className="chip">Deliveries Today: {completedTrips.length}</span>
             </div>
           </div>
 
@@ -564,11 +608,11 @@ export default function RiderPortal({
             </div>
           )}
 
-          {/* Daily Milestone Target */}
+          {/* Daily Milestone Target Progress */}
           <div className="daily-target-card">
             <div className="target-header">
-              <span>Daily Target Progress (₹800 goal)</span>
-              <strong>{Math.min(100, Math.round((walletBalance / 800) * 100))}%</strong>
+              <span>Daily Target Progress (₹800 Goal)</span>
+              <strong>{Math.min(100, Math.round((walletBalance / 800) * 100))}% Completed</strong>
             </div>
             <div className="progress-bar-track">
               <div 
@@ -576,14 +620,17 @@ export default function RiderPortal({
                 style={{ width: `${Math.min(100, Math.round((walletBalance / 800) * 100))}%` }}
               ></div>
             </div>
-            <small>Complete 2 more trips in Chennai suburbs to earn an extra ₹150 daily milestone bonus!</small>
+            <small>Complete 2 more deliveries in your hub to unlock an extra ₹150 milestone bonus!</small>
           </div>
 
-          {/* Rider Wallet Transaction Ledger */}
+          {/* Wallet Transaction Ledger */}
           <div className="wallet-ledger-card">
             <div className="ledger-header">
-              <h3>📜 Wallet Transaction History</h3>
-              <span>{walletTransactions.length} events logged</span>
+              <div>
+                <h3>📜 Wallet Activity &amp; Payout Statement</h3>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>Real-time credited trips and instant UPI withdrawals</span>
+              </div>
+              <span className="ledger-badge-count">{walletTransactions.length} Events</span>
             </div>
 
             <div className="ledger-transactions-list">
@@ -591,7 +638,7 @@ export default function RiderPortal({
                 <div key={tx.id} className="ledger-row">
                   <div className="ledger-left">
                     <span className={`ledger-type-icon ${tx.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                      {tx.type === 'CREDIT' ? '↓' : '↑'}
+                      {tx.type === 'CREDIT' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                     </span>
                     <div>
                       <strong>{tx.title}</strong>
@@ -609,24 +656,41 @@ export default function RiderPortal({
         </div>
       )}
 
-      {/* Trip History View */}
+      {/* TAB 3: SHIFT DELIVERY HISTORY */}
       {activeTab === 'history' && (
         <div className="rider-history-body">
-          <h3>Completed Trips Today</h3>
+          <div className="section-title-row mb-3">
+            <div>
+              <h3>Completed Deliveries Today</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                All trips verified at customer doorstep with OTP.
+              </p>
+            </div>
+            <span className="badge-pulse green">{completedTrips.length} Delivered</span>
+          </div>
+
           <div className="history-list">
-            {completedTrips.map((t) => (
-              <div key={t.orderId} className="history-card">
-                <div className="history-main">
-                  <strong>#{t.orderId} - {t.restaurantName}</strong>
-                  <p>Delivered to: {t.customerAddress} ({t.locality})</p>
-                  <small>Completed • Paid via UPI</small>
-                </div>
-                <div className="history-payout">
-                  <strong>+₹{t.riderEarnings || 60}</strong>
-                  <span className="text-green">Delivered on-time</span>
-                </div>
+            {completedTrips.length === 0 ? (
+              <div className="kot-empty-state">
+                <Clock size={40} className="text-muted mb-2" />
+                <h4>No Completed Trips Yet</h4>
+                <p>Accept an order from the radar and complete delivery to see your shift history.</p>
               </div>
-            ))}
+            ) : (
+              completedTrips.map((t) => (
+                <div key={t.orderId} className="history-card">
+                  <div className="history-main">
+                    <strong>#{t.orderId} — {t.restaurantName}</strong>
+                    <p>Delivered to: {t.customerAddress || t.address} ({t.locality})</p>
+                    <small>Doorstep Verified • Customer Paid: ₹{t.grandTotal}</small>
+                  </div>
+                  <div className="history-payout">
+                    <strong>+₹{t.riderEarnings || 65}</strong>
+                    <span className="text-green">✓ Credited to Wallet</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -636,6 +700,7 @@ export default function RiderPortal({
         <div className="modal-backdrop animate-fade" onClick={() => setOtpModalTrip(null)}>
           <div className="collect-otp-modal animate-scale" onClick={(e) => e.stopPropagation()}>
             <button 
+              type="button"
               className="modal-close-icon" 
               onClick={() => setOtpModalTrip(null)}
               aria-label="Close"
@@ -649,7 +714,7 @@ export default function RiderPortal({
               </div>
               <h3>Collect Delivery OTP</h3>
               <p className="collect-otp-subtitle">
-                Ask customer <strong>{otpModalTrip.customerName}</strong> for the 4-digit PIN displayed on their live order tracking screen.
+                Ask customer <strong>{otpModalTrip.customerName}</strong> for the 4-digit PIN displayed on their live order screen.
               </p>
             </div>
 
@@ -664,11 +729,11 @@ export default function RiderPortal({
               </div>
               <div className="otp-summary-row">
                 <span>Delivery Address:</span>
-                <span>{otpModalTrip.customerAddress}</span>
+                <span>{otpModalTrip.customerAddress || otpModalTrip.address}</span>
               </div>
               <div className="otp-summary-row highlight">
-                <span>Rider Earnings for Trip:</span>
-                <strong className="text-green">+₹{otpModalTrip.riderEarnings || 60}</strong>
+                <span>Captain Payout for Trip:</span>
+                <strong className="text-green">+₹{otpModalTrip.riderEarnings || 65}</strong>
               </div>
             </div>
 
@@ -693,7 +758,7 @@ export default function RiderPortal({
 
               {/* Zero External SMS Help & Auto-fill hint */}
               <div className="otp-bypass-hint">
-                <span>💡 Customer's PIN on screen: <strong>{otpModalTrip.deliveryOtp || '4821'}</strong> (Master bypass: <strong>1234</strong>)</span>
+                <span>💡 Customer PIN: <strong>{otpModalTrip.deliveryOtp || '4821'}</strong> (Bypass: <strong>1234</strong>)</span>
                 <button 
                   type="button" 
                   className="btn-quick-fill-rider-otp"
@@ -721,7 +786,7 @@ export default function RiderPortal({
                   ) : (
                     <>
                       <CheckCircle2 size={18} />
-                      <span>Verify OTP & Mark Delivered</span>
+                      <span>Verify OTP &amp; Mark Delivered</span>
                     </>
                   )}
                 </button>
@@ -731,11 +796,12 @@ export default function RiderPortal({
         </div>
       )}
 
-      {/* Rider Instant UPI Withdrawal Modal */}
+      {/* Instant UPI Cashout Modal */}
       {isWithdrawModalOpen && (
         <div className="modal-backdrop animate-fade" onClick={() => setIsWithdrawModalOpen(false)}>
           <div className="collect-otp-modal animate-scale" onClick={e => e.stopPropagation()}>
             <button 
+              type="button"
               className="modal-close-icon" 
               onClick={() => setIsWithdrawModalOpen(false)}
               aria-label="Close"
@@ -744,25 +810,46 @@ export default function RiderPortal({
             </button>
 
             <div className="collect-otp-header">
-              <div className="collect-otp-icon-wrap" style={{ background: 'rgba(22, 163, 74, 0.1)' }}>
+              <div className="collect-otp-icon-wrap" style={{ background: 'rgba(34, 197, 94, 0.12)' }}>
                 <Zap size={28} className="text-green" />
               </div>
-              <h3>Instant Rider UPI Cash Out</h3>
+              <h3>Instant Rider UPI Cashout</h3>
               <p className="collect-otp-subtitle">
-                Withdraw earnings instantly to your bank account via UPI. Zero payout deduction fees.
+                Transfer your earnings instantly to your bank account via UPI. Instant settlement, 0% fee.
               </p>
             </div>
 
             <form onSubmit={handleWithdrawFunds} className="collect-otp-form">
               <div className="form-group mb-2">
-                <label className="field-label-bold">Available Wallet Balance</label>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#16a34a', margin: '4px 0 8px 0' }}>
+                <label className="field-label-bold">Available Balance to Cashout</label>
+                <div style={{ fontSize: '26px', fontWeight: '900', color: '#16a34a', margin: '4px 0 10px 0' }}>
                   ₹{walletBalance}
                 </div>
               </div>
 
+              {/* Quick Preset Amount Buttons */}
+              <div className="quick-withdraw-chips mb-2">
+                {[100, 250, 500].filter(v => v <= walletBalance).map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    className="quick-chip-btn"
+                    onClick={() => setWithdrawAmount(String(val))}
+                  >
+                    ₹{val}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="quick-chip-btn max"
+                  onClick={() => setWithdrawAmount(String(walletBalance))}
+                >
+                  All (₹{walletBalance})
+                </button>
+              </div>
+
               <div className="form-group mb-2">
-                <label className="field-label-bold">Transfer to UPI ID / VPA</label>
+                <label className="field-label-bold">Your UPI ID / Virtual Payment Address</label>
                 <input 
                   type="text" 
                   className="styled-input" 
@@ -774,11 +861,11 @@ export default function RiderPortal({
               </div>
 
               <div className="form-group mb-3">
-                <label className="field-label-bold">Withdraw Amount (₹)</label>
+                <label className="field-label-bold">Cashout Amount (₹)</label>
                 <input 
                   type="number" 
                   className="styled-input" 
-                  placeholder="e.g. 300"
+                  placeholder="Enter amount"
                   value={withdrawAmount}
                   onChange={e => setWithdrawAmount(e.target.value)}
                   min={1}
@@ -797,12 +884,11 @@ export default function RiderPortal({
                 </button>
                 <button 
                   type="submit" 
-                  className="btn-primary flex-1"
-                  style={{ backgroundColor: '#16a34a', borderColor: '#15803d' }}
+                  className="btn-primary flex-1 btn-confirm-cashout"
                   disabled={!withdrawAmount || Number(withdrawAmount) > walletBalance}
                 >
-                  <Zap size={16} />
-                  <span>Transfer ₹{withdrawAmount || 0}</span>
+                  <Send size={16} />
+                  <span>Transfer ₹{withdrawAmount || 0} to UPI</span>
                 </button>
               </div>
             </form>
