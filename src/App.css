@@ -9173,5 +9173,20 @@
   margin-top: 1px;
 }
 
+.auto-always-pill {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-left: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+
 
 

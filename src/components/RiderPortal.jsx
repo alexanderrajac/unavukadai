@@ -34,8 +34,8 @@ export default function RiderPortal({
 
   // Live GPS Broadcast State & Telemetry Mode
   const [gpsActive, setGpsActive] = useState(true);
-  const [gpsMode, setGpsMode] = useState('detecting'); // 'hardware' | 'simulation'
-  const [autoDriveActive, setAutoDriveActive] = useState(false);
+  const [gpsMode, setGpsMode] = useState('simulation'); // 'hardware' | 'simulation'
+  const [autoDriveActive, setAutoDriveActive] = useState(true);
   const [gpsLat, setGpsLat] = useState(() => {
     const lat = parseFloat(riderLocation?.lat);
     return isFinite(lat) && lat !== 0 ? lat : 12.9056;
@@ -278,14 +278,16 @@ export default function RiderPortal({
         </div>
 
         <div className="portal-header-actions">
-          {/* Online/Offline Shift Toggle */}
+          {/* Always Online Shift Status */}
           <button 
             type="button"
             className={`rider-shift-toggle-btn ${isOnline ? 'online' : 'offline'}`}
             onClick={() => setIsOnline(!isOnline)}
+            title="Rider is automatically set to ONLINE and accepting incoming trips"
           >
             <Power size={17} />
-            <span>{isOnline ? '🟢 ONLINE & ACCEPTING' : '⚪ OFFLINE (ON BREAK)'}</span>
+            <span>{isOnline ? '🟢 ALWAYS ONLINE & ACCEPTING' : '⚪ OFFLINE (ON BREAK)'}</span>
+            {isOnline && <span className="auto-always-pill">Auto-Active</span>}
           </button>
         </div>
       </div>

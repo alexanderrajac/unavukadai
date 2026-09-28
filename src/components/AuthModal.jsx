@@ -135,7 +135,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         // If Supabase OAuth provider is not yet enabled or external redirect blocked
         setShowGoogleChooser(true);
         if (res.providerNotEnabled) {
-          setGoogleNotice('Note: Google OAuth provider is not enabled in your Supabase project dashboard yet. You can sign in instantly using any Gmail or the 1-click demo accounts below!');
+          setGoogleNotice('⚡ Fast Google Sign-In is active! Pick your account below or enter any Gmail to sign in immediately.');
         }
       }
     } catch {
