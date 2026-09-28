@@ -9278,6 +9278,512 @@
   background: rgba(66, 133, 244, 0.04);
 }
 
+/* ==========================================================================
+   Rider 1-Trip Limit, Role Isolation & Master Admin Users & Governance
+   ========================================================================== */
+
+/* Active Trip Lock Banner in Rider Portal */
+.active-trip-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px solid #f59e0b;
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  color: #92400e;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+}
+
+.active-trip-lock-banner .lock-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f59e0b;
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.active-trip-lock-banner .lock-banner-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.active-trip-lock-banner .lock-banner-text strong {
+  font-weight: 800;
+  color: #78350f;
+}
+
+.card-locked {
+  opacity: 0.72;
+  filter: grayscale(0.25);
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
+  position: relative;
+}
+
+.card-locked::after {
+  content: '🔒 Trip in progress';
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+}
+
+/* Dedicated Role Header Bars for strict isolation */
+.merchant-role-bar,
+.rider-role-bar,
+.admin-role-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 999;
+}
+
+.merchant-role-bar {
+  background: linear-gradient(90deg, #9a3412 0%, #c2410c 100%);
+  color: #fff7ed;
+  border-bottom: 2px solid #ea580c;
+}
+
+.rider-role-bar {
+  background: linear-gradient(90deg, #065f46 0%, #047857 100%);
+  color: #ecfdf5;
+  border-bottom: 2px solid #10b981;
+}
+
+.admin-role-bar {
+  background: linear-gradient(90deg, #1e1b4b 0%, #312e81 100%);
+  color: #e0e7ff;
+  border-bottom: 2px solid #6366f1;
+}
+
+.role-bar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.03em;
+}
+
+.role-bar-badge strong {
+  color: #ffffff;
+}
+
+.btn-role-logout {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-role-logout:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Master Admin: Users & Roles Management Tab */
+.admin-users-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.users-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.user-stat-card {
+  background: var(--bg-surface-elevated, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-subtle, 0 1px 3px rgba(0,0,0,0.04));
+}
+
+.user-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-stat-label {
+  font-size: 11.5px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+
+.user-stat-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+}
+
+.users-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--bg-surface-elevated, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 18px;
+}
+
+.users-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 280px;
+}
+
+.users-search-input-wrap .search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.users-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 36px;
+  font-size: 13px;
+  border: 1px solid var(--border-light, #cbd5e1);
+  border-radius: var(--radius-sm, 8px);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.users-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.role-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-pill-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-pill-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.filter-pill-btn.active {
+  background: #1e293b;
+  color: #ffffff;
+  border-color: #1e293b;
+}
+
+/* Master Users Table */
+.admin-table-container {
+  background: var(--bg-surface-elevated, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-md, 10px);
+  overflow-x: auto;
+  box-shadow: var(--shadow-subtle, 0 1px 3px rgba(0,0,0,0.04));
+}
+
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.admin-users-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 12px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.admin-users-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.admin-users-table tr:hover {
+  background: #fbfcfe;
+}
+
+.admin-users-table tr.row-suspended {
+  background: #fff5f5;
+  opacity: 0.85;
+}
+
+.user-profile-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar-circle {
+  width: 40px;
+  height: 40px;
+  background: #f1f5f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.user-identity-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-full-name {
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.self-tag {
+  font-size: 10px;
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.user-email-text {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.user-created-date {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.user-contact-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-phone {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.contact-badge-subtext {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+/* Role select input with badge styling */
+.role-select-input {
+  appearance: none;
+  -webkit-appearance: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.role-badge-customer {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #d8b4fe;
+}
+
+.role-badge-merchant {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.role-badge-rider {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
+.role-badge-admin {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.status-cell-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pill-active {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.pill-suspended {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.btn-toggle-status {
+  background: none;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle-status:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.btn-launch-portal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-launch-portal:hover {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.role-security-explainer {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md, 10px);
+  padding: 20px;
+}
+
+.role-explainer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.explainer-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.explainer-item strong {
+  display: block;
+  font-size: 13px;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.explainer-item p {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 992px) {
+  .users-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .role-explainer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 
 

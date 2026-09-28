@@ -12,7 +12,15 @@ import {
   CreditCard,
   Trash2,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Users,
+  UserCheck,
+  UserX,
+  Search,
+  ArrowRight,
+  ExternalLink,
+  ShieldCheck,
+  UserPlus
 } from 'lucide-react';
 import { COUPONS, RESTAURANTS } from '../data/mockData';
 import AdminFleetRadarMap from './AdminFleetRadarMap';
@@ -25,11 +33,22 @@ export default function AdminPortal({
   riderLocations = {},
   settings = { merchantUpi: '8248651695-3@ybl', merchantName: 'Unavukadai Express' },
   onUpdateSettings,
-  onResetOrders
+  onResetOrders,
+  usersList = [],
+  onUpdateUserRole = () => {},
+  onToggleUserStatus = () => {},
+  currentUser,
+  onSwitchPortal = () => {}
 }) {
   const [filterLocality, setFilterLocality] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'promos' | 'restaurants' | 'fleet' | 'settings'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'promos' | 'restaurants' | 'fleet' | 'settings' | 'users'
+
+  // User Management State
+  const [userSearch, setUserSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL'); // 'ALL' | 'customer' | 'restaurant' | 'rider' | 'admin'
+  const [statusFilterUser, setStatusFilterUser] = useState('ALL');
+  const [roleChangeSuccessMsg, setRoleChangeSuccessMsg] = useState('');
 
   // Settings State
   const [upiIdInput, setUpiIdInput] = useState(settings?.merchantUpi || '8248651695-3@ybl');
@@ -75,6 +94,19 @@ export default function AdminPortal({
     const matchLoc = filterLocality === 'ALL' ? true : o.locality === filterLocality;
     const matchStat = statusFilter === 'ALL' ? true : o.status === statusFilter;
     return matchLoc && matchStat;
+  });
+
+  // Filtered users for master governance
+  const filteredUsers = usersList.filter(u => {
+    const q = userSearch.toLowerCase().trim();
+    const matchQuery = !q || (
+      u.name?.toLowerCase().includes(q) || 
+      u.email?.toLowerCase().includes(q) || 
+      u.phone?.toLowerCase().includes(q)
+    );
+    const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
+    const matchStatus = statusFilterUser === 'ALL' || u.status === statusFilterUser;
+    return matchQuery && matchRole && matchStatus;
   });
 
   const handleCreateCoupon = (e) => {
@@ -189,6 +221,13 @@ export default function AdminPortal({
           onClick={() => setActiveTab('fleet')}
         >
           <span>🛰️ Live Fleet GPS Radar</span>
+        </button>
+
+        <button 
+          className={`subnav-tab ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          <span>👥 Master Users &amp; Roles ({usersList.length})</span>
         </button>
 
         <button 
@@ -534,6 +573,299 @@ export default function AdminPortal({
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Master Users & Roles Governance */}
+      {activeTab === 'users' && (
+        <div className="admin-users-section animate-fade">
+          {/* Role Stats Row */}
+          <div className="users-stats-grid">
+            <div className="user-stat-card">
+              <div className="user-stat-icon bg-blue-subtle text-blue">
+                <Users size={20} />
+              </div>
+              <div className="user-stat-info">
+                <span className="user-stat-label">Total Accounts</span>
+                <span className="user-stat-val">{usersList.length}</span>
+              </div>
+            </div>
+
+            <div className="user-stat-card">
+              <div className="user-stat-icon bg-orange-subtle text-orange">
+                <span style={{ fontSize: '1.25rem' }}>👨‍🍳</span>
+              </div>
+              <div className="user-stat-info">
+                <span className="user-stat-label">Merchants / Kitchens</span>
+                <span className="user-stat-val">{usersList.filter(u => u.role === 'restaurant').length}</span>
+              </div>
+            </div>
+
+            <div className="user-stat-card">
+              <div className="user-stat-icon bg-green-subtle text-green">
+                <span style={{ fontSize: '1.25rem' }}>🛵</span>
+              </div>
+              <div className="user-stat-info">
+                <span className="user-stat-label">Fleet Riders</span>
+                <span className="user-stat-val">{usersList.filter(u => u.role === 'rider').length}</span>
+              </div>
+            </div>
+
+            <div className="user-stat-card">
+              <div className="user-stat-icon bg-purple-subtle text-purple">
+                <span style={{ fontSize: '1.25rem' }}>🍲</span>
+              </div>
+              <div className="user-stat-info">
+                <span className="user-stat-label">Foodie Customers</span>
+                <span className="user-stat-val">{usersList.filter(u => u.role === 'customer').length}</span>
+              </div>
+            </div>
+
+            <div className="user-stat-card">
+              <div className="user-stat-icon bg-red-subtle text-red">
+                <ShieldCheck size={20} />
+              </div>
+              <div className="user-stat-info">
+                <span className="user-stat-label">Master Admins</span>
+                <span className="user-stat-val">{usersList.filter(u => u.role === 'admin').length}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Flash Feedback Message */}
+          {roleChangeSuccessMsg && (
+            <div className="admin-success-banner animate-fade" style={{ marginBottom: '1rem' }}>
+              <CheckCircle2 size={18} />
+              <span>{roleChangeSuccessMsg}</span>
+            </div>
+          )}
+
+          {/* User Filter Controls Bar */}
+          <div className="admin-filter-bar users-filter-bar">
+            <div className="users-search-input-wrap">
+              <Search size={16} className="search-icon" />
+              <input 
+                type="text"
+                placeholder="Search by name, email or phone..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="users-search-input"
+              />
+              {userSearch && (
+                <button type="button" className="clear-search-btn" onClick={() => setUserSearch('')}>
+                  &times;
+                </button>
+              )}
+            </div>
+
+            <div className="role-filter-pills">
+              <button 
+                type="button" 
+                className={`filter-pill-btn ${roleFilter === 'ALL' ? 'active' : ''}`}
+                onClick={() => setRoleFilter('ALL')}
+              >
+                All Roles ({usersList.length})
+              </button>
+              <button 
+                type="button" 
+                className={`filter-pill-btn ${roleFilter === 'restaurant' ? 'active' : ''}`}
+                onClick={() => setRoleFilter('restaurant')}
+              >
+                👨‍🍳 Merchants ({usersList.filter(u => u.role === 'restaurant').length})
+              </button>
+              <button 
+                type="button" 
+                className={`filter-pill-btn ${roleFilter === 'rider' ? 'active' : ''}`}
+                onClick={() => setRoleFilter('rider')}
+              >
+                🛵 Riders ({usersList.filter(u => u.role === 'rider').length})
+              </button>
+              <button 
+                type="button" 
+                className={`filter-pill-btn ${roleFilter === 'customer' ? 'active' : ''}`}
+                onClick={() => setRoleFilter('customer')}
+              >
+                🍲 Customers ({usersList.filter(u => u.role === 'customer').length})
+              </button>
+              <button 
+                type="button" 
+                className={`filter-pill-btn ${roleFilter === 'admin' ? 'active' : ''}`}
+                onClick={() => setRoleFilter('admin')}
+              >
+                🛡️ Admins ({usersList.filter(u => u.role === 'admin').length})
+              </button>
+            </div>
+
+            <div className="status-select-wrap">
+              <select 
+                value={statusFilterUser}
+                onChange={(e) => setStatusFilterUser(e.target.value)}
+                className="admin-select"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active Accounts</option>
+                <option value="SUSPENDED">Suspended Accounts</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="admin-table-container">
+            <table className="admin-users-table">
+              <thead>
+                <tr>
+                  <th>User &amp; Contact</th>
+                  <th>Contact Info</th>
+                  <th>Assigned Portal Role</th>
+                  <th>Account Status</th>
+                  <th>Portal Access Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="empty-table-cell">
+                      <div className="empty-table-state">
+                        <Users size={32} />
+                        <p>No registered users found matching your filters.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const isSelf = currentUser && (currentUser.id === u.id || currentUser.email?.toLowerCase() === u.email?.toLowerCase());
+                    const roleBadgeClass = 
+                      u.role === 'admin' ? 'role-badge-admin' :
+                      u.role === 'restaurant' ? 'role-badge-merchant' :
+                      u.role === 'rider' ? 'role-badge-rider' : 'role-badge-customer';
+
+                    const roleLabel = 
+                      u.role === 'admin' ? '🛡️ Master Admin' :
+                      u.role === 'restaurant' ? '👨‍🍳 Merchant' :
+                      u.role === 'rider' ? '🛵 Rider' : '🍲 Customer';
+
+                    const portalTarget = 
+                      u.role === 'restaurant' ? 'hotel' :
+                      u.role === 'rider' ? 'rider' :
+                      u.role === 'admin' ? 'admin' : 'customer';
+
+                    return (
+                      <tr key={u.id} className={u.status === 'SUSPENDED' ? 'row-suspended' : ''}>
+                        {/* User info */}
+                        <td>
+                          <div className="user-profile-cell">
+                            <div className="user-avatar-circle">
+                              {u.role === 'restaurant' ? '👨‍🍳' : u.role === 'rider' ? '🛵' : u.role === 'admin' ? '🛡️' : '🍲'}
+                            </div>
+                            <div className="user-identity-text">
+                              <span className="user-full-name">
+                                {u.name}
+                                {isSelf && <span className="self-tag">(You)</span>}
+                              </span>
+                              <span className="user-email-text">{u.email}</span>
+                              <span className="user-created-date">Registered: {u.createdAt || 'Recent'}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Contact */}
+                        <td>
+                          <div className="user-contact-cell">
+                            <span className="contact-phone">{u.phone || 'No phone registered'}</span>
+                            <span className="contact-badge-subtext">Verified ID: {u.id}</span>
+                          </div>
+                        </td>
+
+                        {/* Role Dropdown */}
+                        <td>
+                          <div className="role-change-control">
+                            <select 
+                              value={u.role}
+                              onChange={(e) => {
+                                const newR = e.target.value;
+                                onUpdateUserRole(u.id, newR);
+                                setRoleChangeSuccessMsg(`✅ Role for ${u.name} updated to ${newR.toUpperCase()}! Portal permissions synchronized.`);
+                                setTimeout(() => setRoleChangeSuccessMsg(''), 4000);
+                              }}
+                              className={`role-select-input ${roleBadgeClass}`}
+                            >
+                              <option value="customer">🍲 Customer (Foodie App)</option>
+                              <option value="restaurant">👨‍🍳 Merchant (Kitchen App)</option>
+                              <option value="rider">🛵 Fleet Rider (Captain App)</option>
+                              <option value="admin">🛡️ Master Admin (HQ Console)</option>
+                            </select>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td>
+                          <div className="status-cell-wrap">
+                            <span className={`status-pill-badge ${u.status === 'ACTIVE' ? 'pill-active' : 'pill-suspended'}`}>
+                              {u.status === 'ACTIVE' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                              <span>{u.status}</span>
+                            </span>
+                            {!isSelf && (
+                              <button 
+                                type="button" 
+                                className="btn-toggle-status"
+                                onClick={() => {
+                                  onToggleUserStatus(u.id);
+                                  setRoleChangeSuccessMsg(`Status updated for ${u.name}`);
+                                  setTimeout(() => setRoleChangeSuccessMsg(''), 3000);
+                                }}
+                              >
+                                {u.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Launch Portal */}
+                        <td>
+                          <button 
+                            type="button"
+                            className="btn-launch-portal"
+                            onClick={() => onSwitchPortal(portalTarget)}
+                            title={`Inspect ${roleLabel} Portal`}
+                          >
+                            <span>Inspect {roleLabel}</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Security & Access Isolation Note */}
+          <div className="admin-card role-security-explainer" style={{ marginTop: '2rem' }}>
+            <div className="card-header-styled">
+              <div className="card-icon-wrap bg-blue-subtle">
+                <ShieldAlert size={20} className="text-blue" />
+              </div>
+              <div>
+                <h3 className="card-title">Role-Based Access Control (RBAC) &amp; Trip Concurrency Rules</h3>
+                <p className="card-subtitle">Active security and isolation policies enforced platform-wide</p>
+              </div>
+            </div>
+            <div className="role-explainer-grid">
+              <div className="explainer-item">
+                <strong>🔒 Strict Role Isolation:</strong>
+                <p>When merchants sign up or log in, they are locked exclusively into the Restaurant Kitchen Portal. Riders are restricted to the Delivery Captain Portal, and customers to the Food Delivery App. Only Master Admin accounts have platform-wide portal switching authority.</p>
+              </div>
+              <div className="explainer-item">
+                <strong>🛵 Rider 1-Trip Concurrency Enforcement:</strong>
+                <p>Riders can only have one active trip at any time. When a trip is accepted, all other available orders are instantly locked with warning banners until the current order is marked DELIVERED.</p>
+              </div>
+              <div className="explainer-item">
+                <strong>⚡ Instant Role Re-assignment:</strong>
+                <p>Changing any user's role in this table immediately updates their live session and isolates their permissions in real time.</p>
               </div>
             </div>
           </div>

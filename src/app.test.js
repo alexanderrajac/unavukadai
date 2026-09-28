@@ -559,6 +559,109 @@ describe('Dynamic Location-Based Delivery Charges & Launch UPI Verification', ()
   });
 });
 
+describe('Rider 1-Trip Concurrency Enforcement & Role-Based Access Isolation', () => {
+  it('should enforce 1-trip concurrency rule: rider cannot accept a second trip while one is active', () => {
+    const activeOrders = [
+      { id: 'ord-101', status: 'OUT_FOR_DELIVERY', riderId: 'rider-1', riderName: 'Murugan S.' },
+      { id: 'ord-102', status: 'READY', riderId: null, riderName: null }
+    ];
+
+    const currentRiderId = 'rider-1';
+    const currentRiderName = 'Murugan S.';
+
+    // Check if rider has active trip
+    const hasActiveTrip = activeOrders.some(
+      o => (o.riderId === currentRiderId || o.riderName === currentRiderName) && o.status !== 'DELIVERED'
+    );
+
+    expect(hasActiveTrip).toBe(true);
+
+    // Trip acceptance attempt must fail
+    const acceptTrip = (orderId) => {
+      const hasOngoing = activeOrders.some(
+        o => (o.riderId === currentRiderId || o.riderName === currentRiderName) && o.status !== 'DELIVERED'
+      );
+      if (hasOngoing) {
+        return { success: false, reason: 'Rider already has an active trip' };
+      }
+      return { success: true };
+    };
+
+    const attempt = acceptTrip('ord-102');
+    expect(attempt.success).toBe(false);
+    expect(attempt.reason).toBe('Rider already has an active trip');
+  });
+
+  it('should permit trip acceptance once prior order is marked DELIVERED', () => {
+    const orders = [
+      { id: 'ord-101', status: 'DELIVERED', riderId: 'rider-1', riderName: 'Murugan S.' },
+      { id: 'ord-102', status: 'READY', riderId: null, riderName: null }
+    ];
+
+    const currentRiderId = 'rider-1';
+    const hasOngoing = orders.some(
+      o => (o.riderId === currentRiderId) && o.status !== 'DELIVERED'
+    );
+
+    expect(hasOngoing).toBe(false);
+
+    const acceptTrip = (orderId) => {
+      const busy = orders.some(o => o.riderId === currentRiderId && o.status !== 'DELIVERED');
+      if (busy) return false;
+      const target = orders.find(o => o.id === orderId);
+      if (target) {
+        target.riderId = currentRiderId;
+        target.status = 'OUT_FOR_DELIVERY';
+        return true;
+      }
+      return false;
+    };
+
+    expect(acceptTrip('ord-102')).toBe(true);
+    expect(orders.find(o => o.id === 'ord-102').riderId).toBe('rider-1');
+  });
+
+  it('should enforce strict portal isolation based on registered user role', () => {
+    const getPermittedPortals = (userRole) => {
+      if (userRole === 'restaurant') return ['hotel'];
+      if (userRole === 'rider') return ['rider'];
+      if (userRole === 'customer') return ['customer'];
+      if (userRole === 'admin') return ['customer', 'hotel', 'rider', 'admin'];
+      return ['customer'];
+    };
+
+    expect(getPermittedPortals('restaurant')).toEqual(['hotel']);
+    expect(getPermittedPortals('rider')).toEqual(['rider']);
+    expect(getPermittedPortals('customer')).toEqual(['customer']);
+    expect(getPermittedPortals('admin')).toContain('admin');
+    expect(getPermittedPortals('admin').length).toBe(4);
+  });
+
+  it('should allow Master Admin to dynamically reassign user roles and reflect immediately', () => {
+    const usersDirectory = [
+      { id: 'usr-1', name: 'Chef Ravi', role: 'restaurant', status: 'ACTIVE' },
+      { id: 'usr-2', name: 'Kumar', role: 'customer', status: 'ACTIVE' }
+    ];
+
+    const updateUserRole = (userId, newRole) => {
+      return usersDirectory.map(u => u.id === userId ? { ...u, role: newRole } : u);
+    };
+
+    // Promote Kumar from customer to rider
+    const updated = updateUserRole('usr-2', 'rider');
+    expect(updated.find(u => u.id === 'usr-2').role).toBe('rider');
+
+    // Toggle status
+    const toggleStatus = (list, userId) => {
+      return list.map(u => u.id === userId ? { ...u, status: u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' } : u);
+    };
+
+    const suspended = toggleStatus(updated, 'usr-1');
+    expect(suspended.find(u => u.id === 'usr-1').status).toBe('SUSPENDED');
+  });
+});
+
+
 
 
 

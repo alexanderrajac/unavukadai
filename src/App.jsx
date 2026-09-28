@@ -322,6 +322,7 @@ export default function App() {
         email: 'alexanderrajac@gmail.com',
         phone: '+91 98401 23456',
         avatar: '👨‍💻',
+        role: 'customer',
         authProvider: 'google',
         isVerified: true
       };
@@ -331,11 +332,82 @@ export default function App() {
         email: 'alexanderrajac@gmail.com',
         phone: '+91 98401 23456',
         avatar: '👨‍💻',
+        role: 'customer',
         authProvider: 'google',
         isVerified: true
       };
     }
   });
+
+  // Master Registered Users Directory & Roles
+  const INITIAL_USERS = [
+    {
+      id: 'usr-admin-1',
+      name: 'Master Admin (HQ)',
+      email: 'admin@unavukadai.com',
+      phone: '+91 98400 11111',
+      role: 'admin',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
+    {
+      id: 'usr-merchant-1',
+      name: 'Chef Sundaram (Junior Kuppanna)',
+      email: 'kuppanna.kitchen@gmail.com',
+      phone: '+91 98401 22222',
+      role: 'restaurant',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
+    {
+      id: 'usr-rider-1',
+      name: 'Murugan S. (Fleet Captain)',
+      email: 'murugan.rider@gmail.com',
+      phone: '+91 98765 43210',
+      role: 'rider',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
+    {
+      id: 'usr-cust-1',
+      name: 'Alexander Raja',
+      email: 'alexanderrajac@gmail.com',
+      phone: '+91 98401 23456',
+      role: 'customer',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    }
+  ];
+
+  const [usersList, setUsersList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_registered_users');
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    } catch {
+      return INITIAL_USERS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('unavu_registered_users', JSON.stringify(usersList));
+  }, [usersList]);
+
+  const handleUpdateUserRole = (userId, newRole) => {
+    setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    const targetUser = usersList.find(u => u.id === userId);
+    if (user && targetUser && (user.id === userId || user.email?.toLowerCase() === targetUser.email?.toLowerCase())) {
+      const updatedUser = { ...user, role: newRole };
+      setUser(updatedUser);
+      if (newRole === 'restaurant') setCurrentPortal('hotel');
+      else if (newRole === 'rider') setCurrentPortal('rider');
+      else if (newRole === 'admin') setCurrentPortal('admin');
+      else setCurrentPortal('customer');
+    }
+  };
+
+  const handleToggleUserStatus = (userId) => {
+    setUsersList(prev => prev.map(u => u.id === userId ? { ...u, status: u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' } : u));
+  };
 
   useEffect(() => {
     if (user) {
@@ -348,18 +420,55 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('unavu_user');
+    setCurrentPortal('customer');
   };
 
   const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    if (userData?.role === 'restaurant') {
+    // Check if user already exists in master registered users directory
+    const existing = usersList.find(u => u.email?.toLowerCase() === userData.email?.toLowerCase());
+    let effectiveRole = userData.role || 'customer';
+
+    if (existing) {
+      effectiveRole = existing.role;
+    } else {
+      const newUserRecord = {
+        id: 'usr-' + Date.now(),
+        name: userData.name || userData.email.split('@')[0],
+        email: userData.email,
+        phone: userData.phone || '+91 98401 23456',
+        role: effectiveRole,
+        status: 'ACTIVE',
+        createdAt: '28 Sep, 2026'
+      };
+      setUsersList(prev => [...prev, newUserRecord]);
+    }
+
+    const updatedUser = { ...userData, role: effectiveRole };
+    setUser(updatedUser);
+
+    // Strict Role-Based Portal Routing
+    if (effectiveRole === 'restaurant') {
       setCurrentPortal('hotel');
-    } else if (userData?.role === 'rider') {
+    } else if (effectiveRole === 'rider') {
       setCurrentPortal('rider');
+    } else if (effectiveRole === 'admin') {
+      setCurrentPortal('admin');
     } else {
       setCurrentPortal('customer');
     }
   };
+
+  // Strict Role Route Guard: non-admins are locked strictly to their respective app portal
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === 'restaurant' && currentPortal !== 'hotel') {
+      setCurrentPortal('hotel');
+    } else if (user.role === 'rider' && currentPortal !== 'rider') {
+      setCurrentPortal('rider');
+    } else if (user.role === 'customer' && currentPortal !== 'customer') {
+      setCurrentPortal('customer');
+    }
+  }, [user, currentPortal]);
 
   // Saved Addresses State & Settings
   const INITIAL_SAVED_ADDRESSES = [
@@ -565,7 +674,18 @@ export default function App() {
 
   const handleAcceptTrip = (orderId) => {
     const existingOrder = orders.find(o => o.orderId === orderId);
-    if (!existingOrder) return;
+    if (!existingOrder) return false;
+
+    // Strict 1-Trip Limit: Rider cannot take multiple concurrent trips!
+    const activeTrip = orders.find(o => 
+      (o.riderId === 'rider-1' || o.riderName === 'Murugan S.') && 
+      o.status !== 'DELIVERED'
+    );
+
+    if (activeTrip) {
+      alert(`⚠️ Rider Trip Concurrency Rule: You already have active trip #${activeTrip.orderId} in progress. You must complete doorstep delivery and verify OTP for #${activeTrip.orderId} before accepting another trip.`);
+      return false;
+    }
 
     // Transition status to OUT_FOR_DELIVERY if ready, otherwise assign rider while cooking
     const targetStatus = existingOrder.status === 'READY_FOR_PICKUP' ? 'OUT_FOR_DELIVERY' : existingOrder.status;
@@ -586,6 +706,7 @@ export default function App() {
       return o;
     }));
     updateOrderStatusApi(orderId, targetStatus, riderDetails);
+    return true;
   };
 
   const handleSimulateNewOrder = (hotel) => {
@@ -704,7 +825,7 @@ export default function App() {
 
   return (
     <div className="app-root">
-      {/* Universal Multi-Portal Switcher Bar */}
+      {/* Universal Multi-Portal Switcher Bar (Role Sensitive) */}
       <PortalSwitcher
         currentPortal={currentPortal}
         setCurrentPortal={setCurrentPortal}
@@ -712,6 +833,9 @@ export default function App() {
         pendingKitchenOrdersCount={pendingKitchenOrdersCount}
         availableRiderTripsCount={availableRiderTripsCount}
         totalOrdersCount={orders.length}
+        user={user}
+        onLogout={handleLogout}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
 
       {/* 1. CUSTOMER PORTAL */}
@@ -963,6 +1087,11 @@ export default function App() {
           settings={settings}
           onUpdateSettings={handleUpdateSettings}
           onResetOrders={handleResetOrders}
+          usersList={usersList}
+          onUpdateUserRole={handleUpdateUserRole}
+          onToggleUserStatus={handleToggleUserStatus}
+          currentUser={user}
+          onSwitchPortal={setCurrentPortal}
         />
       )}
     </div>

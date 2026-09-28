@@ -18,7 +18,9 @@ import {
   TrendingUp,
   Award,
   ShieldCheck,
-  Send
+  Send,
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function RiderPortal({
@@ -514,6 +516,22 @@ export default function RiderPortal({
               <span className="available-count-pill">{availableTrips.length} Requests Waiting</span>
             </div>
 
+            {/* 1-Trip Concurrency Enforcement Banner */}
+            {myActiveTrips.length > 0 && (
+              <div className="active-trip-lock-banner animate-fade mb-3">
+                <div className="lock-icon-circle">
+                  <Lock size={18} />
+                </div>
+                <div className="lock-content">
+                  <strong>Active Delivery in Progress (1-Trip Limit Enforced)</strong>
+                  <p>
+                    You are currently delivering Order <strong>#{myActiveTrips[0].orderId}</strong> for <strong>{myActiveTrips[0].restaurantName}</strong>. 
+                    Finish this delivery and verify doorstep OTP before accepting additional trips.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {!isOnline ? (
               <div className="rider-offline-state">
                 <Power size={42} className="text-muted mb-2" />
@@ -529,7 +547,7 @@ export default function RiderPortal({
             ) : (
               <div className="trips-grid">
                 {availableTrips.map((trip) => (
-                  <div key={trip.orderId} className="trip-offer-card">
+                  <div key={trip.orderId} className={`trip-offer-card ${myActiveTrips.length > 0 ? 'card-locked' : ''}`}>
                     <div className="trip-offer-top">
                       <div className="trip-earning-pill">
                         <small>Guaranteed Payout</small>
@@ -561,11 +579,25 @@ export default function RiderPortal({
 
                     <button 
                       type="button"
-                      className="btn-accept-trip"
-                      onClick={() => onAcceptTrip(trip.orderId)}
+                      className={`btn-accept-trip ${myActiveTrips.length > 0 ? 'disabled' : ''}`}
+                      disabled={myActiveTrips.length > 0}
+                      onClick={() => {
+                        if (myActiveTrips.length > 0) return;
+                        onAcceptTrip(trip.orderId);
+                      }}
+                      title={myActiveTrips.length > 0 ? `Deliver trip #${myActiveTrips[0].orderId} first` : 'Accept this delivery'}
                     >
-                      <span>Accept Delivery Trip</span>
-                      <ChevronRight size={17} />
+                      {myActiveTrips.length > 0 ? (
+                        <>
+                          <Lock size={15} />
+                          <span>Locked: Trip #{myActiveTrips[0].orderId} Active</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Accept Delivery Trip</span>
+                          <ChevronRight size={17} />
+                        </>
+                      )}
                     </button>
                   </div>
                 ))}

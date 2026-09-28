@@ -70,7 +70,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     setTimeout(() => {
       setIsLoading(false);
       const extractedName = emailName || customEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      const roleAvatar = selectedRole === 'restaurant' ? '👨‍🍳' : selectedRole === 'rider' ? '🛵' : '🍲';
+      const roleAvatar = selectedRole === 'restaurant' ? '👨‍🍳' : selectedRole === 'rider' ? '🛵' : selectedRole === 'admin' ? '🛡️' : '🍲';
       onLoginSuccess({
         name: extractedName,
         email: customEmail.toLowerCase(),
@@ -171,9 +171,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
       const res = await verifyWhatsAppOtpApi(phone, enteredOtp);
       setIsLoading(false);
       if (res.success && res.verified) {
-        const roleAvatar = selectedRole === 'restaurant' ? '👨‍🍳' : selectedRole === 'rider' ? '🛵' : '🍲';
+        const roleAvatar = selectedRole === 'restaurant' ? '👨‍🍳' : selectedRole === 'rider' ? '🛵' : selectedRole === 'admin' ? '🛡️' : '🍲';
         onLoginSuccess({
-          name: name || (selectedRole === 'restaurant' ? 'Kitchen Merchant' : selectedRole === 'rider' ? 'Delivery Partner' : 'Gourmet Foodie'),
+          name: name || (selectedRole === 'restaurant' ? 'Kitchen Merchant' : selectedRole === 'rider' ? 'Delivery Partner' : selectedRole === 'admin' ? 'System Administrator' : 'Gourmet Foodie'),
           phone: '+91 ' + phone,
           avatar: roleAvatar,
           authProvider: 'whatsapp',
@@ -237,6 +237,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               onClick={() => setSelectedRole('rider')}
             >
               <span>🛵 Rider App</span>
+            </button>
+            <button 
+              type="button" 
+              className={`auth-role-pill-btn ${selectedRole === 'admin' ? 'active' : ''}`}
+              onClick={() => setSelectedRole('admin')}
+            >
+              <span>🛡️ Master Admin</span>
             </button>
           </div>
         </div>
