@@ -35,6 +35,7 @@ import {
   subscribeToLiveUpdates,
   sendOrderWhatsAppNotificationApi
 } from './services/api';
+import { supabase, signOutSupabase } from './services/supabaseAuth';
 import './App.css';
 
 export default function App() {
@@ -420,6 +421,8 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('unavu_user');
+    localStorage.removeItem('unavu_oauth_intended_role');
+    signOutSupabase();
     setCurrentPortal('customer');
   };
 
@@ -457,6 +460,53 @@ export default function App() {
       setCurrentPortal('customer');
     }
   };
+
+  // Listen to Supabase Google OAuth session changes on redirect
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const supaUser = session.user;
+        const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
+        const googleEmail = supaUser.email;
+        const savedRole = localStorage.getItem('unavu_oauth_intended_role') || 'customer';
+
+        handleLoginSuccess({
+          name: googleName,
+          email: googleEmail,
+          phone: supaUser.phone || '+91 98401 23456',
+          avatar: savedRole === 'restaurant' ? '👨‍🍳' : savedRole === 'rider' ? '🛵' : savedRole === 'admin' ? '🛡️' : '🍲',
+          authProvider: 'google',
+          role: savedRole,
+          isVerified: true
+        });
+        localStorage.removeItem('unavu_oauth_intended_role');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+        const supaUser = session.user;
+        const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
+        const googleEmail = supaUser.email;
+        const savedRole = localStorage.getItem('unavu_oauth_intended_role') || 'customer';
+
+        handleLoginSuccess({
+          name: googleName,
+          email: googleEmail,
+          phone: supaUser.phone || '+91 98401 23456',
+          avatar: savedRole === 'restaurant' ? '👨‍🍳' : savedRole === 'rider' ? '🛵' : savedRole === 'admin' ? '🛡️' : '🍲',
+          authProvider: 'google',
+          role: savedRole,
+          isVerified: true
+        });
+        localStorage.removeItem('unavu_oauth_intended_role');
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   // Strict Role Route Guard: non-admins are locked strictly to their respective app portal
   useEffect(() => {

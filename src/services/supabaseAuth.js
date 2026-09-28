@@ -36,25 +36,18 @@ export async function checkGoogleProviderStatus() {
   }
 }
 
-// Trigger Supabase Google OAuth login flow safely without crashing to raw 400 error page
-export async function signInWithGoogleOAuth() {
+// Trigger Supabase Google OAuth login flow with callback to current origin
+export async function signInWithGoogleOAuth(options = {}) {
   try {
-    // Step 1: Pre-check if Google provider is enabled in Supabase Dashboard
-    const status = await checkGoogleProviderStatus();
-    if (!status.enabled) {
-      console.warn('Supabase Google OAuth provider is not enabled in dashboard:', status.msg);
-      return { 
-        success: false, 
-        providerNotEnabled: true, 
-        error: status.msg || 'Unsupported provider: provider is not enabled'
-      };
-    }
-
-    // Step 2: If enabled, proceed with Supabase OAuth redirect
+    const redirectUrl = options.redirectTo || (typeof window !== 'undefined' ? window.location.origin : '');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
       }
     });
 
