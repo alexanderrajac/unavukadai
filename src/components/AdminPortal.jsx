@@ -1,26 +1,11 @@
-import React, { useState } from 'react';
-import { 
-  ShieldAlert, 
-  TrendingUp, 
-  ShoppingBag, 
-  Bike, 
-  Percent, 
-  Check, 
-  Plus, 
-  SlidersHorizontal,
-  MapPin,
-  CreditCard,
-  Trash2,
-  AlertTriangle,
-  CheckCircle2,
-  Users,
-  UserCheck,
-  UserX,
-  Search,
-  ArrowRight,
-  ExternalLink,
-  ShieldCheck,
-  UserPlus
+import React, { useState, useMemo } from 'react';
+import {
+  ShieldAlert, TrendingUp, ShoppingBag, Bike, Percent, Check, Plus,
+  SlidersHorizontal, MapPin, CreditCard, Trash2, AlertTriangle,
+  CheckCircle2, Users, UserCheck, UserX, Search, ArrowRight,
+  ExternalLink, ShieldCheck, UserPlus, Bell, BarChart2, Settings,
+  Home, Package, X, ChevronDown, RefreshCw, Eye, Edit3,
+  IndianRupee, Zap, Activity, Power, Store, Tag
 } from 'lucide-react';
 import { COUPONS, RESTAURANTS } from '../data/mockData';
 import AdminFleetRadarMap from './AdminFleetRadarMap';
@@ -40,837 +25,545 @@ export default function AdminPortal({
   currentUser,
   onSwitchPortal = () => {}
 }) {
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [filterLocality, setFilterLocality] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'promos' | 'restaurants' | 'fleet' | 'settings' | 'users'
-
-  // User Management State
   const [userSearch, setUserSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('ALL'); // 'ALL' | 'customer' | 'restaurant' | 'rider' | 'admin'
+  const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilterUser, setStatusFilterUser] = useState('ALL');
-  const [roleChangeSuccessMsg, setRoleChangeSuccessMsg] = useState('');
-
-  // Settings State
+  const [roleMsg, setRoleMsg] = useState('');
   const [upiIdInput, setUpiIdInput] = useState(settings?.merchantUpi || '8248651695-3@ybl');
   const [merchantNameInput, setMerchantNameInput] = useState(settings?.merchantName || 'Unavukadai Express');
   const [settingsSavedMsg, setSettingsSavedMsg] = useState('');
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
-
-  const handleSaveSettings = (e) => {
-    e.preventDefault();
-    if (onUpdateSettings) {
-      onUpdateSettings({
-        merchantUpi: upiIdInput.trim(),
-        merchantName: merchantNameInput.trim()
-      });
-    }
-    setSettingsSavedMsg('✅ Merchant UPI updated successfully!');
-    setTimeout(() => setSettingsSavedMsg(''), 3000);
-  };
-
-  const handleConfirmReset = () => {
-    if (onResetOrders) {
-      onResetOrders();
-    }
-    setIsResetConfirmOpen(false);
-    setResetSuccessMsg('🧹 All test orders successfully cleared. System ready for Sunday launch!');
-    setTimeout(() => setResetSuccessMsg(''), 4500);
-  };
-
-  // Promo code form state
+  const [isResetConfirm, setIsResetConfirm] = useState(false);
+  const [resetMsg, setResetMsg] = useState('');
   const [newCode, setNewCode] = useState('');
   const [newRegion, setNewRegion] = useState('Perungalathur');
   const [newDiscount, setNewDiscount] = useState(50);
   const [newMaxDiscount, setNewMaxDiscount] = useState(120);
+  const [orderSearch, setOrderSearch] = useState('');
 
-  // Platform metrics
-  const totalGMV = orders.reduce((acc, o) => acc + o.grandTotal, 0);
-  const platformRevenue = Math.round(totalGMV * 0.15) + (orders.length * 5); // 15% commission + ₹5 platform fee
-  const activeOrdersCount = orders.filter(o => o.status !== 'DELIVERED').length;
+  // ── Metrics ────────────────────────────────────────────────────────────────
+  const totalGMV = orders.reduce((a, o) => a + (o.grandTotal || 0), 0);
+  const platformRevenue = Math.round(totalGMV * 0.15) + orders.length * 5;
+  const activeOrdersCount = orders.filter(o => !['DELIVERED','CANCELLED'].includes(o.status)).length;
+  const completedToday = orders.filter(o => o.status === 'DELIVERED').length;
 
-  // Filtered orders
-  const filteredOrders = orders.filter(o => {
-    const matchLoc = filterLocality === 'ALL' ? true : o.locality === filterLocality;
-    const matchStat = statusFilter === 'ALL' ? true : o.status === statusFilter;
-    return matchLoc && matchStat;
-  });
+  // ── Filtered data ──────────────────────────────────────────────────────────
+  const filteredOrders = useMemo(() => orders.filter(o => {
+    const ml = filterLocality === 'ALL' || o.locality === filterLocality;
+    const ms = statusFilter === 'ALL' || o.status === statusFilter;
+    const mq = !orderSearch.trim() || o.orderId?.toLowerCase().includes(orderSearch.toLowerCase()) || o.customerName?.toLowerCase().includes(orderSearch.toLowerCase());
+    return ml && ms && mq;
+  }), [orders, filterLocality, statusFilter, orderSearch]);
 
-  // Filtered users for master governance
-  const filteredUsers = usersList.filter(u => {
+  const filteredUsers = useMemo(() => usersList.filter(u => {
     const q = userSearch.toLowerCase().trim();
-    const matchQuery = !q || (
-      u.name?.toLowerCase().includes(q) || 
-      u.email?.toLowerCase().includes(q) || 
-      u.phone?.toLowerCase().includes(q)
-    );
-    const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
-    const matchStatus = statusFilterUser === 'ALL' || u.status === statusFilterUser;
-    return matchQuery && matchRole && matchStatus;
-  });
+    const mq = !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.phone?.replace(/\D/g,'').includes(q);
+    const mr = roleFilter === 'ALL' || u.role === roleFilter;
+    const ms = statusFilterUser === 'ALL' || u.status === statusFilterUser;
+    return mq && mr && ms;
+  }), [usersList, userSearch, roleFilter, statusFilterUser]);
+
+  const handleSaveSettings = (e) => {
+    e.preventDefault();
+    if (onUpdateSettings) onUpdateSettings({ merchantUpi: upiIdInput.trim(), merchantName: merchantNameInput.trim() });
+    setSettingsSavedMsg('✅ Merchant UPI updated!');
+    setTimeout(() => setSettingsSavedMsg(''), 3000);
+  };
+
+  const handleConfirmReset = () => {
+    if (onResetOrders) onResetOrders();
+    setIsResetConfirm(false);
+    setResetMsg('🧹 All orders cleared. Ready for launch!');
+    setTimeout(() => setResetMsg(''), 4500);
+  };
 
   const handleCreateCoupon = (e) => {
     e.preventDefault();
     if (!newCode.trim()) return;
-    onAddCoupon({
-      code: newCode.trim().toUpperCase(),
-      region: newRegion,
-      discountPercent: Number(newDiscount),
-      maxDiscount: Number(newMaxDiscount),
-      minOrder: 199,
-      label: `${newDiscount}% OFF up to ₹${newMaxDiscount} (${newRegion})`
-    });
+    onAddCoupon({ code: newCode.trim().toUpperCase(), region: newRegion, discountPercent: Number(newDiscount), maxDiscount: Number(newMaxDiscount), minOrder: 199, label: `${newDiscount}% OFF up to ₹${newMaxDiscount} (${newRegion})` });
     setNewCode('');
   };
 
+  const statusColor = (s) => ({ PLACED:'#f97316', PREPARING:'#3b82f6', READY_FOR_PICKUP:'#8b5cf6', OUT_FOR_DELIVERY:'#10b981', DELIVERED:'#22c55e', CANCELLED:'#ef4444' }[s] || '#64748b');
+
+  const TABS = [
+    { id: 'dashboard', icon: <Home size={17}/>, label: 'Dashboard' },
+    { id: 'orders', icon: <Package size={17}/>, label: 'Orders', badge: activeOrdersCount || null },
+    { id: 'users', icon: <Users size={17}/>, label: 'Users', badge: usersList.length || null },
+    { id: 'restaurants', icon: <Store size={17}/>, label: 'Partners' },
+    { id: 'fleet', icon: <Bike size={17}/>, label: 'Fleet' },
+    { id: 'promos', icon: <Tag size={17}/>, label: 'Promos' },
+    { id: 'settings', icon: <Settings size={17}/>, label: 'Settings' },
+  ];
+
   return (
-    <div className="portal-page-container admin-theme">
-      {/* Admin Header */}
-      <div className="portal-header-card admin-header-bg">
-        <div className="portal-header-left">
-          <div className="portal-badge-label admin-badge">
-            <ShieldAlert size={14} />
-            <span>UNAVUKADAI SUPER ADMIN CONSOLE</span>
-          </div>
-          <h1 className="portal-main-heading">Platform Governance &amp; Regional Dispatcher</h1>
-          <p className="portal-sub-location">
-            <span>Operating Hubs: <strong>Perungalathur • Vandalur • Mannivakkam Suburban Network</strong></span>
-          </p>
-        </div>
+    <div className="adm-shell">
 
-        <div className="portal-header-actions">
-          <div className="admin-status-pill">
-            <span className="live-dot-pulse"></span>
-            <span>All Systems Operational (99.98% Uptime)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="portal-kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap bg-green-subtle">
-            <TrendingUp size={22} className="text-green" />
-          </div>
-          <div className="kpi-details">
-            <span className="kpi-label">Gross Merchandise Value (GMV)</span>
-            <h3 className="kpi-value">₹{totalGMV}</h3>
-            <span className="kpi-trend text-green">+24.8% vs last week</span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap bg-purple-subtle">
-            <Percent size={22} className="text-purple" />
-          </div>
-          <div className="kpi-details">
-            <span className="kpi-label">Platform Net Commission</span>
-            <h3 className="kpi-value">₹{platformRevenue}</h3>
-            <span className="kpi-trend">15% Take Rate + ₹5 Fee</span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap bg-orange-subtle">
-            <ShoppingBag size={22} className="text-orange" />
-          </div>
-          <div className="kpi-details">
-            <span className="kpi-label">Active Suburban Orders</span>
-            <h3 className="kpi-value">{activeOrdersCount}</h3>
-            <span className="kpi-trend text-orange">Across 3 Hubs</span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrap bg-blue-subtle">
-            <Bike size={22} className="text-blue" />
-          </div>
-          <div className="kpi-details">
-            <span className="kpi-label">On-Duty Fleet</span>
-            <h3 className="kpi-value">18 Riders</h3>
-            <span className="kpi-trend text-blue">Avg 19 min Delivery SLA</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Admin Tabs */}
-      <div className="rider-subnav-tabs">
-        <button 
-          className={`subnav-tab ${activeTab === 'orders' ? 'active' : ''}`}
-          onClick={() => setActiveTab('orders')}
-        >
-          <span>Live Orders Dispatcher ({orders.length})</span>
-        </button>
-
-        <button 
-          className={`subnav-tab ${activeTab === 'promos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('promos')}
-        >
-          <span>Regional Offers &amp; Promo Codes</span>
-        </button>
-
-        <button 
-          className={`subnav-tab ${activeTab === 'restaurants' ? 'active' : ''}`}
-          onClick={() => setActiveTab('restaurants')}
-        >
-          <span>Suburban Restaurant Partners ({RESTAURANTS.length})</span>
-        </button>
-
-        <button 
-          className={`subnav-tab ${activeTab === 'fleet' ? 'active' : ''}`}
-          onClick={() => setActiveTab('fleet')}
-        >
-          <span>🛰️ Live Fleet GPS Radar</span>
-        </button>
-
-        <button 
-          className={`subnav-tab ${activeTab === 'users' ? 'active' : ''}`}
-          onClick={() => setActiveTab('users')}
-        >
-          <span>👥 Master Users &amp; Roles ({usersList.length})</span>
-        </button>
-
-        <button 
-          className={`subnav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <span>⚙️ Launch &amp; Payment Settings</span>
-        </button>
-      </div>
-
-      {/* Tab: Orders Dispatcher */}
-      {activeTab === 'orders' && (
-        <div className="admin-orders-section">
-          {/* Controls Bar */}
-          <div className="admin-filter-bar">
-            <div className="filter-group">
-              <SlidersHorizontal size={15} />
-              <span>Zone Filter:</span>
-              <select 
-                value={filterLocality} 
-                onChange={(e) => setFilterLocality(e.target.value)}
-                className="admin-select"
-              >
-                <option value="ALL">All Suburban Zones</option>
-                <option value="Perungalathur">Perungalathur Hub</option>
-                <option value="Vandalur">Vandalur Hub</option>
-                <option value="Mannivakkam">Mannivakkam Hub</option>
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <span>Status Filter:</span>
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="admin-select"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="PLACED">Placed</option>
-                <option value="PREPARING">Preparing</option>
-                <option value="READY_FOR_PICKUP">Ready for Pickup</option>
-                <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-                <option value="DELIVERED">Delivered</option>
-              </select>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="adm-header">
+        <div className="adm-header-left">
+          <div className="adm-brand">
+            <div className="adm-brand-icon"><ShieldAlert size={16}/></div>
+            <div>
+              <div className="adm-brand-name">Unavu Admin</div>
+              <div className="adm-brand-sub">Super Console · HQ</div>
             </div>
           </div>
-
-          {/* Orders Table */}
-          <div className="admin-table-container">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Customer &amp; Zone</th>
-                  <th>Restaurant</th>
-                  <th>Items &amp; Bill</th>
-                  <th>Status</th>
-                  <th>Assigned Rider</th>
-                  <th>Dispatch Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order.orderId}>
-                    <td>
-                      <strong className="order-id-highlight">#{order.orderId}</strong>
-                      <div className="order-time-sub">{order.placedAt}</div>
-                    </td>
-                    <td>
-                      <strong>{order.customerName}</strong>
-                      <div className="order-zone-chip">
-                        <MapPin size={11} />
-                        <span>{order.locality}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <strong>{order.restaurantName}</strong>
-                    </td>
-                    <td>
-                      <div>{order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}</div>
-                      <strong>₹{order.grandTotal}</strong>
-                    </td>
-                    <td>
-                      <span className={`admin-status-tag ${order.status.toLowerCase()}`}>
-                        {order.status.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td>
-                      {order.riderName ? (
-                        <div className="admin-rider-chip">
-                          <Bike size={13} />
-                          <span>{order.riderName}</span>
-                        </div>
-                      ) : (
-                        <span className="unassigned-badge">Awaiting Rider</span>
-                      )}
-                    </td>
-                    <td>
-                      <select 
-                        value={order.status}
-                        onChange={(e) => onUpdateOrderStatus(order.orderId, e.target.value)}
-                        className="admin-status-override"
-                      >
-                        <option value="PLACED">Placed</option>
-                        <option value="PREPARING">Preparing</option>
-                        <option value="READY_FOR_PICKUP">Ready for Pickup</option>
-                        <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-                        <option value="DELIVERED">Delivered</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
+        <div className="adm-header-right">
+          <div className="adm-live-pill"><span className="adm-live-dot"/><span>Live</span></div>
+          {currentUser && <div className="adm-user-chip">🛡️ {currentUser.name?.split(' ')[0]}</div>}
+        </div>
+      </div>
+
+      {/* ── Tab Bar ─────────────────────────────────────────────────────────── */}
+      <div className="adm-tabs">
+        {TABS.map(t => (
+          <button key={t.id} className={`adm-tab ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+            {t.icon}
+            <span>{t.label}</span>
+            {t.badge ? <span className="adm-tab-badge">{t.badge}</span> : null}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Toast ───────────────────────────────────────────────────────────── */}
+      {(settingsSavedMsg || resetMsg || roleMsg) && (
+        <div className="adm-toast animate-fade">{settingsSavedMsg || resetMsg || roleMsg}</div>
       )}
 
-      {/* Tab: Promo Codes */}
-      {activeTab === 'promos' && (
-        <div className="admin-promos-section">
-          {/* Create Promo Form */}
-          <div className="create-promo-card">
-            <h3>⚡ Generate Hyper-Local Promo Code</h3>
-            <form className="promo-form-grid" onSubmit={handleCreateCoupon}>
-              <div className="form-group">
-                <label>Promo Code</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. GSTFEST50" 
-                  value={newCode}
-                  onChange={(e) => setNewCode(e.target.value)}
-                  required 
-                />
-              </div>
+      <div className="adm-content">
 
-              <div className="form-group">
-                <label>Target Suburb</label>
-                <select value={newRegion} onChange={(e) => setNewRegion(e.target.value)}>
+        {/* ══════════════════════════════════════════════════════════════════
+            DASHBOARD
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'dashboard' && (
+          <div className="adm-dashboard">
+            {/* KPI Grid */}
+            <div className="adm-kpi-grid">
+              {[
+                { label:'Total GMV', value:`₹${totalGMV}`, sub:`${orders.length} orders`, icon:<IndianRupee size={20}/>, color:'green' },
+                { label:'Platform Revenue', value:`₹${platformRevenue}`, sub:'15% + ₹5/order', icon:<Percent size={20}/>, color:'purple' },
+                { label:'Active Orders', value:activeOrdersCount, sub:'Live now', icon:<Zap size={20}/>, color:'orange' },
+                { label:'Fleet Riders', value:'18', sub:'Avg 19 min SLA', icon:<Bike size={20}/>, color:'blue' },
+              ].map(k => (
+                <div key={k.label} className={`adm-kpi-card kpi-${k.color}`}>
+                  <div className={`adm-kpi-icon ${k.color}`}>{k.icon}</div>
+                  <div>
+                    <div className="adm-kpi-val">{k.value}</div>
+                    <div className="adm-kpi-label">{k.label}</div>
+                    <div className="adm-kpi-sub">{k.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Order pipeline status */}
+            <div className="adm-section-title">Order Pipeline</div>
+            <div className="adm-pipeline">
+              {[
+                ['🆕 New', orders.filter(o=>o.status==='PLACED').length, '#f97316'],
+                ['🍳 Cooking', orders.filter(o=>o.status==='PREPARING').length, '#3b82f6'],
+                ['📦 Ready', orders.filter(o=>o.status==='READY_FOR_PICKUP').length, '#8b5cf6'],
+                ['🛵 En Route', orders.filter(o=>o.status==='OUT_FOR_DELIVERY').length, '#10b981'],
+                ['✅ Done', completedToday, '#22c55e'],
+              ].map(([l,v,c]) => (
+                <div key={l} className="adm-pipe-card" style={{ borderTop:`3px solid ${c}` }}>
+                  <div className="adm-pipe-val" style={{ color:c }}>{v}</div>
+                  <div className="adm-pipe-label">{l}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick actions */}
+            <div className="adm-section-title">Quick Actions</div>
+            <div className="adm-qa-grid">
+              {[
+                { label:'Live Orders', icon:<Package size={18}/>, tab:'orders', badge: activeOrdersCount },
+                { label:'Users', icon:<Users size={18}/>, tab:'users', badge: usersList.length },
+                { label:'Fleet GPS', icon:<Bike size={18}/>, tab:'fleet' },
+                { label:'Promos', icon:<Tag size={18}/>, tab:'promos' },
+                { label:'Partners', icon:<Store size={18}/>, tab:'restaurants' },
+                { label:'Settings', icon:<Settings size={18}/>, tab:'settings' },
+              ].map(qa => (
+                <button key={qa.label} className="adm-qa-card" onClick={() => setActiveTab(qa.tab)}>
+                  <div className="adm-qa-icon">{qa.icon}</div>
+                  <span>{qa.label}</span>
+                  {qa.badge > 0 && <span className="adm-qa-badge">{qa.badge}</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Recent orders preview */}
+            <div className="adm-section-title">Recent Orders</div>
+            <div className="adm-recent-list">
+              {orders.slice(0,6).map(o => (
+                <div key={o.orderId} className="adm-recent-row" onClick={() => setActiveTab('orders')}>
+                  <div className="adm-recent-left">
+                    <strong>#{o.orderId}</strong>
+                    <span>{o.customerName} · {o.restaurantName}</span>
+                  </div>
+                  <div className="adm-recent-right">
+                    <span className="adm-status-pill" style={{ background: statusColor(o.status)+'22', color: statusColor(o.status) }}>{o.status.replace(/_/g,' ')}</span>
+                    <strong>₹{o.grandTotal}</strong>
+                  </div>
+                </div>
+              ))}
+              {orders.length === 0 && <div className="adm-empty"><Package size={32}/><p>No orders yet</p></div>}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            ORDERS
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'orders' && (
+          <div className="adm-orders-page">
+            {/* Toolbar */}
+            <div className="adm-toolbar">
+              <div className="adm-search-wrap">
+                <Search size={15} className="adm-search-icon"/>
+                <input className="adm-search-input" placeholder="Search order or customer…" value={orderSearch} onChange={e => setOrderSearch(e.target.value)}/>
+              </div>
+              <div className="adm-filter-row">
+                <select className="adm-select" value={filterLocality} onChange={e => setFilterLocality(e.target.value)}>
+                  <option value="ALL">All Zones</option>
                   <option value="Perungalathur">Perungalathur</option>
                   <option value="Vandalur">Vandalur</option>
                   <option value="Mannivakkam">Mannivakkam</option>
-                  <option value="All Zones">All Zones</option>
+                </select>
+                <select className="adm-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                  <option value="ALL">All Status</option>
+                  <option value="PLACED">Placed</option>
+                  <option value="PREPARING">Preparing</option>
+                  <option value="READY_FOR_PICKUP">Ready</option>
+                  <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                  <option value="DELIVERED">Delivered</option>
+                  <option value="CANCELLED">Cancelled</option>
                 </select>
               </div>
+            </div>
 
-              <div className="form-group">
-                <label>Discount %</label>
-                <input 
-                  type="number" 
-                  value={newDiscount} 
-                  onChange={(e) => setNewDiscount(e.target.value)} 
-                  min={10} 
-                  max={80} 
-                />
+            {filteredOrders.length === 0 ? (
+              <div className="adm-empty"><Package size={36}/><p>No orders match your filters</p></div>
+            ) : (
+              <div className="adm-order-cards">
+                {filteredOrders.map(order => {
+                  const c = statusColor(order.status);
+                  return (
+                    <div key={order.orderId} className="adm-order-card" style={{ borderLeft:`3px solid ${c}` }}>
+                      <div className="adm-oc-top">
+                        <div>
+                          <div className="adm-oc-id">#{order.orderId}</div>
+                          <div className="adm-oc-time">{order.placedAt}</div>
+                        </div>
+                        <div className="adm-oc-right">
+                          <span className="adm-status-pill" style={{ background:c+'22', color:c }}>{order.status.replace(/_/g,' ')}</span>
+                          <div className="adm-oc-amt">₹{order.grandTotal}</div>
+                        </div>
+                      </div>
+                      <div className="adm-oc-info">
+                        <span><strong>{order.customerName}</strong></span>
+                        <span className="adm-zone-chip"><MapPin size={11}/> {order.locality}</span>
+                        <span>🏠 {order.restaurantName}</span>
+                      </div>
+                      <div className="adm-oc-items">{order.items?.map(i => `${i.quantity}× ${i.name}`).join(' · ')}</div>
+                      <div className="adm-oc-footer">
+                        <span className="adm-rider-chip">{order.riderName ? `🛵 ${order.riderName}` : '⏳ Awaiting rider'}</span>
+                        <select className="adm-status-select" value={order.status} onChange={e => onUpdateOrderStatus(order.orderId, e.target.value)}>
+                          <option value="PLACED">Placed</option>
+                          <option value="PREPARING">Preparing</option>
+                          <option value="READY_FOR_PICKUP">Ready</option>
+                          <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                          <option value="DELIVERED">Delivered</option>
+                          <option value="CANCELLED">Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-
-              <div className="form-group">
-                <label>Max Cap (₹)</label>
-                <input 
-                  type="number" 
-                  value={newMaxDiscount} 
-                  onChange={(e) => setNewMaxDiscount(e.target.value)} 
-                  min={50} 
-                  max={500} 
-                />
-              </div>
-
-              <button type="submit" className="btn-create-promo">
-                <Plus size={15} />
-                <span>Launch Offer</span>
-              </button>
-            </form>
+            )}
           </div>
+        )}
 
-          {/* Active Promos List */}
-          <div className="active-promos-grid">
-            {couponsList.map((coupon) => (
-              <div key={coupon.code} className="admin-coupon-card">
-                <div className="coupon-card-header">
-                  <span className="coupon-code-badge">{coupon.code}</span>
-                  <span className="coupon-active-badge">
-                    <Check size={12} /> Active
-                  </span>
+        {/* ══════════════════════════════════════════════════════════════════
+            USERS
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'users' && (
+          <div className="adm-users-page">
+            {/* Stats row */}
+            <div className="adm-user-stats">
+              {[
+                { label:'Total', val: usersList.length, color:'#3b82f6' },
+                { label:'Customers', val: usersList.filter(u=>u.role==='customer').length, color:'#10b981' },
+                { label:'Merchants', val: usersList.filter(u=>u.role==='restaurant').length, color:'#f97316' },
+                { label:'Riders', val: usersList.filter(u=>u.role==='rider').length, color:'#8b5cf6' },
+                { label:'Admins', val: usersList.filter(u=>u.role==='admin').length, color:'#e23744' },
+              ].map(s => (
+                <div key={s.label} className="adm-ustat" style={{ borderTop:`2px solid ${s.color}` }}>
+                  <strong style={{ color:s.color }}>{s.val}</strong>
+                  <span>{s.label}</span>
                 </div>
-                <div className="coupon-card-body">
-                  <strong>{coupon.label}</strong>
-                  <p>Target Zone: {coupon.region || 'All Suburban Hubs'}</p>
-                  <small>Min Order: ₹{coupon.minOrder || 199}</small>
-                </div>
+              ))}
+            </div>
+
+            {/* Filter bar */}
+            <div className="adm-toolbar">
+              <div className="adm-search-wrap">
+                <Search size={15} className="adm-search-icon"/>
+                <input className="adm-search-input" placeholder="Search name, email or phone…" value={userSearch} onChange={e => setUserSearch(e.target.value)}/>
+                {userSearch && <button className="adm-clear-btn" onClick={() => setUserSearch('')}><X size={13}/></button>}
               </div>
-            ))}
+              <div className="adm-filter-row">
+                <select className="adm-select" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+                  <option value="ALL">All Roles</option>
+                  <option value="customer">Customer</option>
+                  <option value="restaurant">Merchant</option>
+                  <option value="rider">Rider</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <select className="adm-select" value={statusFilterUser} onChange={e => setStatusFilterUser(e.target.value)}>
+                  <option value="ALL">All Status</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="SUSPENDED">Suspended</option>
+                </select>
+              </div>
+              <div className="adm-role-pills">
+                {[['ALL','All'], ['customer','🍲'], ['restaurant','👨‍🍳'], ['rider','🛵'], ['admin','🛡️']].map(([r,l]) => (
+                  <button key={r} className={`adm-role-pill ${roleFilter===r?'active':''}`} onClick={()=>setRoleFilter(r)}>
+                    {l} {r!=='ALL' && `(${usersList.filter(u=>u.role===r).length})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* User cards — mobile-first */}
+            <div className="adm-user-cards">
+              {filteredUsers.length === 0 ? (
+                <div className="adm-empty"><Users size={36}/><p>No users found</p></div>
+              ) : filteredUsers.map(u => {
+                const isSelf = currentUser && (currentUser.id === u.id || currentUser.email?.toLowerCase() === u.email?.toLowerCase());
+                const roleIcon = { admin:'🛡️', restaurant:'👨‍🍳', rider:'🛵', customer:'🍲' }[u.role] || '👤';
+                const roleBg = { admin:'rgba(226,55,68,0.1)', restaurant:'rgba(249,115,22,0.1)', rider:'rgba(139,92,246,0.1)', customer:'rgba(16,185,129,0.1)' }[u.role];
+                const roleColor = { admin:'#e23744', restaurant:'#f97316', rider:'#8b5cf6', customer:'#10b981' }[u.role];
+                const portalTarget = { restaurant:'hotel', rider:'rider', admin:'admin', customer:'customer' }[u.role];
+                return (
+                  <div key={u.id} className={`adm-user-card ${u.status==='SUSPENDED'?'suspended':''}`}>
+                    <div className="adm-uc-top">
+                      <div className="adm-uc-avatar" style={{ background:roleBg, color:roleColor }}>{roleIcon}</div>
+                      <div className="adm-uc-info">
+                        <div className="adm-uc-name">
+                          {u.name}
+                          {isSelf && <span className="adm-self-tag">You</span>}
+                        </div>
+                        <div className="adm-uc-email">{u.email}</div>
+                        <div className="adm-uc-phone">{u.phone}</div>
+                      </div>
+                      <div className="adm-uc-status-col">
+                        <span className={`adm-uc-status ${u.status==='ACTIVE'?'active':'suspended'}`}>{u.status}</span>
+                        {!isSelf && (
+                          <button className="adm-suspend-btn" onClick={() => { onToggleUserStatus(u.id); setRoleMsg(`Status updated for ${u.name}`); setTimeout(()=>setRoleMsg(''),3000); }}>
+                            {u.status==='ACTIVE'?'Suspend':'Restore'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="adm-uc-bottom">
+                      <div className="adm-uc-role-row">
+                        <label className="adm-uc-role-label">Role:</label>
+                        <select
+                          className="adm-role-select"
+                          style={{ background: roleBg, color: roleColor, borderColor: roleColor+'44' }}
+                          value={u.role}
+                          onChange={e => {
+                            onUpdateUserRole(u.id, e.target.value);
+                            setRoleMsg(`✅ ${u.name} → ${e.target.value.toUpperCase()}`);
+                            setTimeout(()=>setRoleMsg(''),3500);
+                          }}
+                        >
+                          <option value="customer">🍲 Customer</option>
+                          <option value="restaurant">👨‍🍳 Merchant</option>
+                          <option value="rider">🛵 Rider</option>
+                          <option value="admin">🛡️ Admin</option>
+                        </select>
+                      </div>
+                      <button className="adm-inspect-btn" onClick={() => onSwitchPortal(portalTarget)}>
+                        Inspect {roleIcon} Portal <ArrowRight size={13}/>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* RBAC explainer */}
+            <div className="adm-rbac-card">
+              <div className="adm-rbac-title"><ShieldCheck size={16}/> Role-Based Access Control</div>
+              <div className="adm-rbac-grid">
+                <div className="adm-rbac-item"><strong>🔒 Strict Isolation:</strong> Each user type is locked to their portal. Only Admins can switch views.</div>
+                <div className="adm-rbac-item"><strong>🛵 1-Trip Rule:</strong> Riders can only carry one active order at a time.</div>
+                <div className="adm-rbac-item"><strong>⚡ Live Re-assignment:</strong> Role changes here take effect instantly in the user's live session.</div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tab: Restaurants */}
-      {activeTab === 'restaurants' && (
-        <div className="admin-restaurants-grid">
-          {RESTAURANTS.map((r) => (
-            <div key={r.id} className="admin-hotel-card">
-              <img src={r.image} alt={r.name} className="admin-hotel-thumb" />
-              <div className="admin-hotel-details">
-                <div className="hotel-title-row">
-                  <h4>{r.name}</h4>
-                  <span className="rating-badge-mini">{r.rating} ★</span>
+        {/* ══════════════════════════════════════════════════════════════════
+            RESTAURANT PARTNERS
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'restaurants' && (
+          <div className="adm-partners-page">
+            <div className="adm-section-title">Partner Restaurants ({RESTAURANTS.length})</div>
+            <div className="adm-partner-cards">
+              {RESTAURANTS.map(r => (
+                <div key={r.id} className="adm-partner-card">
+                  <img src={r.image} alt={r.name} className="adm-partner-thumb" onError={e => e.target.style.display='none'}/>
+                  <div className="adm-partner-info">
+                    <div className="adm-partner-name">{r.name}</div>
+                    <div className="adm-partner-region"><MapPin size={11}/> {r.region} · {r.address}</div>
+                    <div className="adm-partner-chips">
+                      <span>⭐ {r.rating}</span>
+                      <span>{r.menu?.length || 0} dishes</span>
+                      <span>{r.ratingCount} reviews</span>
+                    </div>
+                  </div>
                 </div>
-                <p className="hotel-region-sub">📍 {r.region} Hub • {r.address}</p>
-                <div className="hotel-stats-chips">
-                  <span>{r.menu.length} Dishes</span>
-                  <span>{r.ratingCount} reviews</span>
-                  <span>Safety: {r.safetyScore}</span>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Tab: Live Fleet Radar */}
-      {activeTab === 'fleet' && (
-        <AdminFleetRadarMap 
-          riderLocations={riderLocations}
-          orders={orders}
-        />
-      )}
+        {/* ══════════════════════════════════════════════════════════════════
+            FLEET GPS
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'fleet' && (
+          <div style={{ height: 'calc(100vh - 110px)' }}>
+            <AdminFleetRadarMap riderLocations={riderLocations} orders={orders}/>
+          </div>
+        )}
 
-      {/* Tab: Launch & Payment Settings */}
-      {activeTab === 'settings' && (
-        <div className="admin-settings-container animate-fade">
-          {settingsSavedMsg && (
-            <div className="alert-banner-success">
-              <CheckCircle2 size={16} />
-              <span>{settingsSavedMsg}</span>
-            </div>
-          )}
-
-          {resetSuccessMsg && (
-            <div className="alert-banner-success">
-              <CheckCircle2 size={16} />
-              <span>{resetSuccessMsg}</span>
-            </div>
-          )}
-
-          <div className="settings-cards-grid">
-            {/* Merchant UPI Configuration Card */}
-            <div className="admin-card settings-card">
-              <div className="card-header-styled">
-                <div className="card-icon-wrap bg-purple-subtle">
-                  <CreditCard size={20} className="text-purple" />
+        {/* ══════════════════════════════════════════════════════════════════
+            PROMO CODES
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'promos' && (
+          <div className="adm-promos-page">
+            {/* Create form */}
+            <div className="adm-promo-form-card">
+              <div className="adm-section-title" style={{ padding:0, marginBottom:12 }}>⚡ Create Promo Code</div>
+              <form onSubmit={handleCreateCoupon}>
+                <div className="adm-promo-grid">
+                  <div className="form-group">
+                    <label className="field-label-bold">Code</label>
+                    <input className="styled-input" placeholder="e.g. FEAST50" value={newCode} onChange={e => setNewCode(e.target.value)} required style={{ textTransform:'uppercase' }}/>
+                  </div>
+                  <div className="form-group">
+                    <label className="field-label-bold">Zone</label>
+                    <select className="styled-input" value={newRegion} onChange={e => setNewRegion(e.target.value)}>
+                      <option>Perungalathur</option>
+                      <option>Vandalur</option>
+                      <option>Mannivakkam</option>
+                      <option>All Zones</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="field-label-bold">Discount %</label>
+                    <input className="styled-input" type="number" value={newDiscount} onChange={e=>setNewDiscount(e.target.value)} min={5} max={80}/>
+                  </div>
+                  <div className="form-group">
+                    <label className="field-label-bold">Max Cap (₹)</label>
+                    <input className="styled-input" type="number" value={newMaxDiscount} onChange={e=>setNewMaxDiscount(e.target.value)} min={50} max={500}/>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="card-title">Merchant UPI Payment Gateway</h3>
-                  <p className="card-subtitle">Configure the real UPI VPA where customer QR payments will be deposited</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveSettings} className="settings-form">
-                <div className="form-field-group">
-                  <label className="field-label">Primary Merchant UPI ID (VPA) *</label>
-                  <input 
-                    type="text" 
-                    className="field-input-styled"
-                    placeholder="e.g. unavukadai@upi or 9840123456@okaxis"
-                    value={upiIdInput}
-                    onChange={(e) => setUpiIdInput(e.target.value)}
-                    required
-                  />
-                  <small className="field-hint">
-                    This UPI ID is embedded dynamically into the GPay/PhonePe QR code at checkout.
-                  </small>
-                </div>
-
-                <div className="form-field-group">
-                  <label className="field-label">Merchant / Business Display Name</label>
-                  <input 
-                    type="text" 
-                    className="field-input-styled"
-                    placeholder="e.g. Unavukadai Express"
-                    value={merchantNameInput}
-                    onChange={(e) => setMerchantNameInput(e.target.value)}
-                  />
-                </div>
-
-                <div className="settings-preview-box">
-                  <span className="preview-label">Live UPI Intent Preview:</span>
-                  <code>{`upi://pay?pa=${upiIdInput.trim()}&pn=${encodeURIComponent(merchantNameInput.trim())}&cu=INR`}</code>
-                </div>
-
-                <button type="submit" className="btn-primary-admin">
-                  <span>Save Merchant Payment Settings</span>
+                <button type="submit" className="btn-primary" style={{ marginTop:12, width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <Plus size={15}/> Launch Promo
                 </button>
               </form>
             </div>
 
-            {/* Sunday Production Launch Reset Card */}
-            <div className="admin-card settings-card danger-boundary">
-              <div className="card-header-styled">
-                <div className="card-icon-wrap bg-red-subtle">
-                  <AlertTriangle size={20} className="text-red" />
-                </div>
-                <div>
-                  <h3 className="card-title text-red">Sunday Production Clean Launch</h3>
-                  <p className="card-subtitle">Wipe test orders from database before going live to real customers</p>
-                </div>
-              </div>
-
-              <div className="danger-card-body">
-                <p className="danger-explainer">
-                  Currently you have <strong>{orders.length} order(s)</strong> in the system database. 
-                  Before opening the store on Sunday morning, click this button to clear all simulated / test tickets so that hotels, riders, and dispatchers start with an empty, fresh ledger.
-                </p>
-
-                {!isResetConfirmOpen ? (
-                  <button 
-                    type="button" 
-                    className="btn-danger-admin"
-                    onClick={() => setIsResetConfirmOpen(true)}
-                  >
-                    <Trash2 size={16} />
-                    <span>⚠️ Reset All Orders for Sunday Launch</span>
-                  </button>
-                ) : (
-                  <div className="reset-confirm-box animate-scale">
-                    <p className="confirm-warning-text">
-                      <strong>Are you sure?</strong> This will erase all current orders from memory and server database. This action cannot be undone.
-                    </p>
-                    <div className="confirm-btn-actions">
-                      <button 
-                        type="button"
-                        className="btn-confirm-delete"
-                        onClick={handleConfirmReset}
-                      >
-                        Yes, Clear All Orders Now
-                      </button>
-                      <button 
-                        type="button"
-                        className="btn-cancel-action"
-                        onClick={() => setIsResetConfirmOpen(false)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
+            {/* Active promos */}
+            <div className="adm-section-title">Active Promos ({couponsList.length})</div>
+            <div className="adm-coupon-cards">
+              {couponsList.map(c => (
+                <div key={c.code} className="adm-coupon-card">
+                  <div className="adm-coupon-code">{c.code}</div>
+                  <div className="adm-coupon-label">{c.label}</div>
+                  <div className="adm-coupon-meta">
+                    <span>📍 {c.region || 'All Zones'}</span>
+                    <span>Min ₹{c.minOrder || 199}</span>
+                    <span className="adm-coupon-active"><Check size={11}/> Active</span>
                   </div>
-                )}
-              </div>
+                </div>
+              ))}
+              {couponsList.length === 0 && <div className="adm-empty"><Tag size={32}/><p>No promo codes yet</p></div>}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tab: Master Users & Roles Governance */}
-      {activeTab === 'users' && (
-        <div className="admin-users-section animate-fade">
-          {/* Role Stats Row */}
-          <div className="users-stats-grid">
-            <div className="user-stat-card">
-              <div className="user-stat-icon bg-blue-subtle text-blue">
-                <Users size={20} />
+        {/* ══════════════════════════════════════════════════════════════════
+            SETTINGS
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'settings' && (
+          <div className="adm-settings-page">
+            {/* UPI Settings */}
+            <div className="adm-settings-card">
+              <div className="adm-settings-card-header">
+                <div className="adm-settings-icon purple"><CreditCard size={18}/></div>
+                <div>
+                  <div className="adm-settings-title">Merchant UPI Gateway</div>
+                  <div className="adm-settings-sub">Configure the UPI VPA for customer payments</div>
+                </div>
               </div>
-              <div className="user-stat-info">
-                <span className="user-stat-label">Total Accounts</span>
-                <span className="user-stat-val">{usersList.length}</span>
-              </div>
+              <form onSubmit={handleSaveSettings}>
+                <div className="form-group mb-2">
+                  <label className="field-label-bold">UPI ID (VPA) *</label>
+                  <input className="styled-input" placeholder="e.g. 8248651695@ybl" value={upiIdInput} onChange={e => setUpiIdInput(e.target.value)} required/>
+                  <small className="field-hint">Embedded into GPay/PhonePe QR at checkout</small>
+                </div>
+                <div className="form-group mb-3">
+                  <label className="field-label-bold">Business Display Name</label>
+                  <input className="styled-input" placeholder="Unavukadai Express" value={merchantNameInput} onChange={e => setMerchantNameInput(e.target.value)}/>
+                </div>
+                <div className="adm-upi-preview">
+                  <span>Preview:</span>
+                  <code>upi://pay?pa={upiIdInput.trim()}&pn={encodeURIComponent(merchantNameInput.trim())}&cu=INR</code>
+                </div>
+                <button type="submit" className="btn-primary" style={{ marginTop:14, width:'100%' }}>Save Payment Settings</button>
+              </form>
             </div>
 
-            <div className="user-stat-card">
-              <div className="user-stat-icon bg-orange-subtle text-orange">
-                <span style={{ fontSize: '1.25rem' }}>👨‍🍳</span>
+            {/* Reset Card */}
+            <div className="adm-settings-card danger-card">
+              <div className="adm-settings-card-header">
+                <div className="adm-settings-icon red"><AlertTriangle size={18}/></div>
+                <div>
+                  <div className="adm-settings-title" style={{ color:'#ef4444' }}>Sunday Launch Reset</div>
+                  <div className="adm-settings-sub">Wipe test orders before going live</div>
+                </div>
               </div>
-              <div className="user-stat-info">
-                <span className="user-stat-label">Merchants / Kitchens</span>
-                <span className="user-stat-val">{usersList.filter(u => u.role === 'restaurant').length}</span>
-              </div>
-            </div>
-
-            <div className="user-stat-card">
-              <div className="user-stat-icon bg-green-subtle text-green">
-                <span style={{ fontSize: '1.25rem' }}>🛵</span>
-              </div>
-              <div className="user-stat-info">
-                <span className="user-stat-label">Fleet Riders</span>
-                <span className="user-stat-val">{usersList.filter(u => u.role === 'rider').length}</span>
-              </div>
-            </div>
-
-            <div className="user-stat-card">
-              <div className="user-stat-icon bg-purple-subtle text-purple">
-                <span style={{ fontSize: '1.25rem' }}>🍲</span>
-              </div>
-              <div className="user-stat-info">
-                <span className="user-stat-label">Foodie Customers</span>
-                <span className="user-stat-val">{usersList.filter(u => u.role === 'customer').length}</span>
-              </div>
-            </div>
-
-            <div className="user-stat-card">
-              <div className="user-stat-icon bg-red-subtle text-red">
-                <ShieldCheck size={20} />
-              </div>
-              <div className="user-stat-info">
-                <span className="user-stat-label">Master Admins</span>
-                <span className="user-stat-val">{usersList.filter(u => u.role === 'admin').length}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Flash Feedback Message */}
-          {roleChangeSuccessMsg && (
-            <div className="admin-success-banner animate-fade" style={{ marginBottom: '1rem' }}>
-              <CheckCircle2 size={18} />
-              <span>{roleChangeSuccessMsg}</span>
-            </div>
-          )}
-
-          {/* User Filter Controls Bar */}
-          <div className="admin-filter-bar users-filter-bar">
-            <div className="users-search-input-wrap">
-              <Search size={16} className="search-icon" />
-              <input 
-                type="text"
-                placeholder="Search by name, email or phone..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="users-search-input"
-              />
-              {userSearch && (
-                <button type="button" className="clear-search-btn" onClick={() => setUserSearch('')}>
-                  &times;
+              <p className="adm-danger-text">
+                Currently <strong>{orders.length} order(s)</strong> in the system. Clear all test data so restaurants, riders, and dispatchers start fresh on launch day.
+              </p>
+              {!isResetConfirm ? (
+                <button className="adm-danger-btn" onClick={() => setIsResetConfirm(true)}>
+                  <Trash2 size={15}/> Reset All Orders for Launch
                 </button>
+              ) : (
+                <div className="adm-confirm-box">
+                  <p>⚠️ This <strong>cannot be undone</strong>. All orders will be erased.</p>
+                  <div style={{ display:'flex', gap:10, marginTop:12 }}>
+                    <button className="adm-cancel-btn" onClick={() => setIsResetConfirm(false)}>Cancel</button>
+                    <button className="adm-confirm-delete-btn" onClick={handleConfirmReset}>Yes, Clear All Orders</button>
+                  </div>
+                </div>
               )}
             </div>
-
-            <div className="role-filter-pills">
-              <button 
-                type="button" 
-                className={`filter-pill-btn ${roleFilter === 'ALL' ? 'active' : ''}`}
-                onClick={() => setRoleFilter('ALL')}
-              >
-                All Roles ({usersList.length})
-              </button>
-              <button 
-                type="button" 
-                className={`filter-pill-btn ${roleFilter === 'restaurant' ? 'active' : ''}`}
-                onClick={() => setRoleFilter('restaurant')}
-              >
-                👨‍🍳 Merchants ({usersList.filter(u => u.role === 'restaurant').length})
-              </button>
-              <button 
-                type="button" 
-                className={`filter-pill-btn ${roleFilter === 'rider' ? 'active' : ''}`}
-                onClick={() => setRoleFilter('rider')}
-              >
-                🛵 Riders ({usersList.filter(u => u.role === 'rider').length})
-              </button>
-              <button 
-                type="button" 
-                className={`filter-pill-btn ${roleFilter === 'customer' ? 'active' : ''}`}
-                onClick={() => setRoleFilter('customer')}
-              >
-                🍲 Customers ({usersList.filter(u => u.role === 'customer').length})
-              </button>
-              <button 
-                type="button" 
-                className={`filter-pill-btn ${roleFilter === 'admin' ? 'active' : ''}`}
-                onClick={() => setRoleFilter('admin')}
-              >
-                🛡️ Admins ({usersList.filter(u => u.role === 'admin').length})
-              </button>
-            </div>
-
-            <div className="status-select-wrap">
-              <select 
-                value={statusFilterUser}
-                onChange={(e) => setStatusFilterUser(e.target.value)}
-                className="admin-select"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="ACTIVE">Active Accounts</option>
-                <option value="SUSPENDED">Suspended Accounts</option>
-              </select>
-            </div>
           </div>
+        )}
 
-          {/* Users Table */}
-          <div className="admin-table-container">
-            <table className="admin-users-table">
-              <thead>
-                <tr>
-                  <th>User &amp; Contact</th>
-                  <th>Contact Info</th>
-                  <th>Assigned Portal Role</th>
-                  <th>Account Status</th>
-                  <th>Portal Access Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="empty-table-cell">
-                      <div className="empty-table-state">
-                        <Users size={32} />
-                        <p>No registered users found matching your filters.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((u) => {
-                    const isSelf = currentUser && (currentUser.id === u.id || currentUser.email?.toLowerCase() === u.email?.toLowerCase());
-                    const roleBadgeClass = 
-                      u.role === 'admin' ? 'role-badge-admin' :
-                      u.role === 'restaurant' ? 'role-badge-merchant' :
-                      u.role === 'rider' ? 'role-badge-rider' : 'role-badge-customer';
-
-                    const roleLabel = 
-                      u.role === 'admin' ? '🛡️ Master Admin' :
-                      u.role === 'restaurant' ? '👨‍🍳 Merchant' :
-                      u.role === 'rider' ? '🛵 Rider' : '🍲 Customer';
-
-                    const portalTarget = 
-                      u.role === 'restaurant' ? 'hotel' :
-                      u.role === 'rider' ? 'rider' :
-                      u.role === 'admin' ? 'admin' : 'customer';
-
-                    return (
-                      <tr key={u.id} className={u.status === 'SUSPENDED' ? 'row-suspended' : ''}>
-                        {/* User info */}
-                        <td>
-                          <div className="user-profile-cell">
-                            <div className="user-avatar-circle">
-                              {u.role === 'restaurant' ? '👨‍🍳' : u.role === 'rider' ? '🛵' : u.role === 'admin' ? '🛡️' : '🍲'}
-                            </div>
-                            <div className="user-identity-text">
-                              <span className="user-full-name">
-                                {u.name}
-                                {isSelf && <span className="self-tag">(You)</span>}
-                              </span>
-                              <span className="user-email-text">{u.email}</span>
-                              <span className="user-created-date">Registered: {u.createdAt || 'Recent'}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Contact */}
-                        <td>
-                          <div className="user-contact-cell">
-                            <span className="contact-phone">{u.phone || 'No phone registered'}</span>
-                            <span className="contact-badge-subtext">Verified ID: {u.id}</span>
-                          </div>
-                        </td>
-
-                        {/* Role Dropdown */}
-                        <td>
-                          <div className="role-change-control">
-                            <select 
-                              value={u.role}
-                              onChange={(e) => {
-                                const newR = e.target.value;
-                                onUpdateUserRole(u.id, newR);
-                                setRoleChangeSuccessMsg(`✅ Role for ${u.name} updated to ${newR.toUpperCase()}! Portal permissions synchronized.`);
-                                setTimeout(() => setRoleChangeSuccessMsg(''), 4000);
-                              }}
-                              className={`role-select-input ${roleBadgeClass}`}
-                            >
-                              <option value="customer">🍲 Customer (Foodie App)</option>
-                              <option value="restaurant">👨‍🍳 Merchant (Kitchen App)</option>
-                              <option value="rider">🛵 Fleet Rider (Captain App)</option>
-                              <option value="admin">🛡️ Master Admin (HQ Console)</option>
-                            </select>
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td>
-                          <div className="status-cell-wrap">
-                            <span className={`status-pill-badge ${u.status === 'ACTIVE' ? 'pill-active' : 'pill-suspended'}`}>
-                              {u.status === 'ACTIVE' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-                              <span>{u.status}</span>
-                            </span>
-                            {!isSelf && (
-                              <button 
-                                type="button" 
-                                className="btn-toggle-status"
-                                onClick={() => {
-                                  onToggleUserStatus(u.id);
-                                  setRoleChangeSuccessMsg(`Status updated for ${u.name}`);
-                                  setTimeout(() => setRoleChangeSuccessMsg(''), 3000);
-                                }}
-                              >
-                                {u.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Launch Portal */}
-                        <td>
-                          <button 
-                            type="button"
-                            className="btn-launch-portal"
-                            onClick={() => onSwitchPortal(portalTarget)}
-                            title={`Inspect ${roleLabel} Portal`}
-                          >
-                            <span>Inspect {roleLabel}</span>
-                            <ArrowRight size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Security & Access Isolation Note */}
-          <div className="admin-card role-security-explainer" style={{ marginTop: '2rem' }}>
-            <div className="card-header-styled">
-              <div className="card-icon-wrap bg-blue-subtle">
-                <ShieldAlert size={20} className="text-blue" />
-              </div>
-              <div>
-                <h3 className="card-title">Role-Based Access Control (RBAC) &amp; Trip Concurrency Rules</h3>
-                <p className="card-subtitle">Active security and isolation policies enforced platform-wide</p>
-              </div>
-            </div>
-            <div className="role-explainer-grid">
-              <div className="explainer-item">
-                <strong>🔒 Strict Role Isolation:</strong>
-                <p>When merchants sign up or log in, they are locked exclusively into the Restaurant Kitchen Portal. Riders are restricted to the Delivery Captain Portal, and customers to the Food Delivery App. Only Master Admin accounts have platform-wide portal switching authority.</p>
-              </div>
-              <div className="explainer-item">
-                <strong>🛵 Rider 1-Trip Concurrency Enforcement:</strong>
-                <p>Riders can only have one active trip at any time. When a trip is accepted, all other available orders are instantly locked with warning banners until the current order is marked DELIVERED.</p>
-              </div>
-              <div className="explainer-item">
-                <strong>⚡ Instant Role Re-assignment:</strong>
-                <p>Changing any user's role in this table immediately updates their live session and isolates their permissions in real time.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

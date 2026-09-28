@@ -1,11 +1,5 @@
 import React from 'react';
-import { 
-  Compass, 
-  Search, 
-  MapPin, 
-  ReceiptText, 
-  ShoppingBag 
-} from 'lucide-react';
+import { Compass, Search, MapPin, ReceiptText, ShoppingBag } from 'lucide-react';
 
 export default function MobileBottomNav({
   activeTab,
@@ -20,71 +14,62 @@ export default function MobileBottomNav({
   currentAddressTag = 'Home'
 }) {
   return (
-    <nav className="mobile-bottom-nav animate-slide-up" aria-label="Mobile Navigation">
-      {/* 1. Explore / Food */}
-      <button 
-        type="button" 
-        className={`mobile-nav-item ${activeTab === 'delivery' ? 'active' : ''}`}
+    <nav className="cust-bottom-nav" aria-label="Mobile Navigation">
+
+      {/* 1. Explore */}
+      <button
+        type="button"
+        className={`cust-nav-item ${activeTab === 'delivery' ? 'active' : ''}`}
         onClick={() => setActiveTab('delivery')}
       >
-        <div className="mobile-nav-icon-box">
-          <Compass size={20} />
+        <div className="cust-nav-icon">
+          <Compass size={21}/>
         </div>
-        <span className="mobile-nav-label">Explore</span>
+        <span className="cust-nav-label">Explore</span>
       </button>
 
-      {/* 2. Instant Search */}
-      <button 
-        type="button" 
-        className="mobile-nav-item"
-        onClick={onOpenSearch}
-      >
-        <div className="mobile-nav-icon-box">
-          <Search size={20} />
+      {/* 2. Search */}
+      <button type="button" className="cust-nav-item" onClick={onOpenSearch}>
+        <div className="cust-nav-icon">
+          <Search size={21}/>
         </div>
-        <span className="mobile-nav-label">Search</span>
+        <span className="cust-nav-label">Search</span>
       </button>
 
-      {/* 3. Address Book & Location Setting */}
-      <button 
-        type="button" 
-        className="mobile-nav-item"
-        onClick={onOpenAddresses}
-      >
-        <div className="mobile-nav-icon-box">
-          <MapPin size={20} />
+      {/* 3. Address */}
+      <button type="button" className="cust-nav-item" onClick={onOpenAddresses}>
+        <div className="cust-nav-icon">
+          <MapPin size={21}/>
         </div>
-        <span className="mobile-nav-label">{currentAddressTag || 'Address'}</span>
+        <span className="cust-nav-label">{currentAddressTag || 'Address'}</span>
       </button>
 
-      {/* 4. Orders with Live Pulse */}
-      <button 
-        type="button" 
-        className="mobile-nav-item"
-        onClick={onOpenMyOrders}
-      >
-        <div className="mobile-nav-icon-box">
-          <ReceiptText size={20} />
+      {/* 4. Orders */}
+      <button type="button" className="cust-nav-item" onClick={onOpenMyOrders}>
+        <div className="cust-nav-icon" style={{ position: 'relative' }}>
+          <ReceiptText size={21}/>
           {activeOrdersCount > 0 && (
-            <span className="mobile-nav-pulse-dot" />
+            <span className="cust-nav-live-dot"/>
           )}
         </div>
-        <span className="mobile-nav-label">Orders</span>
+        <span className="cust-nav-label">
+          {activeOrdersCount > 0 ? `${activeOrdersCount} Live` : 'Orders'}
+        </span>
       </button>
 
-      {/* 5. Cart with Badges */}
-      <button 
-        type="button" 
-        className={`mobile-nav-item cart-item ${cartCount > 0 ? 'highlight-cart' : ''}`}
+      {/* 5. Cart — highlighted when items in cart */}
+      <button
+        type="button"
+        className={`cust-nav-item cust-nav-cart ${cartCount > 0 ? 'has-items' : ''}`}
         onClick={onOpenCart}
       >
-        <div className="mobile-nav-icon-box">
-          <ShoppingBag size={20} />
+        <div className="cust-nav-icon" style={{ position: 'relative' }}>
+          <ShoppingBag size={21}/>
           {cartCount > 0 && (
-            <span className="mobile-nav-badge">{cartCount}</span>
+            <span className="cust-nav-cart-badge">{cartCount}</span>
           )}
         </div>
-        <span className="mobile-nav-label">
+        <span className="cust-nav-label">
           {cartCount > 0 ? `₹${cartTotal}` : 'Cart'}
         </span>
       </button>
