@@ -5404,7 +5404,7 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(6px);
-  z-index: 2200;
+  z-index: 3500 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8174,4 +8174,353 @@
   color: var(--text-muted);
   cursor: not-allowed;
 }
+
+/* ========================================================
+   AUTH MODAL ROLE TABS & MULTI-USER PROFILES
+   ======================================================== */
+.auth-role-tabs-box {
+  margin: 14px 0 16px;
+  background: var(--bg-surface-elevated, #f8fafc);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light, #e2e8f0);
+}
+
+.auth-role-header-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 8px;
+}
+
+.auth-role-pills-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.auth-role-pill-btn {
+  padding: 8px 6px;
+  border: 1px solid var(--border-light, #cbd5e1);
+  background: var(--bg-surface, #ffffff);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.auth-role-pill-btn:hover {
+  border-color: #e23744;
+}
+
+.auth-role-pill-btn.active {
+  background: #e23744;
+  border-color: #e23744;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(226, 55, 68, 0.3);
+}
+
+.btn-google-quick-accounts {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(226, 55, 68, 0.06);
+  border: 1px dashed rgba(226, 55, 68, 0.4);
+  color: #e23744;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-google-quick-accounts:hover {
+  background: rgba(226, 55, 68, 0.12);
+}
+
+.acc-name-role-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.acc-role-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(226, 55, 68, 0.1);
+  color: #e23744;
+}
+
+/* ========================================================
+   HOTEL MERCHANT & RESTAURANT ADMIN PORTAL STYLES
+   ======================================================== */
+.hotel-menu-management-card,
+.hotel-location-profile-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
+  margin-bottom: 24px;
+}
+
+.menu-mgmt-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.menu-mgmt-top-bar h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+  color: var(--text-primary, #0f172a);
+}
+
+.menu-mgmt-top-bar p {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.menu-dishes-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-light, #e2e8f0);
+}
+
+.category-pill-mini {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-surface-elevated, #f1f5f9);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text-secondary, #475569);
+}
+
+.inline-price-input:focus {
+  outline: none;
+  border-color: #e23744;
+  box-shadow: 0 0 0 2px rgba(226, 55, 68, 0.2);
+}
+
+.btn-save-price-mini {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .form-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gps-tag {
+  font-size: 12px;
+  background: rgba(226, 55, 68, 0.08);
+  color: #e23744;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* ========================================================
+   RIDER WALLET & PAYOUTS SYSTEM
+   ======================================================== */
+.wallet-hero-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #ffffff !important;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.wallet-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.wallet-hero-top h2 {
+  font-size: 38px;
+  font-weight: 900;
+  color: #22c55e;
+  margin: 4px 0;
+  letter-spacing: -0.02em;
+}
+
+.wallet-auto-sub {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.btn-withdraw-upi {
+  background: #22c55e;
+  color: #0f172a;
+  border: none;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+}
+
+.btn-withdraw-upi:hover {
+  transform: translateY(-1px);
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.withdraw-success-alert {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.wallet-ledger-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
+}
+
+.ledger-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+}
+
+.ledger-header h3 {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.ledger-header span {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+}
+
+.ledger-transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ledger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg-surface-elevated, #f8fafc);
+  border-radius: 10px;
+  border: 1px solid var(--border-light, #e2e8f0);
+}
+
+.ledger-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ledger-type-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.ledger-type-icon.credit {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ledger-type-icon.debit {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ledger-left strong {
+  font-size: 14px;
+  color: var(--text-primary, #0f172a);
+}
+
+.ledger-left p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+}
+
+.ledger-amount {
+  text-align: right;
+}
+
+.ledger-amount strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ledger-amount.credit strong {
+  color: #16a34a;
+}
+
+.ledger-amount.debit strong {
+  color: #dc2626;
+}
+
+.ledger-status-tag {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
 

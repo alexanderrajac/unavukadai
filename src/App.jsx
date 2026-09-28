@@ -100,6 +100,77 @@ export default function App() {
     toggleItemStockApi(itemId);
   };
 
+  // Dynamic Restaurants List with local persistence (Restaurant Admin editing)
+  const [restaurantsList, setRestaurantsList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_restaurants_v2');
+      return saved ? JSON.parse(saved) : RESTAURANTS;
+    } catch {
+      return RESTAURANTS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('unavu_restaurants_v2', JSON.stringify(restaurantsList));
+    } catch (e) {
+      console.warn('Failed to cache restaurantsList', e);
+    }
+  }, [restaurantsList]);
+
+  // Restaurant Admin: Add Food Item
+  const handleAddMenuItem = (restaurantId, newItem) => {
+    setRestaurantsList(prev => prev.map(r => {
+      if (r.id === restaurantId) {
+        const dishItem = {
+          id: `${restaurantId}-dish-${Date.now()}`,
+          name: newItem.name.trim(),
+          price: Number(newItem.price),
+          category: newItem.category || 'Specialties',
+          isVeg: Boolean(newItem.isVeg),
+          description: newItem.description?.trim() || 'Freshly prepared specialty dish.',
+          votes: 1
+        };
+        return {
+          ...r,
+          menu: [...r.menu, dishItem]
+        };
+      }
+      return r;
+    }));
+  };
+
+  // Restaurant Admin: Edit Item Price
+  const handleUpdateMenuItemPrice = (restaurantId, itemId, newPrice) => {
+    setRestaurantsList(prev => prev.map(r => {
+      if (r.id === restaurantId) {
+        return {
+          ...r,
+          menu: r.menu.map(item => item.id === itemId ? { ...item, price: Number(newPrice) } : item)
+        };
+      }
+      return r;
+    }));
+  };
+
+  // Restaurant Admin: Edit Restaurant Profile, Address & Coordinates
+  const handleUpdateRestaurantDetails = (restaurantId, details) => {
+    setRestaurantsList(prev => prev.map(r => {
+      if (r.id === restaurantId) {
+        return {
+          ...r,
+          name: details.name || r.name,
+          address: details.address || r.address,
+          region: details.region || r.region,
+          costForTwo: details.costForTwo ? Number(details.costForTwo) : r.costForTwo,
+          deliveryTimeMins: details.deliveryTimeMins ? Number(details.deliveryTimeMins) : r.deliveryTimeMins,
+          coords: details.coords || r.coords
+        };
+      }
+      return r;
+    }));
+  };
+
   // Platform Settings (Merchant UPI ID & Name)
   const [settings, setSettings] = useState(() => {
     try {
@@ -277,6 +348,17 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('unavu_user');
+  };
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    if (userData?.role === 'restaurant') {
+      setCurrentPortal('hotel');
+    } else if (userData?.role === 'rider') {
+      setCurrentPortal('rider');
+    } else {
+      setCurrentPortal('customer');
+    }
   };
 
   // Saved Addresses State & Settings
@@ -483,16 +565,16 @@ export default function App() {
 
   const handleAcceptTrip = (orderId) => {
     const existingOrder = orders.find(o => o.orderId === orderId);
-    if (existingOrder && existingOrder.status !== 'READY_FOR_PICKUP') {
-      alert(`⚠️ Rider cannot accept order #${orderId}. Kitchen must first mark the order as READY_FOR_PICKUP (current status is: ${existingOrder.status}).`);
-      return;
-    }
+    if (!existingOrder) return;
+
+    // Transition status to OUT_FOR_DELIVERY if ready, otherwise assign rider while cooking
+    const targetStatus = existingOrder.status === 'READY_FOR_PICKUP' ? 'OUT_FOR_DELIVERY' : existingOrder.status;
 
     const riderDetails = {
       riderId: 'rider-1',
       riderName: 'Murugan S.',
       riderPhone: '+91 98765 43210',
-      status: 'OUT_FOR_DELIVERY'
+      status: targetStatus
     };
     setOrders(prev => prev.map(o => {
       if (o.orderId === orderId) {
@@ -503,7 +585,7 @@ export default function App() {
       }
       return o;
     }));
-    updateOrderStatusApi(orderId, 'OUT_FOR_DELIVERY', riderDetails);
+    updateOrderStatusApi(orderId, targetStatus, riderDetails);
   };
 
   const handleSimulateNewOrder = (hotel) => {
@@ -554,7 +636,7 @@ export default function App() {
 
   // Filter & Sort Logic for Customer App
   const filteredRestaurants = useMemo(() => {
-    return RESTAURANTS.filter(res => {
+    return restaurantsList.filter(res => {
       // Filter by locality if a specific location/suburb is selected (skip if "All Locations")
       if (selectedCity && !selectedCity.isAll) {
         if (res.region && !res.region.toLowerCase().includes(selectedCity.name.toLowerCase())) {
@@ -611,7 +693,7 @@ export default function App() {
       if (sortBy === 'costDesc') return b.costForTwo - a.costForTwo;
       return 0;
     });
-  }, [activeTab, filters, sortBy, selectedCategory, searchQuery, selectedCity]);
+  }, [activeTab, filters, sortBy, selectedCategory, searchQuery, selectedCity, restaurantsList]);
 
   const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
   const totalCartAmount = cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0);
@@ -805,7 +887,7 @@ export default function App() {
           <AuthModal
             isOpen={isAuthOpen}
             onClose={() => setIsAuthOpen(false)}
-            onLoginSuccess={setUser}
+            onLoginSuccess={handleLoginSuccess}
           />
 
           {/* Saved Address Book & Settings Modal */}
@@ -849,6 +931,10 @@ export default function App() {
           onSimulateNewOrder={handleSimulateNewOrder}
           onToggleItemStock={handleToggleItemStock}
           restaurantStock={restaurantStock}
+          restaurantsList={restaurantsList}
+          onAddMenuItem={handleAddMenuItem}
+          onUpdateMenuItemPrice={handleUpdateMenuItemPrice}
+          onUpdateRestaurantDetails={handleUpdateRestaurantDetails}
         />
       )}
 

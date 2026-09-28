@@ -54,6 +54,23 @@ export default function InteractiveAddressPinMap({
   const [isGpsLocating, setIsGpsLocating] = useState(false);
   const [gpsError, setGpsError] = useState('');
 
+  // Synchronize coordinates when modal opens or initialCoords changes
+  useEffect(() => {
+    if (isOpen && Array.isArray(initialCoords) && initialCoords.length === 2 && !isNaN(initialCoords[0])) {
+      const targetLat = Number(initialCoords[0]);
+      const targetLng = Number(initialCoords[1]);
+      setCoords([targetLat, targetLng]);
+      if (dropMarkerRef.current) {
+        dropMarkerRef.current.setLatLng([targetLat, targetLng]);
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.panTo([targetLat, targetLng], { animate: true });
+        mapInstanceRef.current.invalidateSize({ pan: false });
+      }
+      updateAddressFromCoords(targetLat, targetLng);
+    }
+  }, [isOpen, initialCoords]);
+
   // Lock body scroll on mobile when modal is open
   useEffect(() => {
     if (isOpen) {

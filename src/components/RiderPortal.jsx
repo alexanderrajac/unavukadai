@@ -64,8 +64,29 @@ export default function RiderPortal({
         onUpdateOrderStatus(otpModalTrip.orderId, 'DELIVERED');
         const deliveredId = otpModalTrip.orderId;
         const earnings = otpModalTrip.riderEarnings || 65;
+
+        // Instant credit to Rider Wallet & Ledger
+        const newTx = {
+          id: `tx-${Date.now()}`,
+          title: `Trip Payout #${deliveredId}`,
+          type: 'CREDIT',
+          amount: earnings,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          desc: `Delivered to ${otpModalTrip.customerName || 'Customer'} (${otpModalTrip.locality || 'Chennai'})`
+        };
+        setWalletBalance(prev => {
+          const updated = prev + earnings;
+          localStorage.setItem('unavu_rider_wallet', String(updated));
+          return updated;
+        });
+        setWalletTransactions(prev => {
+          const updated = [newTx, ...prev];
+          localStorage.setItem('unavu_rider_txns', JSON.stringify(updated));
+          return updated;
+        });
+
         setOtpModalTrip(null);
-        alert(`🎉 Doorstep OTP Verified! Order #${deliveredId} delivered successfully. ₹${earnings} credited to your ledger.`);
+        alert(`🎉 Doorstep OTP Verified! Order #${deliveredId} delivered successfully. ₹${earnings} credited to your Rider Wallet.`);
       }, 500);
     } else {
       setOtpError(`Incorrect OTP! Please ask customer ${otpModalTrip.customerName} for the 4-digit PIN displayed on their live tracking screen.`);
@@ -77,6 +98,76 @@ export default function RiderPortal({
   const myActiveTrips = orders.filter(
     o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status !== 'DELIVERED'
   );
+
+  // Available trips waiting for delivery partner pickup
+  const availableTrips = orders.filter(
+    o => (!o.riderId || o.riderId === '') && o.status !== 'DELIVERED' && o.status !== 'CANCELLED'
+  );
+
+  // Completed trips by this rider
+  const completedTrips = orders.filter(
+    o => (o.riderId === currentRiderId || o.riderName === riderName) && o.status === 'DELIVERED'
+  );
+
+  // Base earnings calculated from delivered trips
+  const deliveredEarnings = completedTrips.reduce((acc, t) => acc + (t.riderEarnings || 65), 0);
+  const todayEarnings = deliveredEarnings > 0 ? deliveredEarnings + 60 : 380;
+
+  // Real-time Rider Wallet State (persisted in localStorage)
+  const [walletBalance, setWalletBalance] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_rider_wallet');
+      return saved ? Number(saved) : 620;
+    } catch {
+      return 620;
+    }
+  });
+
+  const [walletTransactions, setWalletTransactions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unavu_rider_txns');
+      return saved ? JSON.parse(saved) : [
+        { id: 'tx-1', title: 'Trip Payout #UK-4821', type: 'CREDIT', amount: 65, time: '12:35 PM', desc: 'Perungalathur to Peerkankaranai drop' },
+        { id: 'tx-2', title: 'Peak Rain Incentive', type: 'CREDIT', amount: 35, time: '01:10 PM', desc: 'Monsoon bonus for South Chennai' },
+        { id: 'tx-3', title: 'Customer Doorstep Tip', type: 'CREDIT', amount: 20, time: '01:45 PM', desc: 'Order #UK-4821 Tip' }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawUpiId, setWithdrawUpiId] = useState('8248651695@ybl');
+  const [withdrawAmount, setWithdrawAmount] = useState('300');
+  const [withdrawNotice, setWithdrawNotice] = useState('');
+
+  const handleWithdrawFunds = (e) => {
+    e.preventDefault();
+    const amt = Number(withdrawAmount);
+    if (isNaN(amt) || amt <= 0 || amt > walletBalance) {
+      alert('Please enter a valid amount within your current wallet balance.');
+      return;
+    }
+    const newTx = {
+      id: `tx-${Date.now()}`,
+      title: 'Instant UPI Withdrawal',
+      type: 'DEBIT',
+      amount: amt,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      desc: `Transferred to ${withdrawUpiId}`
+    };
+    const updatedBalance = walletBalance - amt;
+    setWalletBalance(updatedBalance);
+    localStorage.setItem('unavu_rider_wallet', String(updatedBalance));
+
+    const updatedTxns = [newTx, ...walletTransactions];
+    setWalletTransactions(updatedTxns);
+    localStorage.setItem('unavu_rider_txns', JSON.stringify(updatedTxns));
+
+    setIsWithdrawModalOpen(false);
+    setWithdrawNotice(`✅ Successfully transferred ₹${amt} to UPI ID: ${withdrawUpiId}!`);
+    setTimeout(() => setWithdrawNotice(''), 5000);
+  };
 
   // Background GPS Watcher (Hardware GPS with Mobile HTTP Simulation Fallback)
   React.useEffect(() => {
@@ -261,8 +352,8 @@ export default function RiderPortal({
           className={`subnav-tab ${activeTab === 'earnings' ? 'active' : ''}`}
           onClick={() => setActiveTab('earnings')}
         >
-          <span>Today's Earnings</span>
-          <span className="badge-earning">₹{todayEarnings}</span>
+          <span>💼 Rider Wallet & Earnings</span>
+          <span className="badge-earning">₹{walletBalance}</span>
         </button>
 
         <button 
@@ -310,6 +401,21 @@ export default function RiderPortal({
 
               {/* Action Buttons based on status */}
               <div className="active-trip-action-bar">
+                {(myActiveTrips[0].status === 'PLACED' || myActiveTrips[0].status === 'PREPARING') && (
+                  <div className="kot-trip-prep-notice">
+                    <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#64748b' }}>
+                      👨‍🍳 Food is currently being prepared at kitchen. Ride towards {myActiveTrips[0].restaurantName}.
+                    </p>
+                    <button 
+                      className="btn-rider-step pickup"
+                      onClick={() => onUpdateOrderStatus(myActiveTrips[0].orderId, 'OUT_FOR_DELIVERY')}
+                    >
+                      <Navigation size={18} />
+                      <span>Food Picked Up from Kitchen → Start Delivery</span>
+                    </button>
+                  </div>
+                )}
+
                 {myActiveTrips[0].status === 'READY_FOR_PICKUP' && (
                   <button 
                     className="btn-rider-step pickup"
@@ -411,13 +517,7 @@ export default function RiderPortal({
 
                     <button 
                       className="btn-accept-trip"
-                      onClick={() => {
-                        if (trip.status !== 'READY_FOR_PICKUP') {
-                          alert(`⚠️ Cannot accept order #${trip.orderId}. Kitchen must first mark the order as READY_FOR_PICKUP.`);
-                          return;
-                        }
-                        onAcceptTrip(trip.orderId);
-                      }}
+                      onClick={() => onAcceptTrip(trip.orderId)}
                     >
                       <span>Accept Delivery Trip</span>
                       <ChevronRight size={16} />
@@ -430,31 +530,81 @@ export default function RiderPortal({
         </div>
       )}
 
-      {/* Earnings View */}
+      {/* Rider Wallet & Earnings View */}
       {activeTab === 'earnings' && (
         <div className="rider-earnings-body">
-          <div className="earnings-hero-card">
-            <span className="earnings-hero-caption">Today's Total Shift Earnings</span>
-            <h2 className="earnings-hero-amount">₹{todayEarnings}</h2>
+          {/* Main Wallet Balance Card */}
+          <div className="earnings-hero-card wallet-hero-card">
+            <div className="wallet-hero-top">
+              <div>
+                <span className="earnings-hero-caption">💼 Live Rider Wallet Balance</span>
+                <h2 className="earnings-hero-amount">₹{walletBalance}</h2>
+                <small className="wallet-auto-sub">Instant transfers to Bank UPI • 0% Fee</small>
+              </div>
+              <button 
+                type="button" 
+                className="btn-withdraw-upi"
+                onClick={() => setIsWithdrawModalOpen(true)}
+              >
+                ⚡ Withdraw to UPI
+              </button>
+            </div>
+
             <div className="earnings-breakdown-chips">
-              <span className="chip">Trip Fares: ₹{todayEarnings - 50}</span>
-              <span className="chip">Surge Bonus: ₹30</span>
+              <span className="chip">Shift Fares: ₹{deliveredEarnings || 320}</span>
+              <span className="chip">Surge / Rain Bonus: ₹35</span>
               <span className="chip">Customer Tips: ₹20</span>
+              <span className="chip">Deliveries Today: {completedTrips.length}</span>
             </div>
           </div>
 
+          {withdrawNotice && (
+            <div className="withdraw-success-alert animate-fade">
+              {withdrawNotice}
+            </div>
+          )}
+
+          {/* Daily Milestone Target */}
           <div className="daily-target-card">
             <div className="target-header">
               <span>Daily Target Progress (₹800 goal)</span>
-              <strong>{Math.round((todayEarnings / 800) * 100)}%</strong>
+              <strong>{Math.min(100, Math.round((walletBalance / 800) * 100))}%</strong>
             </div>
             <div className="progress-bar-track">
               <div 
                 className="progress-bar-fill" 
-                style={{ width: `${Math.min(100, Math.round((todayEarnings / 800) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.round((walletBalance / 800) * 100))}%` }}
               ></div>
             </div>
-            <small>Complete 3 more trips in Vandalur/Mannivakkam to earn an extra ₹150 daily milestone bonus!</small>
+            <small>Complete 2 more trips in Chennai suburbs to earn an extra ₹150 daily milestone bonus!</small>
+          </div>
+
+          {/* Rider Wallet Transaction Ledger */}
+          <div className="wallet-ledger-card">
+            <div className="ledger-header">
+              <h3>📜 Wallet Transaction History</h3>
+              <span>{walletTransactions.length} events logged</span>
+            </div>
+
+            <div className="ledger-transactions-list">
+              {walletTransactions.map((tx) => (
+                <div key={tx.id} className="ledger-row">
+                  <div className="ledger-left">
+                    <span className={`ledger-type-icon ${tx.type === 'CREDIT' ? 'credit' : 'debit'}`}>
+                      {tx.type === 'CREDIT' ? '↓' : '↑'}
+                    </span>
+                    <div>
+                      <strong>{tx.title}</strong>
+                      <p>{tx.desc} • <small>{tx.time}</small></p>
+                    </div>
+                  </div>
+                  <div className={`ledger-amount ${tx.type === 'CREDIT' ? 'credit' : 'debit'}`}>
+                    <strong>{tx.type === 'CREDIT' ? `+₹${tx.amount}` : `-₹${tx.amount}`}</strong>
+                    <span className="ledger-status-tag">Settled</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -574,6 +724,85 @@ export default function RiderPortal({
                       <span>Verify OTP & Mark Delivered</span>
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rider Instant UPI Withdrawal Modal */}
+      {isWithdrawModalOpen && (
+        <div className="modal-backdrop animate-fade" onClick={() => setIsWithdrawModalOpen(false)}>
+          <div className="collect-otp-modal animate-scale" onClick={e => e.stopPropagation()}>
+            <button 
+              className="modal-close-icon" 
+              onClick={() => setIsWithdrawModalOpen(false)}
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="collect-otp-header">
+              <div className="collect-otp-icon-wrap" style={{ background: 'rgba(22, 163, 74, 0.1)' }}>
+                <Zap size={28} className="text-green" />
+              </div>
+              <h3>Instant Rider UPI Cash Out</h3>
+              <p className="collect-otp-subtitle">
+                Withdraw earnings instantly to your bank account via UPI. Zero payout deduction fees.
+              </p>
+            </div>
+
+            <form onSubmit={handleWithdrawFunds} className="collect-otp-form">
+              <div className="form-group mb-2">
+                <label className="field-label-bold">Available Wallet Balance</label>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#16a34a', margin: '4px 0 8px 0' }}>
+                  ₹{walletBalance}
+                </div>
+              </div>
+
+              <div className="form-group mb-2">
+                <label className="field-label-bold">Transfer to UPI ID / VPA</label>
+                <input 
+                  type="text" 
+                  className="styled-input" 
+                  placeholder="e.g. 8248651695@ybl or rider@okhdfcbank"
+                  value={withdrawUpiId}
+                  onChange={e => setWithdrawUpiId(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <div className="form-group mb-3">
+                <label className="field-label-bold">Withdraw Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="styled-input" 
+                  placeholder="e.g. 300"
+                  value={withdrawAmount}
+                  onChange={e => setWithdrawAmount(e.target.value)}
+                  min={1}
+                  max={walletBalance}
+                  required 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  type="button" 
+                  className="btn-secondary flex-1"
+                  onClick={() => setIsWithdrawModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary flex-1"
+                  style={{ backgroundColor: '#16a34a', borderColor: '#15803d' }}
+                  disabled={!withdrawAmount || Number(withdrawAmount) > walletBalance}
+                >
+                  <Zap size={16} />
+                  <span>Transfer ₹{withdrawAmount || 0}</span>
                 </button>
               </div>
             </form>

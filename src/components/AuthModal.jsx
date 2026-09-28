@@ -19,8 +19,10 @@ import {
   verifyWhatsAppOtpApi, 
   getWhatsAppStatusApi 
 } from '../services/api';
+import { signInWithGoogleOAuth } from '../services/supabaseAuth';
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
+  const [selectedRole, setSelectedRole] = useState('customer'); // 'customer' | 'restaurant' | 'rider'
   const [authMethod, setAuthMethod] = useState('google'); // 'google' | 'phone' | 'email'
   const [tab, setTab] = useState('login'); // 'login' | 'signup'
 
@@ -60,17 +62,28 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   if (!isOpen) return null;
 
-  // Google 1-Click Sign-In accounts
+  // Multi-Role Google Accounts for 1-Click Sign-In
   const googleAccounts = [
     {
       name: 'Alexander Raja',
       email: 'alexanderrajac@gmail.com',
-      avatar: '👨‍💻'
+      avatar: '👨‍💻',
+      role: 'customer',
+      roleLabel: 'Customer / Foodie'
     },
     {
-      name: 'Priya Sundaram',
-      email: 'priya.sundaram@gmail.com',
-      avatar: '👩‍🍳'
+      name: 'Chef Sundaram (Junior Kuppanna)',
+      email: 'kuppanna.kitchen@gmail.com',
+      avatar: '👨‍🍳',
+      role: 'restaurant',
+      roleLabel: 'Restaurant Admin / Kitchen'
+    },
+    {
+      name: 'Murugan S. (Speed Fleet)',
+      email: 'murugan.rider@gmail.com',
+      avatar: '🛵',
+      role: 'rider',
+      roleLabel: 'Delivery Fleet Partner'
     }
   ];
 
@@ -84,6 +97,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         phone: '+91 98401 23456',
         avatar: acc.avatar,
         authProvider: 'google',
+        role: acc.role || selectedRole,
         isVerified: true
       });
       onClose();
@@ -97,16 +111,33 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     setTimeout(() => {
       setIsLoading(false);
       const extractedName = emailName || customEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const roleAvatar = selectedRole === 'restaurant' ? '👨‍🍳' : selectedRole === 'rider' ? '🛵' : '🍲';
       onLoginSuccess({
         name: extractedName,
         email: customEmail.toLowerCase(),
         phone: '+91 98401 23456',
-        avatar: '🍲',
+        avatar: roleAvatar,
         authProvider: 'google',
+        role: selectedRole,
         isVerified: true
       });
       onClose();
     }, 450);
+  };
+
+  const handleRealGoogleOAuth = async () => {
+    setIsLoading(true);
+    try {
+      const res = await signInWithGoogleOAuth();
+      if (!res.success) {
+        // If Supabase OAuth redirect is blocked or running locally, open chooser smoothly
+        setShowGoogleChooser(true);
+      }
+    } catch {
+      setShowGoogleChooser(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSendOtp = async (e) => {
@@ -179,11 +210,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
       const res = await verifyWhatsAppOtpApi(phone, enteredOtp);
       setIsLoading(false);
       if (res.success && res.verified) {
+        const roleAvatar = selectedRole === 'restaurant' ? '👨‍🍳' : selectedRole === 'rider' ? '🛵' : '🍲';
         onLoginSuccess({
-          name: name || 'Gourmet Foodie',
+          name: name || (selectedRole === 'restaurant' ? 'Kitchen Merchant' : selectedRole === 'rider' ? 'Delivery Partner' : 'Gourmet Foodie'),
           phone: '+91 ' + phone,
-          avatar: '🍲',
+          avatar: roleAvatar,
           authProvider: 'whatsapp',
+          role: selectedRole,
           isVerified: true
         });
         onClose();
@@ -214,6 +247,34 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           </div>
           <h3>{tab === 'login' ? 'Welcome Back!' : 'Create an Account'}</h3>
           <p className="auth-subtext">Instant WhatsApp verification & 1-click delivery in South Chennai</p>
+        </div>
+
+        {/* Role Selector: Customer vs Restaurant Admin vs Rider */}
+        <div className="auth-role-tabs-box">
+          <label className="auth-role-header-label">Login Account Type:</label>
+          <div className="auth-role-pills-row">
+            <button 
+              type="button" 
+              className={`auth-role-pill-btn ${selectedRole === 'customer' ? 'active' : ''}`}
+              onClick={() => setSelectedRole('customer')}
+            >
+              <span>🍲 Customer</span>
+            </button>
+            <button 
+              type="button" 
+              className={`auth-role-pill-btn ${selectedRole === 'restaurant' ? 'active' : ''}`}
+              onClick={() => setSelectedRole('restaurant')}
+            >
+              <span>👨‍🍳 Restaurant</span>
+            </button>
+            <button 
+              type="button" 
+              className={`auth-role-pill-btn ${selectedRole === 'rider' ? 'active' : ''}`}
+              onClick={() => setSelectedRole('rider')}
+            >
+              <span>🛵 Rider Fleet</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher: Log In / Sign Up */}
@@ -378,7 +439,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <button 
                   type="button" 
                   className="btn-google-auth"
-                  onClick={() => setShowGoogleChooser(true)}
+                  onClick={handleRealGoogleOAuth}
                   disabled={isLoading}
                 >
                   <svg className="google-icon-svg" viewBox="0 0 24 24" width="20" height="20">
@@ -387,7 +448,15 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                   </svg>
-                  <span>{tab === 'login' ? 'Sign in with Google / Gmail' : 'Sign up with Google / Gmail'}</span>
+                  <span>Continue with Google Sign-In</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-google-quick-accounts"
+                  onClick={() => setShowGoogleChooser(true)}
+                >
+                  ⚡ Select Demo Role Account ({selectedRole.toUpperCase()})
                 </button>
               </div>
             ) : (
@@ -412,7 +481,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                     >
                       <div className="acc-avatar-bubble">{acc.avatar}</div>
                       <div className="acc-info-box">
-                        <strong>{acc.name}</strong>
+                        <div className="acc-name-role-row">
+                          <strong>{acc.name}</strong>
+                          <span className="acc-role-pill">{acc.roleLabel}</span>
+                        </div>
                         <span>{acc.email}</span>
                       </div>
                       <ArrowRight size={14} className="text-muted" />
