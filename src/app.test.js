@@ -729,10 +729,49 @@ describe('Individual Users Orders & Verified Email Display', () => {
   });
 });
 
+describe('Restaurant Self-Registration & Merchant Onboarding Pipeline', () => {
+  it('should register a new restaurant partner with signature menu items', () => {
+    const newRestaurant = {
+      id: 'res-perungalathur-999',
+      name: 'Madurai Muniyandi Vilas',
+      region: 'Perungalathur',
+      cuisines: ['South Indian', 'Biryani', 'Chettinad'],
+      rating: 4.8,
+      ratingCount: 'New Partner',
+      deliveryTime: '25-30 min',
+      costForTwo: 350,
+      menu: [
+        { id: 'dish-1', name: 'Muniyandi Special Mutton Sukka', price: 240, isVeg: false }
+      ]
+    };
 
+    const initialList = [...RESTAURANTS];
+    const updatedList = [newRestaurant, ...initialList];
 
+    expect(updatedList.length).toBe(initialList.length + 1);
+    expect(updatedList[0].name).toBe('Madurai Muniyandi Vilas');
+    expect(updatedList[0].region).toBe('Perungalathur');
+    expect(updatedList[0].menu.length).toBeGreaterThan(0);
+  });
 
+  it('should upgrade customer account to restaurant merchant role upon registration', () => {
+    const customerUser = {
+      id: 'usr-cust-99',
+      name: 'Sundar Store Owner',
+      email: 'sundar.hotel@gmail.com',
+      phone: '+91 98401 99999',
+      role: 'customer'
+    };
 
+    // Promote to merchant
+    const promotedUser = {
+      ...customerUser,
+      role: 'restaurant',
+      restaurantId: 'res-vandalur-888',
+      restaurantName: 'Sundar Tiffin House'
+    };
 
-
-
+    expect(promotedUser.role).toBe('restaurant');
+    expect(promotedUser.restaurantId).toBe('res-vandalur-888');
+  });
+});

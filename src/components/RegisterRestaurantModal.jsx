@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Store, 
   MapPin, 
@@ -11,11 +11,8 @@ import {
   X, 
   Sparkles, 
   CheckCircle2, 
-  Image as ImageIcon,
-  Flame,
   ArrowRight
 } from 'lucide-react';
-import { CITIES } from '../data/mockData';
 
 const SAMPLE_FOOD_IMAGES = [
   { label: 'Biryani Feast', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80' },
@@ -30,7 +27,8 @@ export default function RegisterRestaurantModal({
   onClose,
   onRegisterRestaurant,
   currentUser,
-  isAdmin = false
+  isAdmin = false,
+  onSwitchPortal = () => {}
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -50,6 +48,19 @@ export default function RegisterRestaurantModal({
 
   const [isSuccess, setIsSuccess] = useState(false);
   const [newRestaurantDetails, setNewRestaurantDetails] = useState(null);
+
+  // Reset success state and prefill user contact on open
+  useEffect(() => {
+    if (isOpen) {
+      setIsSuccess(false);
+      setFormData(prev => ({
+        ...prev,
+        ownerName: currentUser?.name || prev.ownerName,
+        email: currentUser?.email || prev.email,
+        phone: currentUser?.phone || prev.phone
+      }));
+    }
+  }, [isOpen, currentUser]);
 
   if (!isOpen) return null;
 
@@ -125,16 +136,24 @@ export default function RegisterRestaurantModal({
     setIsSuccess(true);
   };
 
-  const handleFinish = () => {
+  const handleFinish = (goToKitchen = false) => {
     setIsSuccess(false);
     onClose();
+    if (goToKitchen) {
+      onSwitchPortal('hotel');
+    }
   };
 
   return (
-    <div className="modal-backdrop-generic animate-fade">
-      <div className="modal-container-generic reg-restaurant-modal animate-scale">
+    <div className="modal-backdrop animate-fade" onClick={onClose} style={{ zIndex: 3000 }}>
+      <div 
+        className="reg-restaurant-modal animate-scale" 
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         {/* Header */}
-        <div className="modal-header-generic reg-modal-header">
+        <div className="reg-modal-header">
           <div className="reg-header-brand">
             <div className="reg-icon-badge">
               <Store size={22} />
@@ -148,8 +167,14 @@ export default function RegisterRestaurantModal({
               </p>
             </div>
           </div>
-          <button className="modal-close-btn-generic" onClick={onClose} aria-label="Close">
-            <X size={18} />
+          <button 
+            type="button" 
+            className="modal-close-icon" 
+            onClick={onClose} 
+            aria-label="Close modal"
+            style={{ position: 'relative', top: 'auto', right: 'auto', color: '#fff' }}
+          >
+            <X size={20} />
           </button>
         </div>
 
@@ -157,7 +182,7 @@ export default function RegisterRestaurantModal({
         {isSuccess ? (
           <div className="reg-success-card animate-fade">
             <div className="reg-success-icon">
-              <CheckCircle2 size={56} className="text-emerald" />
+              <CheckCircle2 size={56} style={{ color: '#10b981' }} />
             </div>
             <h3>🎉 Restaurant Successfully Registered!</h3>
             <p className="reg-success-desc">
@@ -178,11 +203,27 @@ export default function RegisterRestaurantModal({
               </div>
             </div>
             <p className="reg-role-tip">
-              💡 You can now switch to the <strong>👨‍🍳 Merchant Kitchen Portal</strong> to manage live orders, edit your menu prices, and customize your kitchen timings.
+              💡 You can now open your <strong>👨‍🍳 Merchant Kitchen Portal</strong> to manage live orders, edit your menu prices, and customize your kitchen timings.
             </p>
-            <button className="btn-primary reg-done-btn" onClick={handleFinish}>
-              Done &amp; Explore Unavukadai
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={() => handleFinish(false)}
+                style={{ padding: '12px 20px' }}
+              >
+                Close
+              </button>
+              <button 
+                type="button" 
+                className="btn-primary" 
+                onClick={() => handleFinish(true)}
+                style={{ padding: '12px 24px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span>Open Merchant Kitchen Portal</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="reg-form-body">

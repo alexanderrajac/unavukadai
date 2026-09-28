@@ -1281,15 +1281,6 @@ export default function App() {
             onDeleteAddress={handleDeleteAddress}
           />
 
-          {/* Restaurant Registration & Merchant Onboarding Modal */}
-          <RegisterRestaurantModal
-            isOpen={isRegisterRestaurantOpen}
-            onClose={() => setIsRegisterRestaurantOpen(false)}
-            onRegisterRestaurant={handleRegisterRestaurant}
-            currentUser={user}
-            isAdmin={user?.role === 'admin'}
-          />
-
           {/* Mobile-Native Bottom Navigation Bar */}
           <MobileBottomNav
             activeTab={activeTab}
@@ -1359,6 +1350,16 @@ export default function App() {
           onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
         />
       )}
+
+      {/* Global Restaurant Registration & Merchant Onboarding Modal */}
+      <RegisterRestaurantModal
+        isOpen={isRegisterRestaurantOpen}
+        onClose={() => setIsRegisterRestaurantOpen(false)}
+        onRegisterRestaurant={handleRegisterRestaurant}
+        currentUser={user}
+        isAdmin={user?.role === 'admin'}
+        onSwitchPortal={setCurrentPortal}
+      />
     </div>
   );
 }
