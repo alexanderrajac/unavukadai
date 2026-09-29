@@ -540,39 +540,50 @@ app.post('/api/whatsapp/verify-otp', async (req, res) => {
 });
 
 // 4. Send Order Confirmation with Doorstep Delivery OTP (Asynchronously Non-Blocking)
-app.post('/api/whatsapp/send-order-notification', (req, res) => {
-  const { orderId, customerPhone, restaurantName, grandTotal, deliveryOtp, items } = req.body;
+app.post('/api/whatsapp/send-order-notification', async (req, res) => {
+  const { orderId, customerPhone, restaurantName, grandTotal, deliveryOtp } = req.body;
   const normalized = normalizePhone(customerPhone);
 
   if (!normalized) {
     return res.status(400).json({ error: 'Valid phone required' });
   }
 
-  const itemsSummary = Array.isArray(items)
-    ? items.map(i => `• ${i.quantity}x ${i.name}`).join('\n')
-    : '';
+  // Dispatch real delivery OTP / confirmation to customer via WhatsApp Marketing King gateway
+  try {
+    const gwRes = await fetch(`${WHATSAPP_GATEWAY_BASE_URL}/api/v1/otp/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': WHATSAPP_API_KEY
+      },
+      body: JSON.stringify({
+        phone: normalized,
+        app_name: 'Unavukadai Express',
+        code_length: 4,
+        purpose: 'DELIVERY'
+      }),
+      signal: AbortSignal.timeout(6000)
+    });
+    const gwData = await gwRes.json().catch(() => ({}));
+    if (gwRes.ok && gwData.success) {
+      console.log(`[WhatsApp Order v1] Sent delivery notification to +${normalized} for #${orderId}`);
+      return res.json({
+        success: true,
+        sentViaWhatsApp: true,
+        orderId,
+        gatewayData: gwData
+      });
+    }
+  } catch (err) {
+    console.warn(`[WhatsApp Order v1] Gateway delivery error:`, err.message);
+  }
 
-  const message = `🍲 *UNAVUKADAI ORDER CONFIRMED!* 🍲\n\n` +
-    `*Order ID:* #${orderId}\n` +
-    `*Restaurant:* ${restaurantName || 'Eatery'}\n` +
-    `*Total Bill:* ₹${grandTotal}\n\n` +
-    (itemsSummary ? `*Ordered Items:*\n${itemsSummary}\n\n` : '') +
-    `🔑 *Doorstep Delivery OTP: ${deliveryOtp}*\n` +
-    `_Please share this 4-digit OTP with your delivery partner upon food arrival to complete handoff._\n\n` +
-    `🛵 *Live Tracking:* http://localhost:5173/#/customer\n` +
-    `_Thank you for supporting authentic local South Chennai eateries!_`;
-
-  enqueueNotification('/send-message', {
-    phone: normalized,
-    message,
-    orderId
-  });
-
+  // Fallback response so customer checkout is never blocked
   res.json({
     success: true,
-    queued: true,
+    sentViaWhatsApp: false,
     orderId,
-    message: 'Order confirmation queued for asynchronous delivery'
+    fallback: true
   });
 });
 

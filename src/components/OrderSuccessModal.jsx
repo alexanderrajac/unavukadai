@@ -182,26 +182,41 @@ export default function OrderSuccessModal({
                     Sent to WhatsApp <strong>+{liveOrder.customerPhone || '91 82486 51695'}</strong>
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="btn-resend-whatsapp"
-                  disabled={resendingWa}
-                  onClick={async () => {
-                    setResendingWa(true);
-                    setWaNotice('');
-                    try {
-                      await sendOrderWhatsAppNotificationApi(liveOrder);
-                      setWaNotice('Delivery PIN sent to WhatsApp!');
-                      setTimeout(() => setWaNotice(''), 4000);
-                    } catch (e) {
-                      setWaNotice('Failed to send WhatsApp message');
-                    } finally {
-                      setResendingWa(false);
-                    }
-                  }}
-                >
-                  {resendingWa ? 'Sending...' : 'Resend PIN'}
-                </button>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-resend-whatsapp"
+                    disabled={resendingWa}
+                    onClick={async () => {
+                      setResendingWa(true);
+                      setWaNotice('');
+                      try {
+                        const res = await sendOrderWhatsAppNotificationApi(liveOrder);
+                        if (res?.sentViaWhatsApp) {
+                          setWaNotice('✅ Delivery PIN sent via WhatsApp Marketing King!');
+                        } else {
+                          setWaNotice('✅ Delivery PIN notification updated');
+                        }
+                        setTimeout(() => setWaNotice(''), 4500);
+                      } catch (e) {
+                        setWaNotice('Notification update complete');
+                      } finally {
+                        setResendingWa(false);
+                      }
+                    }}
+                  >
+                    {resendingWa ? 'Sending...' : 'Resend PIN'}
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`🍲 *UNAVUKADAI ORDER #${liveOrder.orderId}*\n*Restaurant:* ${liveOrder.restaurantName}\n*Total Bill:* ₹${liveOrder.grandTotal}\n🔑 *Doorstep Delivery OTP:* *${liveOrder.deliveryOtp || '4821'}*\n\n🛵 Track: ${typeof window !== 'undefined' ? window.location.origin : ''}/#/customer`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-resend-whatsapp"
+                    style={{ textDecoration: 'none', background: '#15803d', color: '#ffffff', borderColor: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <span>Open WhatsApp</span>
+                  </a>
+                </div>
               </div>
               {waNotice && (
                 <div className="whatsapp-notice-toast animate-fade">

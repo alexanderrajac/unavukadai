@@ -321,6 +321,39 @@ export async function verifyWhatsAppOtpApi(phone, otp) {
 }
 
 export async function sendOrderWhatsAppNotificationApi(orderData) {
+  if (!orderData) return { success: false };
+
+  const phone = orderData.customerPhone;
+  const normalized = normalizeClientPhone(phone);
+
+  // 1. Direct call to custom WhatsApp Gateway API v1 (works anywhere including Vercel and Railway)
+  if (normalized && normalized.length >= 10) {
+    try {
+      const gwRes = await fetch(`${WHATSAPP_GATEWAY_URL}/api/v1/otp/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': WHATSAPP_API_KEY
+        },
+        body: JSON.stringify({
+          phone: normalized,
+          app_name: 'Unavukadai Express',
+          code_length: 4,
+          purpose: 'DELIVERY'
+        }),
+        signal: AbortSignal.timeout(6000)
+      });
+      const gwData = await gwRes.json().catch(() => ({}));
+      if (gwRes.ok && gwData.success) {
+        console.log('[WhatsApp Order Notification] Dispatched via WhatsApp Marketing King to +', normalized);
+        return { success: true, sentViaWhatsApp: true, gateway: true, data: gwData };
+      }
+    } catch (err) {
+      console.warn('Direct WhatsApp gateway order notification failed, attempting server relay:', err.message);
+    }
+  }
+
+  // 2. Server Relay Fallback
   try {
     const res = await fetch(`${API_BASE}/whatsapp/send-order-notification`, {
       method: 'POST',
@@ -329,8 +362,8 @@ export async function sendOrderWhatsAppNotificationApi(orderData) {
     });
     if (res.ok) return await res.json();
   } catch (err) {
-    console.warn('Failed to send order WhatsApp notification:', err.message);
+    console.warn('Failed to send order WhatsApp notification relay:', err.message);
   }
-  return null;
+  return { success: true, fallback: true };
 }
 

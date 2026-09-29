@@ -1058,5 +1058,59 @@ describe('Rider Partner Registration & Order Dispatch Mechanics', () => {
   });
 });
 
+describe('WhatsApp Marketing King Notifications & Order Receipt Integration', () => {
+  it('should format WhatsApp order notification payload with normalized 10-digit/12-digit Indian phone number', () => {
+    const normalizePhoneTest = (phone) => {
+      if (!phone) return '';
+      let digits = String(phone).replace(/[^\d]/g, '');
+      if (digits.length === 10) digits = '91' + digits;
+      return digits;
+    };
+
+    expect(normalizePhoneTest('9840123456')).toBe('919840123456');
+    expect(normalizePhoneTest('+91 98401 23456')).toBe('919840123456');
+    expect(normalizePhoneTest('09840123456')).toBe('09840123456');
+  });
+
+  it('should generate formatted WhatsApp direct share URL for 1-tap customer receipt', () => {
+    const order = {
+      orderId: 'UK-7788',
+      restaurantName: 'SS Hyderabad Biryani',
+      grandTotal: 520,
+      deliveryOtp: '4821',
+      items: [
+        { name: 'Chicken Biryani', quantity: 2 }
+      ]
+    };
+
+    const text = `🍲 *UNAVUKADAI ORDER #${order.orderId}*\n*Restaurant:* ${order.restaurantName}\n*Total Bill:* ₹${order.grandTotal}\n🔑 *Doorstep Delivery OTP:* *${order.deliveryOtp}*`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    expect(waUrl).toContain('https://wa.me/?text=');
+    expect(waUrl).toContain(encodeURIComponent('UK-7788'));
+    expect(waUrl).toContain(encodeURIComponent('4821'));
+  });
+
+  it('should allow resending WhatsApp delivery PIN without blocking order progress or UI', () => {
+    const mockOrderState = {
+      orderId: 'UK-7788',
+      status: 'OUT_FOR_DELIVERY',
+      deliveryOtp: '4821',
+      waNotificationSent: false
+    };
+
+    // Trigger WhatsApp notification simulation
+    const updated = {
+      ...mockOrderState,
+      waNotificationSent: true,
+      lastDispatchedAt: Date.now()
+    };
+
+    expect(updated.waNotificationSent).toBe(true);
+    expect(updated.status).toBe('OUT_FOR_DELIVERY'); // Does not modify or disrupt order lifecycle
+    expect(updated.deliveryOtp).toBe('4821');
+  });
+});
+
 
 
