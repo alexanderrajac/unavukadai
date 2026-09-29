@@ -18,9 +18,10 @@ import {
   Home,
   Check,
   Mail,
-  Sparkles,
   Store,
-  Bike
+  Bike,
+  Handshake,
+  ArrowRight
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
@@ -51,11 +52,13 @@ export default function Header({
 }) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isPartnerMenuOpen, setIsPartnerMenuOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [gpsNotice, setGpsNotice] = useState('');
   const cityRef = useRef(null);
   const userMenuRef = useRef(null);
+  const partnerMenuRef = useRef(null);
 
   const handleDetectGps = async () => {
     setIsDetectingGps(true);
@@ -83,6 +86,9 @@ export default function Header({
       }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setIsUserMenuOpen(false);
+      }
+      if (partnerMenuRef.current && !partnerMenuRef.current.contains(e.target)) {
+        setIsPartnerMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -255,26 +261,123 @@ export default function Header({
               )}
             </button>
 
-            {/* Partner / Register Restaurant Button */}
-            <button 
-              className="partner-btn-trigger"
-              onClick={onOpenRegisterRestaurant}
-              title="Partner with Unavukadai - Register Restaurant"
-            >
-              <Store size={15} />
-              <span>Partner</span>
-            </button>
+            {/* Unified Partner Menu (Restaurant & Rider Registration) */}
+            <div className="partner-menu-wrapper" ref={partnerMenuRef}>
+              <button 
+                type="button"
+                className={`partner-btn-trigger ${isPartnerMenuOpen ? 'active' : ''}`}
+                onClick={() => setIsPartnerMenuOpen(!isPartnerMenuOpen)}
+                title="Partner with Unavukadai - Restaurant & Rider Registration"
+                aria-expanded={isPartnerMenuOpen}
+              >
+                <Handshake size={15} />
+                <span>Partner</span>
+                <ChevronDown size={13} className={`chevron-partner ${isPartnerMenuOpen ? 'rotated' : ''}`} />
+              </button>
 
-            {/* Ride / Delivery Partner Button */}
-            <button 
-              className="partner-btn-trigger"
-              onClick={onOpenRegisterRider}
-              title="Deliver with Unavukadai - Earn Daily"
-              style={{ borderColor: 'rgba(139, 92, 246, 0.35)', color: '#8b5cf6' }}
-            >
-              <Bike size={15} />
-              <span>Drive</span>
-            </button>
+              {isPartnerMenuOpen && (
+                <div className="partner-dropdown-menu animate-scale">
+                  <div className="partner-dropdown-header">
+                    <div className="partner-tag-pill">GROW WITH UNAVUKADAI</div>
+                    <h4>Partner &amp; Earn With Us</h4>
+                    <p>Join South Chennai's fastest growing hyperlocal network</p>
+                  </div>
+
+                  <div className="partner-dropdown-cards">
+                    {/* 1. Register Restaurant */}
+                    <div 
+                      className="partner-card-item hotel-partner"
+                      onClick={() => {
+                        setIsPartnerMenuOpen(false);
+                        onOpenRegisterRestaurant();
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="partner-card-icon store-theme">
+                        <Store size={20} />
+                      </div>
+                      <div className="partner-card-info">
+                        <div className="partner-card-top-row">
+                          <span className="partner-card-title">Register Restaurant</span>
+                          <span className="partner-role-badge badge-orange">HOTEL</span>
+                        </div>
+                        <p className="partner-card-desc">
+                          Zero listing fee · 12% commission · Daily direct UPI settlement &amp; live kitchen KOT.
+                        </p>
+                        <div className="partner-card-cta text-orange">
+                          <span>Register Outlet</span>
+                          <ArrowRight size={13} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Register Rider */}
+                    <div 
+                      className="partner-card-item rider-partner"
+                      onClick={() => {
+                        setIsPartnerMenuOpen(false);
+                        onOpenRegisterRider();
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="partner-card-icon bike-theme">
+                        <Bike size={20} />
+                      </div>
+                      <div className="partner-card-info">
+                        <div className="partner-card-top-row">
+                          <span className="partner-card-title">Become Delivery Rider</span>
+                          <span className="partner-role-badge badge-purple">RIDER</span>
+                        </div>
+                        <p className="partner-card-desc">
+                          Drive your two-wheeler · Keep 100% delivery fees · Flexible shifts &amp; daily payouts.
+                        </p>
+                        <div className="partner-card-cta text-purple">
+                          <span>Join Delivery Fleet</span>
+                          <ArrowRight size={13} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Shortcut for active roles */}
+                  {(user?.role === 'restaurant' || user?.role === 'rider' || user?.role === 'admin') && (
+                    <div className="partner-dropdown-footer">
+                      <span className="footer-lead">Already registered?</span>
+                      <div className="footer-links">
+                        {(user.role === 'restaurant' || user.role === 'admin') && (
+                          <button 
+                            type="button" 
+                            className="footer-portal-link"
+                            onClick={() => {
+                              setIsPartnerMenuOpen(false);
+                              onSwitchPortal('hotel');
+                            }}
+                          >
+                            <Store size={12} />
+                            <span>Kitchen Portal</span>
+                          </button>
+                        )}
+                        {(user.role === 'rider' || user.role === 'admin') && (
+                          <button 
+                            type="button" 
+                            className="footer-portal-link purple"
+                            onClick={() => {
+                              setIsPartnerMenuOpen(false);
+                              onSwitchPortal('rider');
+                            }}
+                          >
+                            <Bike size={12} />
+                            <span>Rider Portal</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Cart Trigger */}
             <button 
