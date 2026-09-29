@@ -577,14 +577,51 @@ export default function App() {
     });
 
     const unsubscribe = subscribeToLiveUpdates((payload) => {
+      if (!payload || !payload.type) return;
+
       if (payload.type === 'INIT') {
         if (Array.isArray(payload.data?.orders)) setOrders(payload.data.orders);
         if (payload.data?.stock) setRestaurantStock(payload.data.stock);
         if (payload.data?.coupons?.length > 0) setCouponsList(payload.data.coupons);
         if (payload.data?.riderLocations) setRiderLocations(payload.data.riderLocations);
         if (payload.data?.settings) setSettings(payload.data.settings);
+      } else if (payload.type === 'ORDER_STATUS_CHANGED') {
+        const { orderId, status, extraFields, updated } = payload.data || {};
+        if (orderId) {
+          setOrders(prev => prev.map(o => {
+            if (o.orderId === orderId) {
+              return {
+                ...o,
+                status: status || o.status,
+                ...(extraFields || {}),
+                ...(updated || {})
+              };
+            }
+            return o;
+          }));
+        }
       } else if (payload.type === 'ORDERS_UPDATED') {
-        if (Array.isArray(payload.data)) setOrders(payload.data);
+        if (Array.isArray(payload.data)) {
+          setOrders(prev => {
+            const map = new Map();
+            prev.forEach(o => { if (o && o.orderId) map.set(o.orderId, o); });
+            payload.data.forEach(o => {
+              if (o && o.orderId) {
+                map.set(o.orderId, { ...(map.get(o.orderId) || {}), ...o });
+              }
+            });
+            return Array.from(map.values());
+          });
+        } else if (payload.data && payload.data.orderId) {
+          const single = payload.data;
+          setOrders(prev => {
+            const exists = prev.some(o => o.orderId === single.orderId);
+            if (exists) {
+              return prev.map(o => o.orderId === single.orderId ? { ...o, ...single } : o);
+            }
+            return [single, ...prev];
+          });
+        }
       } else if (payload.type === 'STOCK_UPDATED') {
         if (payload.data) setRestaurantStock(payload.data);
       } else if (payload.type === 'COUPONS_UPDATED') {
@@ -1078,14 +1115,22 @@ export default function App() {
     sendOrderWhatsAppNotificationApi(newOrderObj);
   };
 
-  const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev => prev.map(o => {
-      if (o.orderId === orderId) {
-        return { ...o, status: newStatus };
+  const handleUpdateOrderStatus = (orderId, newStatus, extraFields = {}) => {
+    setOrders(prev => {
+      const updated = prev.map(o => {
+        if (o.orderId === orderId) {
+          return { ...o, status: newStatus, ...extraFields };
+        }
+        return o;
+      });
+      try {
+        localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(updated));
+      } catch {
+        // ignore
       }
-      return o;
-    }));
-    updateOrderStatusApi(orderId, newStatus);
+      return updated;
+    });
+    updateOrderStatusApi(orderId, newStatus, extraFields);
   };
 
   const handleAcceptTrip = (orderId) => {
@@ -1116,15 +1161,23 @@ export default function App() {
       riderPhone: activeRiderPhone,
       status: targetStatus
     };
-    setOrders(prev => prev.map(o => {
-      if (o.orderId === orderId) {
-        return {
-          ...o,
-          ...riderDetails
-        };
+    setOrders(prev => {
+      const updated = prev.map(o => {
+        if (o.orderId === orderId) {
+          return {
+            ...o,
+            ...riderDetails
+          };
+        }
+        return o;
+      });
+      try {
+        localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(updated));
+      } catch {
+        // ignore
       }
-      return o;
-    }));
+      return updated;
+    });
     updateOrderStatusApi(orderId, targetStatus, riderDetails);
     return true;
   };

@@ -80,8 +80,37 @@ export function mapAppOrderToPg(order) {
   };
 }
 
+// Local cross-tab broadcast channel (instant 0ms synchronization between tabs on the same device)
+const localTabChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
+  ? new BroadcastChannel('unavukadai_tab_sync') 
+  : null;
+
 // Direct cloud Supabase Realtime channel for instant cross-device broadcast
 let realtimeChannel = null;
+
+export function broadcastSync(type, data) {
+  // 1. Instant local cross-tab broadcast (0ms delay)
+  try {
+    if (localTabChannel) {
+      localTabChannel.postMessage({ type, data, timestamp: Date.now() });
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Supabase Realtime cloud broadcast
+  try {
+    if (realtimeChannel) {
+      realtimeChannel.send({
+        type: 'broadcast',
+        event: type,
+        payload: data
+      });
+    }
+  } catch {
+    // ignore
+  }
+}
 
 export async function fetchOrdersFromApi() {
   // 1. Try local Express backend API
@@ -141,18 +170,8 @@ export async function createOrderApi(orderData) {
     console.warn('Supabase direct order insert error:', err.message);
   }
 
-  // 3. Broadcast to all connected devices in real time via Supabase Broadcast
-  try {
-    if (realtimeChannel) {
-      realtimeChannel.send({
-        type: 'broadcast',
-        event: 'ORDERS_UPDATED',
-        payload: created || orderData
-      });
-    }
-  } catch {
-    // Broadcast fallback
-  }
+  // 3. Broadcast to all connected devices in real time via Supabase & local tabs
+  broadcastSync('ORDERS_UPDATED', created || orderData);
 
   return created || orderData;
 }
@@ -195,18 +214,10 @@ export async function updateOrderStatusApi(orderId, status, extraFields = {}) {
     console.warn('Supabase direct updateOrder error:', err.message);
   }
 
-  // 3. Broadcast status update across devices
-  try {
-    if (realtimeChannel) {
-      realtimeChannel.send({
-        type: 'broadcast',
-        event: 'ORDER_STATUS_CHANGED',
-        payload: { orderId, status, extraFields, updated }
-      });
-    }
-  } catch {
-    // Broadcast fallback
-  }
+  // 3. Broadcast status update across tabs & devices instantly
+  const changePayload = { orderId, status, extraFields, updated };
+  broadcastSync('ORDER_STATUS_CHANGED', changePayload);
+  broadcastSync('ORDERS_UPDATED', updated || { orderId, status, ...extraFields });
 
   return updated;
 }
@@ -321,11 +332,38 @@ export async function resetOrdersApi() {
   return null;
 }
 
-// Subscribe to real-time events across all devices (SSE + Supabase Realtime)
+// Subscribe to real-time events across all devices & tabs (Local Broadcast + SSE + Supabase Realtime + Fast Heartbeat)
 export function subscribeToLiveUpdates(onUpdate) {
   let eventSource = null;
 
-  // 1. Try local Server-Sent Events (SSE) if backend is running locally
+  // 1. Listen to instant local cross-tab broadcasts
+  const handleTabMessage = (e) => {
+    if (e.data && e.data.type) {
+      onUpdate(e.data);
+    }
+  };
+  if (localTabChannel) {
+    localTabChannel.addEventListener('message', handleTabMessage);
+  }
+
+  // 2. Listen to localStorage storage events (fallback for multi-tab sync)
+  const handleStorageChange = (e) => {
+    if (e.key === 'unavu_ecosystem_orders' && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed)) {
+          onUpdate({ type: 'ORDERS_UPDATED', data: parsed });
+        }
+      } catch {
+        // ignore
+      }
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', handleStorageChange);
+  }
+
+  // 3. Try local Server-Sent Events (SSE) if backend is running locally
   if (typeof window !== 'undefined' && window.EventSource) {
     try {
       eventSource = new EventSource(`${API_BASE}/orders/stream`);
@@ -347,13 +385,13 @@ export function subscribeToLiveUpdates(onUpdate) {
     }
   }
 
-  // 2. Direct Supabase Realtime Subscription (Multi-Device Cloud Broadcast)
+  // 4. Direct Supabase Realtime Subscription (Multi-Device Cloud Broadcast)
   try {
     if (supabase) {
       realtimeChannel = supabase.channel('unavukadai-live-sync')
         .on('broadcast', { event: 'ORDERS_UPDATED' }, ({ payload }) => {
           if (payload) {
-            onUpdate({ type: 'ORDERS_UPDATED', data: Array.isArray(payload) ? payload : [payload] });
+            onUpdate({ type: 'ORDERS_UPDATED', data: payload });
           }
         })
         .on('broadcast', { event: 'ORDER_STATUS_CHANGED' }, ({ payload }) => {
@@ -361,14 +399,22 @@ export function subscribeToLiveUpdates(onUpdate) {
             onUpdate({ type: 'ORDER_STATUS_CHANGED', data: payload });
           }
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async (change) => {
           try {
-            const { data } = await supabase
-              .from('orders')
-              .select('*')
-              .order('created_at', { ascending: false });
-            if (data && Array.isArray(data) && data.length > 0) {
-              onUpdate({ type: 'ORDERS_UPDATED', data: data.map(mapPgOrderToApp) });
+            if (change?.new) {
+              const mapped = mapPgOrderToApp(change.new);
+              onUpdate({ 
+                type: 'ORDER_STATUS_CHANGED', 
+                data: { orderId: mapped.orderId, status: mapped.status, updated: mapped } 
+              });
+            } else {
+              const { data } = await supabase
+                .from('orders')
+                .select('*')
+                .order('created_at', { ascending: false });
+              if (data && Array.isArray(data) && data.length > 0) {
+                onUpdate({ type: 'ORDERS_UPDATED', data: data.map(mapPgOrderToApp) });
+              }
             }
           } catch {
             // ignore
@@ -380,7 +426,27 @@ export function subscribeToLiveUpdates(onUpdate) {
     console.warn('Supabase Realtime subscription error:', err.message);
   }
 
+  // 5. Active Heartbeat Polling (every 3.5s when page is active) to guarantee zero desync without refreshing
+  const heartbeatId = setInterval(async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    try {
+      const remote = await fetchOrdersFromApi();
+      if (remote && Array.isArray(remote) && remote.length > 0) {
+        onUpdate({ type: 'ORDERS_UPDATED', data: remote });
+      }
+    } catch {
+      // ignore
+    }
+  }, 3500);
+
   return () => {
+    clearInterval(heartbeatId);
+    if (localTabChannel) {
+      localTabChannel.removeEventListener('message', handleTabMessage);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('storage', handleStorageChange);
+    }
     if (eventSource) {
       eventSource.close();
     }
