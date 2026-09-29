@@ -10,7 +10,7 @@ import {
   MessageSquare, ThumbsUp, ThumbsDown, MoreVertical, Send, Loader2,
   LayoutGrid, List, ArrowUpRight, ArrowDownLeft, PieChart, Activity,
   BookOpen, ClipboardList, Coffee, Headphones, LogOut, Siren,
-  Upload, Image as ImageIcon
+  Upload, Image as ImageIcon, Bike, PackageCheck, CheckCircle2
 } from 'lucide-react';
 import { RESTAURANTS } from '../data/mockData';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -103,7 +103,22 @@ export default function HotelPortal({
   const [isOpen, setIsOpen] = useState(() => currentHotel?.isOpen !== false && !currentHotel?.isClosed);
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [kitchenToast, setKitchenToast] = useState('');
   const prevOrderCountRef = useRef(0);
+
+  const handleStatusChangeWithFeedback = (orderId, newStatus, extra = {}) => {
+    playKitchenChime();
+    onUpdateOrderStatus(orderId, newStatus, { forceTransition: true, ...extra });
+    const statusLabels = {
+      PREPARING: '🍳 Order Accepted! Kitchen cooking started.',
+      READY_FOR_PICKUP: '🥘 Dishes Ready & Packaged! Rider notified.',
+      OUT_FOR_DELIVERY: '🛵 Handed over to delivery rider.',
+      DELIVERED: '✅ Order marked successfully delivered!',
+      CANCELLED: '❌ Order cancelled.'
+    };
+    setKitchenToast(statusLabels[newStatus] || `Order #${orderId} updated to ${newStatus}`);
+    setTimeout(() => setKitchenToast(''), 4500);
+  };
 
   useEffect(() => {
     if (currentHotel) {
@@ -377,8 +392,15 @@ export default function HotelPortal({
       </div>
 
       {/* ── Success Toast ─────────────────────────────────────────────────────── */}
-      {(dishSuccessMsg || locationMsg) && (
-        <div className="mp-toast animate-fade">{dishSuccessMsg || locationMsg}</div>
+      {(dishSuccessMsg || locationMsg || kitchenToast) && (
+        <div className="mp-toast animate-fade" style={kitchenToast ? { background: '#0f172a', borderLeft: '4px solid #10b981', color: '#fff', fontWeight: 700 } : {}}>
+          {kitchenToast ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <Sparkles size={16} style={{ color: '#10b981' }} />
+              {kitchenToast}
+            </span>
+          ) : (dishSuccessMsg || locationMsg)}
+        </div>
       )}
 
       <div className="mp-content">
@@ -541,46 +563,118 @@ export default function HotelPortal({
                           {order.riderName && <span className="mp-rider-badge">🛵 {order.riderName}</span>}
                         </div>
 
+                        {/* Order Stage Tracker */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px', margin: '4px 14px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+                          {[
+                            { key: 'PLACED', label: '1. Order In' },
+                            { key: 'PREPARING', label: '2. Cooking' },
+                            { key: 'READY_FOR_PICKUP', label: '3. Packed' },
+                            { key: 'OUT_FOR_DELIVERY', label: '4. Delivery' },
+                            { key: 'DELIVERED', label: '5. Done' }
+                          ].map((step) => {
+                            const stepsOrder = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+                            const curIdx = stepsOrder.indexOf(s);
+                            const thisIdx = stepsOrder.indexOf(step.key);
+                            const isDone = curIdx >= thisIdx && s !== 'CANCELLED';
+                            const isCurrent = s === step.key;
+                            return (
+                              <span key={step.key} style={{ color: isCurrent ? '#ea580c' : isDone ? '#10b981' : '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                {isDone ? '✓ ' : ''}{step.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+
                         {/* Actions */}
                         <div className="mp-oc-actions">
-                          {s === 'PLACED' && (<>
-                            <button className="mp-btn-accept" onClick={() => onUpdateOrderStatus(order.orderId, 'PREPARING')}>
-                              <CheckCircle size={15}/> Accept & Cook
-                            </button>
-                            <button className="mp-btn-reject" onClick={() => setRejecting(order.orderId)}>
-                              <X size={15}/> Reject
-                            </button>
-                          </>)}
-                          {s === 'PREPARING' && (
-                            <button className="mp-btn-ready" onClick={() => onUpdateOrderStatus(order.orderId, 'READY_FOR_PICKUP')}>
-                              <CheckCircle size={15}/> Mark Ready
-                            </button>
-                          )}
-                          {s === 'READY_FOR_PICKUP' && (
-                            <>
-                              <div className="mp-waiting-rider"><Clock size={14}/> Awaiting rider pickup</div>
+                          {s === 'PLACED' && (
+                            <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
                               <button 
                                 className="mp-btn-accept" 
-                                style={{ background: '#2563eb', borderColor: '#2563eb' }}
-                                onClick={() => onUpdateOrderStatus(order.orderId, 'OUT_FOR_DELIVERY', { riderName: order.riderName || 'Express Dispatch' })}
-                                title="Dispatch order with rider or hotel runner"
+                                style={{ background: '#10b981', flex: '1 1 auto', padding: '9px 12px' }}
+                                onClick={() => handleStatusChangeWithFeedback(order.orderId, 'PREPARING', { etaMins: 15 })}
                               >
-                                <Truck size={14}/> Dispatch Order
+                                <Flame size={15}/> ⚡ Accept & Cook (15m)
                               </button>
-                            </>
+                              <button 
+                                className="mp-btn-accept" 
+                                style={{ background: '#059669', flex: '1 1 auto', padding: '9px 12px' }}
+                                onClick={() => handleStatusChangeWithFeedback(order.orderId, 'PREPARING', { etaMins: 25 })}
+                              >
+                                <Clock size={15}/> 🍳 Accept & Cook (25m)
+                              </button>
+                              <button 
+                                className="mp-btn-reject" 
+                                onClick={() => setRejecting(order.orderId)}
+                              >
+                                <X size={15}/> Reject
+                              </button>
+                            </div>
                           )}
-                          {s === 'OUT_FOR_DELIVERY' && (
-                            <>
-                              <div className="mp-out-badge"><Truck size={14}/> {order.riderName || 'Rider'} delivering</div>
+
+                          {s === 'PREPARING' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                              {order.riderAtKitchen ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 800 }}>
+                                  <Bell size={16} className="animate-bounce" />
+                                  <span>📍 Rider {order.riderName || 'Partner'} has ARRIVED at restaurant counter! Expedite packaging.</span>
+                                </div>
+                              ) : order.riderName ? (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
+                                  <span>🛵 Assigned Rider: <strong>{order.riderName}</strong></span>
+                                  {order.riderPhone && (
+                                    <a href={`tel:${order.riderPhone.replace(/\s+/g,'')}`} style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                      <Phone size={12}/> Call Rider
+                                    </a>
+                                  )}
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'rgba(249, 115, 22, 0.08)', color: '#ea580c', borderRadius: '8px', fontSize: '0.8rem' }}>
+                                  <Clock size={13}/>
+                                  <span>Dishes cooking in kitchen • System matching nearby rider in {order.locality}</span>
+                                </div>
+                              )}
                               <button 
                                 className="mp-btn-ready" 
-                                style={{ background: '#059669', borderColor: '#059669' }}
-                                onClick={() => onUpdateOrderStatus(order.orderId, 'DELIVERED')}
-                                title="Mark order as delivered"
+                                style={{ background: '#8b5cf6', width: '100%', padding: '10px', fontSize: '0.88rem', fontWeight: 800, justifyContent: 'center' }}
+                                onClick={() => handleStatusChangeWithFeedback(order.orderId, 'READY_FOR_PICKUP')}
+                              >
+                                <PackageCheck size={16}/> 🥘 Mark Food Ready & Packed (Notify Rider)
+                              </button>
+                            </div>
+                          )}
+
+                          {s === 'READY_FOR_PICKUP' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', color: '#059669', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700 }}>
+                                <CheckCircle2 size={15} />
+                                <span>Food Packaged & At Pickup Counter • Ready for Handover</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button 
+                                  className="mp-btn-accept" 
+                                  style={{ background: '#2563eb', borderColor: '#2563eb', flex: '1 1 auto', padding: '9px 12px', fontSize: '0.85rem' }}
+                                  onClick={() => handleStatusChangeWithFeedback(order.orderId, 'OUT_FOR_DELIVERY', { riderName: order.riderName || 'Express Fleet' })}
+                                >
+                                  <Truck size={14}/> 🤝 Handover to {order.riderName || 'Rider'} (Start Trip)
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {s === 'OUT_FOR_DELIVERY' && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', flexWrap: 'wrap' }}>
+                              <div className="mp-out-badge">
+                                <Truck size={14}/> {order.riderName || 'Rider'} delivering to {order.locality}
+                              </div>
+                              <button 
+                                className="mp-btn-ready" 
+                                style={{ background: '#059669', borderColor: '#059669', padding: '8px 14px', fontSize: '0.82rem' }}
+                                onClick={() => handleStatusChangeWithFeedback(order.orderId, 'DELIVERED')}
                               >
                                 <CheckCircle size={14}/> Mark Delivered
                               </button>
-                            </>
+                            </div>
                           )}
                           <a href={getWhatsAppOrderUrl(order)} target="_blank" rel="noopener noreferrer" className="mp-btn-wa">
                             <MessageCircle size={14}/> WhatsApp Slip
@@ -645,7 +739,7 @@ export default function HotelPortal({
                       {o.items.map((it, i) => <div key={i} className="mp-kds-item"><strong>{it.quantity}×</strong> {it.name}</div>)}
                     </div>
                     {o.cookingNote && <div className="mp-kds-note">⚠️ {o.cookingNote}</div>}
-                    <button className="mp-kds-action-btn accept" onClick={() => onUpdateOrderStatus(o.orderId, 'PREPARING')}>
+                    <button className="mp-kds-action-btn accept" onClick={() => handleStatusChangeWithFeedback(o.orderId, 'PREPARING')}>
                       ✓ Start Cooking
                     </button>
                   </div>
@@ -663,8 +757,13 @@ export default function HotelPortal({
                       {o.items.map((it, i) => <div key={i} className="mp-kds-item"><strong>{it.quantity}×</strong> {it.name}</div>)}
                     </div>
                     {o.cookingNote && <div className="mp-kds-note">⚠️ {o.cookingNote}</div>}
-                    <button className="mp-kds-action-btn ready" onClick={() => onUpdateOrderStatus(o.orderId, 'READY_FOR_PICKUP')}>
-                      ✓ Mark Ready
+                    {o.riderAtKitchen && (
+                      <div className="mp-kds-note" style={{ background: 'rgba(239,68,68,0.2)', color: '#f87171', fontWeight: 800 }}>
+                        📍 Rider Arrived at Counter!
+                      </div>
+                    )}
+                    <button className="mp-kds-action-btn ready" onClick={() => handleStatusChangeWithFeedback(o.orderId, 'READY_FOR_PICKUP')}>
+                      ✓ Mark Ready & Packed
                     </button>
                   </div>
                 ))}
@@ -680,13 +779,15 @@ export default function HotelPortal({
                     <div className="mp-kds-items">
                       {o.items.map((it, i) => <div key={i} className="mp-kds-item"><strong>{it.quantity}×</strong> {it.name}</div>)}
                     </div>
-                    <div className="mp-kds-waiting"><Truck size={13}/> Awaiting rider…</div>
+                    <div className="mp-kds-waiting">
+                      <Truck size={13}/> {o.riderName ? `Assigned to ${o.riderName}` : 'Awaiting rider…'}
+                    </div>
                     <button 
                       className="mp-kds-action-btn ready" 
                       style={{ marginTop: '8px', background: '#2563eb' }}
-                      onClick={() => onUpdateOrderStatus(o.orderId, 'OUT_FOR_DELIVERY', { riderName: o.riderName || 'Express Dispatch' })}
+                      onClick={() => handleStatusChangeWithFeedback(o.orderId, 'OUT_FOR_DELIVERY', { riderName: o.riderName || 'Express Dispatch' })}
                     >
-                      ✓ Dispatch Trip
+                      ✓ Handover / Dispatch Trip
                     </button>
                   </div>
                 ))}

@@ -6,7 +6,8 @@ import {
   Package, Star, User, FileText, HelpCircle, MessageSquare, Flame,
   Gift, Shield, Home, History, Wallet, Map, Settings, MoreVertical,
   ChevronLeft, Headphones, Siren, PhoneCall, Car, CheckSquare, Camera,
-  BarChart2, Target, Trophy, IndianRupee, Loader2, Volume2, Radio, Locate
+  BarChart2, Target, Trophy, IndianRupee, Loader2, Volume2, Radio, Locate,
+  ChefHat, PackageCheck, Sparkles
 } from 'lucide-react';
 
 // ─── Kilambakkam–Vandalur–Otteri Demand Heatmap Data ──────────────────────────
@@ -36,6 +37,50 @@ const SUPPORT_FAQS = [
   { q: 'I need to cancel an accepted order', a: 'Contact support immediately. Repeat cancellations will affect your rating and incentives.' },
   { q: 'When will my earnings be credited?', a: 'Wallet is credited instantly after OTP verification. UPI cashout usually settles in 2–5 minutes.' },
 ];
+
+// ── Web Audio Chime Helper for Rider Status Transitions ───────────────────────
+const playRiderChime = (type = 'success') => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    if (type === 'pickup') {
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } else if (type === 'deliver') {
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } else if (type === 'arrive') {
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.setValueAtTime(800, now + 0.1);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } else {
+      osc.frequency.setValueAtTime(587.33, now);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+  } catch (err) {
+    // Ignore audio restrictions
+  }
+};
 
 export default function RiderPortal({
   orders,
@@ -87,11 +132,25 @@ export default function RiderPortal({
     }
   };
 
-  // ── OTP Modal ─────────────────────────────────────────────────────────────
+  // ── OTP Modal & Status Toasts ─────────────────────────────────────────────
   const [otpModalTrip, setOtpModalTrip] = useState(null);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [riderToast, setRiderToast] = useState(null);
+  const [arrivedKitchenOrders, setArrivedKitchenOrders] = useState({});
+
+  const handleRiderStatusUpdate = (orderId, newStatus, extraData = {}) => {
+    playRiderChime(newStatus === 'DELIVERED' ? 'deliver' : newStatus === 'OUT_FOR_DELIVERY' ? 'pickup' : 'arrive');
+    onUpdateOrderStatus(orderId, newStatus, { forceTransition: true, ...extraData });
+    const statusLabels = {
+      OUT_FOR_DELIVERY: '🚀 Food picked up! Delivery trip started.',
+      DELIVERED: '🎉 Order marked as delivered! Payout credited.',
+      READY_FOR_PICKUP: '📦 Food marked ready for pickup.'
+    };
+    setRiderToast(statusLabels[newStatus] || `Order status updated to ${newStatus}`);
+    setTimeout(() => setRiderToast(null), 4000);
+  };
 
   // ── New Order Alert ───────────────────────────────────────────────────────
   const [newOrderAlert, setNewOrderAlert] = useState(null);
@@ -235,7 +294,7 @@ export default function RiderPortal({
       setIsVerifyingOtp(true);
       setTimeout(() => {
         setIsVerifyingOtp(false);
-        onUpdateOrderStatus(otpModalTrip.orderId, 'DELIVERED');
+        handleRiderStatusUpdate(otpModalTrip.orderId, 'DELIVERED');
         const earnings = otpModalTrip.riderEarnings || 65;
         const newTx = {
           id: `tx-${Date.now()}`, title: `Trip Payout #${otpModalTrip.orderId}`, type: 'CREDIT', amount: earnings,
@@ -286,6 +345,15 @@ export default function RiderPortal({
   // ── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div className="rp-shell">
+      {/* ── Status Toast Banner ─────────────────────────────────────────── */}
+      {riderToast && (
+        <div className="rider-floating-toast animate-slide-down">
+          <Zap size={16} style={{ color: '#fbbf24', flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{riderToast}</span>
+          <button type="button" onClick={() => setRiderToast(null)}>✕</button>
+        </div>
+      )}
+
       {/* ── New Order Alert Overlay ─────────────────────────────────────── */}
       {newOrderAlert && (
         <div className="rp-order-alert-overlay" onClick={handleRejectAlert}>
@@ -391,7 +459,19 @@ export default function RiderPortal({
               <div className="otp-summary-row highlight"><span>Your Payout:</span><strong className="text-green">+₹{otpModalTrip.riderEarnings || 65}</strong></div>
             </div>
             <form onSubmit={handleVerifyOtpAndDeliver} className="collect-otp-form">
-              <label className="otp-input-label">Enter 4-Digit Customer OTP</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label className="otp-input-label" style={{ margin: 0 }}>Enter 4-Digit Customer OTP</label>
+                <button
+                  type="button"
+                  className="otp-autofill-btn"
+                  onClick={() => {
+                    setEnteredOtp(otpModalTrip.deliveryOtp || '4821');
+                    setOtpError('');
+                  }}
+                >
+                  ⚡ Autofill PIN ({otpModalTrip.deliveryOtp || '4821'})
+                </button>
+              </div>
               <div className="otp-input-wrapper">
                 <input
                   type="text" maxLength={4} autoFocus placeholder="• • • •"
@@ -612,18 +692,53 @@ export default function RiderPortal({
                 {/* Action Buttons */}
                 <div className="rp-trip-actions">
                   {(myActiveTrips[0].status === 'PLACED' || myActiveTrips[0].status === 'CONFIRMED' || myActiveTrips[0].status === 'PREPARING') && (
-                    <div className="rp-info-notice">
-                      👨‍🍳 Food being prepared. Head towards {myActiveTrips[0].restaurantName}.
-                    </div>
+                    <>
+                      <div className="rp-info-notice">
+                        👨‍🍳 Food being prepared in kitchen. Head towards <strong>{myActiveTrips[0].restaurantName}</strong>.
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="rp-btn-arrive-kitchen"
+                          disabled={arrivedKitchenOrders[myActiveTrips[0].orderId]}
+                          onClick={() => {
+                            setArrivedKitchenOrders(prev => ({ ...prev, [myActiveTrips[0].orderId]: true }));
+                            playRiderChime('arrive');
+                            onUpdateOrderStatus(myActiveTrips[0].orderId, myActiveTrips[0].status, {
+                              forceTransition: true,
+                              riderAtKitchen: true
+                            });
+                            setRiderToast('📍 Kitchen notified: You have arrived at the counter!');
+                            setTimeout(() => setRiderToast(null), 4000);
+                          }}
+                        >
+                          <MapPin size={15}/>
+                          {arrivedKitchenOrders[myActiveTrips[0].orderId] ? '✓ At Counter' : 'I\'ve Arrived at Kitchen'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="rp-btn-early-pickup"
+                          onClick={() => handleRiderStatusUpdate(myActiveTrips[0].orderId, 'OUT_FOR_DELIVERY')}
+                        >
+                          <PackageCheck size={15}/> Food Handed Over Early
+                        </button>
+                      </div>
+                    </>
                   )}
                   {myActiveTrips[0].status === 'READY_FOR_PICKUP' && (
-                    <button className="rp-btn-pickup" onClick={() => onUpdateOrderStatus(myActiveTrips[0].orderId, 'OUT_FOR_DELIVERY')}>
-                      <Package size={18}/> Confirm Picked Up → Start Delivery
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ padding: '8px 12px', background: 'rgba(16,185,129,0.15)', borderRadius: '10px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={16}/> <span>Kitchen has packed the order! Ready for pickup.</span>
+                      </div>
+                      <button className="rp-btn-pickup pulse-active" onClick={() => handleRiderStatusUpdate(myActiveTrips[0].orderId, 'OUT_FOR_DELIVERY')}>
+                        <Package size={18}/> Confirm Parcel Picked Up → Start Delivery 🚀
+                      </button>
+                    </div>
                   )}
                   {myActiveTrips[0].status === 'OUT_FOR_DELIVERY' && (
-                    <button className="rp-btn-deliver" onClick={() => { setOtpModalTrip(myActiveTrips[0]); setEnteredOtp(''); setOtpError(''); }}>
-                      <KeyRound size={18}/> Collect OTP & Mark Delivered
+                    <button className="rp-btn-deliver pulse-active" onClick={() => { setOtpModalTrip(myActiveTrips[0]); setEnteredOtp(''); setOtpError(''); }}>
+                      <KeyRound size={18}/> 🔑 Arrived at Doorstep → Collect OTP & Deliver
                     </button>
                   )}
                   <div className="rp-nav-actions">
@@ -708,6 +823,9 @@ export default function RiderPortal({
                         <small>guaranteed</small>
                       </div>
                       <div className="rp-order-meta-chips">
+                        <span className={`rp-kitchen-status-pill ${trip.status === 'READY_FOR_PICKUP' ? 'ready' : trip.status === 'PREPARING' ? 'cooking' : 'confirmed'}`}>
+                          {trip.status === 'READY_FOR_PICKUP' ? '🥘 Food Ready' : trip.status === 'PREPARING' ? '👨‍🍳 Cooking' : '📋 Confirmed'}
+                        </span>
                         <span>~2.4 km</span>
                         <span>~18 min</span>
                       </div>
