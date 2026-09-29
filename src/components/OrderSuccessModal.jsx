@@ -23,10 +23,10 @@ export default function OrderSuccessModal({
   onCancelOrder,
   riderLiveLocation
 }) {
-  if (!order) return null;
-
   const [resendingWa, setResendingWa] = useState(false);
   const [waNotice, setWaNotice] = useState('');
+
+  if (!order) return null;
 
 
   // Retrieve the latest reactive order state from the shared orders store

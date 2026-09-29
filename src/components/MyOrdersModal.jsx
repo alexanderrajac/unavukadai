@@ -21,8 +21,6 @@ export default function MyOrdersModal({
   onViewFullOrdersPage,
   onOpenAuth
 }) {
-  if (!isOpen) return null;
-
   // Filter orders strictly for THIS individual user
   const userOrders = useMemo(() => {
     if (!user) return [];
@@ -47,6 +45,8 @@ export default function MyOrdersModal({
       return false;
     });
   }, [orders, user]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop animate-fade" onClick={onClose}>

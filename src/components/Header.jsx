@@ -21,7 +21,8 @@ import {
   Store,
   Bike,
   Handshake,
-  ArrowRight
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
