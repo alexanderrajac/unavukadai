@@ -13,6 +13,7 @@ import {
   Upload, Image as ImageIcon
 } from 'lucide-react';
 import { RESTAURANTS } from '../data/mockData';
+import { compressImageFile } from '../utils/imageCompressor';
 
 const DISH_PHOTO_PRESETS = [
   { label: 'Biryani', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop&q=80' },
@@ -139,20 +140,23 @@ export default function HotelPortal({
   const [dishSuccessMsg, setDishSuccessMsg] = useState('');
   const dishFileInputRef = useRef(null);
 
-  const handleDishPhotoUpload = (e) => {
+  const handleDishPhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Photo size exceeds 5MB. Please choose a smaller image.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setDishForm(prev => ({ ...prev, image: event.target.result }));
+    try {
+      const compressed = await compressImageFile(file, 800, 800, 0.75);
+      if (compressed) {
+        setDishForm(prev => ({ ...prev, image: compressed }));
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setDishForm(prev => ({ ...prev, image: event.target.result }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // ── Profile State ──────────────────────────────────────────────────────────

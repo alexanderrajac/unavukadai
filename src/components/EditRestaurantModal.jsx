@@ -19,6 +19,7 @@ import {
   Sparkles,
   Upload
 } from 'lucide-react';
+import { compressImageFile } from '../utils/imageCompressor';
 
 const HOTEL_IMAGE_PRESETS = [
   { label: 'Biryani Feast', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80' },
@@ -61,20 +62,23 @@ export default function EditRestaurantModal({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Photo size exceeds 5MB. Please choose a smaller image.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setFormData(prev => ({ ...prev, image: event.target.result }));
+    try {
+      const compressed = await compressImageFile(file, 800, 800, 0.75);
+      if (compressed) {
+        setFormData(prev => ({ ...prev, image: compressed }));
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData(prev => ({ ...prev, image: event.target.result }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   useEffect(() => {

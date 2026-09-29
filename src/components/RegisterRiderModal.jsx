@@ -96,9 +96,9 @@ export default function RegisterRiderModal({
       drivingLicense: formData.drivingLicense.trim().toUpperCase(),
       emergencyContact: formData.emergencyContact.trim(),
       payoutUpi: formData.payoutUpi.trim(),
-      status: 'ACTIVE',
-      approvalStatus: isAdmin ? 'APPROVED' : 'APPROVED',
-      isApproved: true,
+      status: isAdmin ? 'ACTIVE' : 'PENDING_APPROVAL',
+      approvalStatus: isAdmin ? 'APPROVED' : 'PENDING_APPROVAL',
+      isApproved: Boolean(isAdmin),
       rating: 5.0,
       totalTrips: 0,
       todayEarnings: 0,
@@ -153,12 +153,18 @@ export default function RegisterRiderModal({
         {/* Modal Body */}
         {isSuccess && newRiderDetails ? (
           <div className="reg-success-card animate-fade">
-            <div className="reg-success-icon" style={{ color: '#8b5cf6' }}>
+            <div className="reg-success-icon" style={{ color: newRiderDetails.isApproved ? '#8b5cf6' : '#f59e0b' }}>
               <CheckCircle2 size={56} />
             </div>
-            <h3>🎉 Rider Successfully Enrolled &amp; Verified!</h3>
+            <h3>
+              {newRiderDetails.isApproved 
+                ? '🎉 Rider Successfully Enrolled & Verified!' 
+                : '📋 Application Submitted for Admin Verification!'}
+            </h3>
             <p className="reg-success-desc">
-              <strong>{newRiderDetails.name}</strong> is now enrolled as a verified delivery partner for <strong>{newRiderDetails.operatingZone}</strong>.
+              <strong>{newRiderDetails.name}</strong> ({newRiderDetails.operatingZone}) - {newRiderDetails.isApproved 
+                ? 'Your account is live and ready for dispatch.' 
+                : 'Your Driving License and Vehicle credentials are under review by our South Chennai dispatch team.'}
             </p>
 
             <div className="reg-success-summary">
@@ -175,13 +181,19 @@ export default function RegisterRiderModal({
                 <strong>{newRiderDetails.payoutUpi}</strong>
               </div>
               <div className="summary-pill">
-                <span>Dispatch Status</span>
-                <strong style={{ color: '#10b981' }}>🟢 Active &amp; Ready</strong>
+                <span>Approval Status</span>
+                <strong style={{ color: newRiderDetails.isApproved ? '#10b981' : '#f59e0b' }}>
+                  {newRiderDetails.isApproved ? '🟢 Approved' : '⏳ Pending Review'}
+                </strong>
               </div>
             </div>
 
             <div className="reg-role-tip" style={{ borderColor: 'rgba(139, 92, 246, 0.3)', background: 'rgba(139, 92, 246, 0.08)' }}>
-              ⚡ <strong>Instant Portal Access:</strong> Tap below to launch your <strong>Rider Delivery Portal</strong>, toggle Online mode, and begin receiving live order delivery alerts in your suburb!
+              {newRiderDetails.isApproved ? (
+                <span>⚡ <strong>Instant Portal Access:</strong> Tap below to launch your <strong>Rider Delivery Portal</strong>, toggle Online mode, and begin receiving live order delivery alerts in your suburb!</span>
+              ) : (
+                <span>🛡️ <strong>Safety & Compliance Gate:</strong> Unavukadai requires admin verification of two-wheeler driving licenses to ensure safe deliveries. The Master Admin will verify your profile shortly.</span>
+              )}
             </div>
 
             <div className="modal-actions-generic" style={{ width: '100%', justifyContent: 'center', marginTop: '16px' }}>

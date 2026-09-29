@@ -484,8 +484,9 @@ app.post('/api/whatsapp/verify-otp', async (req, res) => {
   const normalized = normalizePhone(phone);
   const enteredOtp = String(otp || '').trim();
 
-  // Master bypass for testing / emergency demo
-  if (enteredOtp === '1234') {
+  // Master bypass strictly restricted to non-production environment
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev && enteredOtp === '1234') {
     return res.json({ success: true, verified: true, bypass: true });
   }
 

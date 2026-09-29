@@ -1,0 +1,25 @@
+{
+  "name": "Unavukadai - Suburban Food & Restaurant Delivery",
+  "short_name": "Unavukadai",
+  "description": "Discover authentic local eateries and order fresh food across Perungalathur, Vandalur, Mannivakkam and South Chennai suburbs.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#e23744",
+  "orientation": "portrait-primary",
+  "categories": ["food", "lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "/unavu-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "48x48 96x96",
+      "type": "image/svg+xml"
+    }
+  ]
+}

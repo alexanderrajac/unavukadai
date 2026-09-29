@@ -22,7 +22,9 @@ import {
   Bike,
   Handshake,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Download,
+  Smartphone
 } from 'lucide-react';
 import { CITIES } from '../data/mockData';
 import { detectUserLocation } from '../utils/geolocation';
@@ -57,9 +59,49 @@ export default function Header({
   const [citySearch, setCitySearch] = useState('');
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [gpsNotice, setGpsNotice] = useState('');
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showIosInstallHelp, setShowIosInstallHelp] = useState(false);
   const cityRef = useRef(null);
   const userMenuRef = useRef(null);
   const partnerMenuRef = useRef(null);
+
+  // PWA Add to Home Screen handler
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        setIsInstalled(true);
+      }
+      const handleBeforeInstall = (e) => {
+        e.preventDefault();
+        setInstallPrompt(e);
+      };
+      const handleAppInstalled = () => {
+        setIsInstalled(true);
+        setInstallPrompt(null);
+      };
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.addEventListener('appinstalled', handleAppInstalled);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      };
+    }
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+      setInstallPrompt(null);
+    } else {
+      setShowIosInstallHelp(true);
+      setTimeout(() => setShowIosInstallHelp(false), 6000);
+    }
+  };
 
   const handleDetectGps = async () => {
     setIsDetectingGps(true);
@@ -261,6 +303,41 @@ export default function Header({
                 <span className="live-orders-indicator-dot"></span>
               )}
             </button>
+
+            {/* PWA Install App Button */}
+            {!isInstalled && (
+              <div style={{ position: 'relative' }}>
+                <button 
+                  type="button" 
+                  className="pwa-header-install-btn" 
+                  onClick={handleInstallClick}
+                  title="Install Unavukadai on your mobile phone"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: 'linear-gradient(135deg, rgba(226,55,68,0.12) 0%, rgba(249,115,22,0.12) 100%)',
+                    border: '1px solid rgba(226,55,68,0.3)',
+                    color: '#e23744',
+                    borderRadius: '20px',
+                    padding: '6px 11px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Download size={13} />
+                  <span>Install App</span>
+                </button>
+                {showIosInstallHelp && (
+                  <div className="animate-fade" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '8px', background: '#0f172a', border: '1px solid rgba(226,55,68,0.4)', borderRadius: '10px', padding: '10px 14px', fontSize: '11px', color: '#f8fafc', width: '220px', zIndex: 3100, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', textAlign: 'center' }}>
+                    📱 <strong>Install on iPhone:</strong> Tap the Share button <strong style={{ color: '#38bdf8' }}>⎋</strong> in Safari &amp; choose <strong style={{ color: '#f59e0b' }}>&quot;Add to Home Screen&quot; ➕</strong>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Unified Partner Menu (Restaurant & Rider Registration) */}
             <div className="partner-menu-wrapper" ref={partnerMenuRef}>

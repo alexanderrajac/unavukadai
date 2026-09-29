@@ -33,9 +33,13 @@ export default function AdminPortal({
   onUpdateRestaurantDetails = () => {},
   onDeleteRestaurant = () => {},
   onApproveAllRestaurants = () => {},
-  onOpenRegisterRider = () => {}
+  onOpenRegisterRider = () => {},
+  onApproveRider = () => {},
+  onRejectRider = () => {}
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [fleetSubTab, setFleetSubTab] = useState('radar'); // 'radar' | 'approvals' | 'roster'
+  const [riderApprovalMsg, setRiderApprovalMsg] = useState('');
   const [filterLocality, setFilterLocality] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [userSearch, setUserSearch] = useState('');
@@ -185,14 +189,26 @@ export default function AdminPortal({
     setNewCode('');
   };
 
+  const pendingRidersList = useMemo(() => {
+    return usersList.filter(u => u.role === 'rider' && (u.approvalStatus === 'PENDING_APPROVAL' || u.status === 'PENDING_APPROVAL' || u.isApproved === false));
+  }, [usersList]);
+
+  const approvedRidersList = useMemo(() => {
+    return usersList.filter(u => u.role === 'rider' && (u.approvalStatus === 'APPROVED' || u.isApproved === true || (!u.approvalStatus && u.status === 'ACTIVE')));
+  }, [usersList]);
+
+  const pendingRestaurantsCount = useMemo(() => {
+    return restaurantsList.filter(r => r.approvalStatus === 'PENDING').length;
+  }, [restaurantsList]);
+
   const statusColor = (s) => ({ PLACED:'#f97316', PREPARING:'#3b82f6', READY_FOR_PICKUP:'#8b5cf6', OUT_FOR_DELIVERY:'#10b981', DELIVERED:'#22c55e', CANCELLED:'#ef4444' }[s] || '#64748b');
 
   const TABS = [
     { id: 'dashboard', icon: <Home size={17}/>, label: 'Dashboard' },
     { id: 'orders', icon: <Package size={17}/>, label: 'Orders', badge: activeOrdersCount || null },
     { id: 'users', icon: <Users size={17}/>, label: 'Users', badge: usersList.length || null },
-    { id: 'restaurants', icon: <Store size={17}/>, label: 'Partners' },
-    { id: 'fleet', icon: <Bike size={17}/>, label: 'Fleet' },
+    { id: 'restaurants', icon: <Store size={17}/>, label: 'Restaurants', badge: pendingRestaurantsCount || null },
+    { id: 'fleet', icon: <Bike size={17}/>, label: 'Fleet & Riders', badge: pendingRidersList.length || null },
     { id: 'promos', icon: <Tag size={17}/>, label: 'Promos' },
     { id: 'whatsapp', icon: <MessageSquare size={17}/>, label: 'WhatsApp Growth', badge: 'PRO' },
     { id: 'settings', icon: <Settings size={17}/>, label: 'Settings' },
@@ -818,11 +834,176 @@ export default function AdminPortal({
         })()}
 
         {/* ══════════════════════════════════════════════════════════════════
-            FLEET GPS
+            FLEET RADAR MAP & RIDER PARTNER APPROVAL GATE
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === 'fleet' && (
-          <div style={{ height: 'calc(100vh - 110px)' }}>
-            <AdminFleetRadarMap riderLocations={riderLocations} orders={orders}/>
+          <div className="adm-fleet-page">
+            {/* Sub navigation bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '10px' }}>
+                <button 
+                  type="button"
+                  className={`adm-filter-btn ${fleetSubTab === 'radar' ? 'active' : ''}`}
+                  onClick={() => setFleetSubTab('radar')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <MapPin size={14} />
+                  <span>Live GPS Radar Map</span>
+                </button>
+                <button 
+                  type="button"
+                  className={`adm-filter-btn ${fleetSubTab === 'approvals' ? 'active' : ''}`}
+                  onClick={() => setFleetSubTab('approvals')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <ShieldCheck size={14} />
+                  <span>Pending Approvals</span>
+                  {pendingRidersList.length > 0 && (
+                    <span style={{ marginLeft: '4px', background: '#f59e0b', color: '#000', fontSize: '11px', fontWeight: 800, padding: '1px 7px', borderRadius: '10px' }}>
+                      {pendingRidersList.length}
+                    </span>
+                  )}
+                </button>
+                <button 
+                  type="button"
+                  className={`adm-filter-btn ${fleetSubTab === 'roster' ? 'active' : ''}`}
+                  onClick={() => setFleetSubTab('roster')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Users size={14} />
+                  <span>Active Fleet ({approvedRidersList.length})</span>
+                </button>
+              </div>
+
+              <button 
+                type="button" 
+                className="btn-primary" 
+                onClick={onOpenRegisterRider}
+                style={{ background: '#8b5cf6', borderColor: '#8b5cf6', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 16px' }}
+              >
+                <Plus size={15} />
+                <span>+ Onboard Rider</span>
+              </button>
+            </div>
+
+            {riderApprovalMsg && (
+              <div className="adm-toast animate-fade" style={{ marginBottom: '16px', background: '#10b981' }}>{riderApprovalMsg}</div>
+            )}
+
+            {/* View 1: Radar Map */}
+            {fleetSubTab === 'radar' && (
+              <div style={{ height: 'calc(100vh - 160px)', borderRadius: '14px', overflow: 'hidden' }}>
+                <AdminFleetRadarMap riderLocations={riderLocations} orders={orders}/>
+              </div>
+            )}
+
+            {/* View 2: Pending Rider Approvals */}
+            {fleetSubTab === 'approvals' && (
+              <div className="adm-pending-riders-grid animate-fade">
+                {pendingRidersList.length === 0 ? (
+                  <div className="adm-empty" style={{ padding: '60px 20px', textAlign: 'center', background: '#1e293b', borderRadius: '14px' }}>
+                    <ShieldCheck size={48} style={{ color: '#10b981', margin: '0 auto 12px' }} />
+                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc' }}>All Rider Applications Reviewed!</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', maxWidth: '400px', margin: '8px auto 0' }}>There are no pending delivery partner applications awaiting approval right now. New applications from mobile will appear here instantly.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>
+                    {pendingRidersList.map(rider => (
+                      <div key={rider.id} style={{ background: '#1e293b', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '14px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#f8fafc' }}>{rider.name}</h4>
+                              <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>PENDING VERIFICATION</span>
+                            </div>
+                            <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '2px' }}>ID: {rider.id} · Applied: {rider.createdAt || 'Recent'}</div>
+                          </div>
+                          <div style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#c084fc', padding: '8px', borderRadius: '10px' }}>
+                            <Bike size={20} />
+                          </div>
+                        </div>
+
+                        <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '12px', borderRadius: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Two-Wheeler DL:</span>
+                            <strong style={{ color: '#e2e8f0', letterSpacing: '0.5px' }}>{rider.drivingLicense || 'N/A'}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Vehicle No:</span>
+                            <strong style={{ color: '#e2e8f0', letterSpacing: '0.5px' }}>{rider.vehicleNumber || 'N/A'} ({rider.vehicleType || 'BIKE'})</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Zone:</span>
+                            <strong style={{ color: '#e2e8f0' }}>📍 {rider.operatingZone || 'Perungalathur Hub'}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Payout UPI:</span>
+                            <strong style={{ color: '#10b981' }}>{rider.payoutUpi || 'Pending'}</strong>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <span style={{ color: '#64748b', display: 'block' }}>Contact Phone:</span>
+                            <a href={`tel:${rider.phone}`} style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}>📞 {rider.phone}</a>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
+                          <button 
+                            type="button" 
+                            className="btn-primary" 
+                            style={{ flex: 1, background: '#10b981', borderColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '13px', padding: '10px' }}
+                            onClick={() => {
+                              onApproveRider(rider.id);
+                              setRiderApprovalMsg(`✅ Rider ${rider.name} approved! Activated in live dispatch pool.`);
+                              setTimeout(() => setRiderApprovalMsg(''), 4000);
+                            }}
+                          >
+                            <Check size={16} /> Approve Rider
+                          </button>
+                          <button 
+                            type="button" 
+                            className="btn-secondary" 
+                            style={{ flex: 0.6, borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '13px' }}
+                            onClick={() => {
+                              onRejectRider(rider.id);
+                              setRiderApprovalMsg(`❌ Rider application for ${rider.name} rejected.`);
+                              setTimeout(() => setRiderApprovalMsg(''), 4000);
+                            }}
+                          >
+                            <X size={16} /> Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* View 3: Active Fleet Roster */}
+            {fleetSubTab === 'roster' && (
+              <div className="adm-roster-list animate-fade">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+                  {approvedRidersList.map(rider => (
+                    <div key={rider.id} style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <div>
+                          <strong style={{ fontSize: '15px', color: '#f8fafc' }}>{rider.name}</strong>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>📍 {rider.operatingZone || 'Corridor Fleet'}</div>
+                        </div>
+                        <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '12px' }}>
+                          VERIFIED
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div>🏍️ <strong>{rider.vehicleType || 'BIKE'}:</strong> {rider.vehicleNumber || 'Registered'} (DL: {rider.drivingLicense || 'Verified'})</div>
+                        <div>💰 <strong>Payout UPI:</strong> {rider.payoutUpi || '8248651695@ybl'}</div>
+                        <div>📞 <strong>Phone:</strong> <a href={`tel:${rider.phone}`} style={{ color: '#38bdf8' }}>{rider.phone}</a></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -1,43 +1,214 @@
-// Client API service with real-time SSE stream & resilient offline fallback
+import { supabase } from './supabaseAuth';
 
 const API_BASE = '/api';
 
+// Map Postgres DB row to Unavukadai application state
+export function mapPgOrderToApp(row) {
+  if (!row) return null;
+  return {
+    orderId: row.order_id,
+    customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    customerEmail: row.customer_email || '',
+    restaurantId: row.restaurant_id,
+    restaurantName: row.restaurant_name,
+    restaurantAddress: row.restaurant_address,
+    customerAddress: row.customer_address,
+    locality: row.locality,
+    doorNo: row.door_no,
+    streetAddress: row.street_address,
+    landmark: row.landmark,
+    deliveryCoords: typeof row.delivery_coords === 'string' ? JSON.parse(row.delivery_coords) : (row.delivery_coords || []),
+    items: typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || []),
+    itemTotal: Number(row.item_total),
+    deliveryFee: Number(row.delivery_fee),
+    deliveryDistanceKm: Number(row.delivery_distance_km),
+    platformFee: Number(row.platform_fee),
+    taxes: Number(row.taxes),
+    discount: Number(row.discount),
+    grandTotal: Number(row.grand_total),
+    status: row.status,
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    deliveryOtp: row.delivery_otp,
+    riderId: row.rider_id,
+    riderName: row.rider_name,
+    riderPhone: row.rider_phone,
+    riderEarnings: Number(row.rider_earnings || 60),
+    placedAt: row.placed_at,
+    etaMins: Number(row.eta_mins || 25),
+    cookingNote: row.cooking_note,
+    createdAt: row.created_at
+  };
+}
+
+// Map Unavukadai application order object to Postgres row
+export function mapAppOrderToPg(order) {
+  return {
+    order_id: order.orderId,
+    customer_name: order.customerName,
+    customer_phone: order.customerPhone,
+    customer_email: order.customerEmail || '',
+    restaurant_id: order.restaurantId,
+    restaurant_name: order.restaurantName,
+    restaurant_address: order.restaurantAddress,
+    customer_address: order.customerAddress,
+    locality: order.locality || '',
+    door_no: order.doorNo || '',
+    street_address: order.streetAddress || '',
+    landmark: order.landmark || '',
+    delivery_coords: order.deliveryCoords || [],
+    items: order.items || [],
+    item_total: order.itemTotal || 0,
+    delivery_fee: order.deliveryFee || 0,
+    delivery_distance_km: order.deliveryDistanceKm || 1.5,
+    platform_fee: order.platformFee || 5,
+    taxes: order.taxes || 0,
+    discount: order.discount || 0,
+    grand_total: order.grandTotal || 0,
+    status: order.status || 'PLACED',
+    payment_method: order.paymentMethod || 'COD',
+    payment_status: order.paymentStatus || 'PENDING',
+    delivery_otp: order.deliveryOtp || '4821',
+    rider_id: order.riderId || null,
+    rider_name: order.riderName || null,
+    rider_phone: order.riderPhone || null,
+    rider_earnings: order.riderEarnings || 60,
+    placed_at: order.placedAt || 'Just now',
+    eta_mins: order.etaMins || 25,
+    cooking_note: order.cookingNote || ''
+  };
+}
+
+// Direct cloud Supabase Realtime channel for instant cross-device broadcast
+let realtimeChannel = null;
+
 export async function fetchOrdersFromApi() {
+  // 1. Try local Express backend API
   try {
     const res = await fetch(`${API_BASE}/orders`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+    }
   } catch (err) {
-    console.warn('API offline, using cached orders:', err.message);
+    // Backend offline or running static Vercel
   }
+
+  // 2. Direct Supabase Query (Real-time Cloud Database on Vercel)
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data.map(mapPgOrderToApp);
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase fetchOrders error:', err.message);
+  }
+
   return null;
 }
 
 export async function createOrderApi(orderData) {
+  let created = null;
+
+  // 1. Try local Express backend
   try {
     const res = await fetch(`${API_BASE}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
-    if (res.ok) return await res.json();
+    if (res.ok) created = await res.json();
   } catch (err) {
-    console.warn('API offline, saving locally:', err.message);
+    // API offline
   }
-  return null;
+
+  // 2. Save directly to Supabase Postgres (Works anywhere on Vercel)
+  try {
+    if (supabase) {
+      const pgRow = mapAppOrderToPg(orderData);
+      const { data, error } = await supabase.from('orders').insert([pgRow]).select().single();
+      if (!error && data) {
+        created = mapPgOrderToApp(data);
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase direct order insert error:', err.message);
+  }
+
+  // 3. Broadcast to all connected devices in real time via Supabase Broadcast
+  try {
+    if (realtimeChannel) {
+      realtimeChannel.send({
+        type: 'broadcast',
+        event: 'ORDERS_UPDATED',
+        payload: created || orderData
+      });
+    }
+  } catch {
+    // Broadcast fallback
+  }
+
+  return created || orderData;
 }
 
 export async function updateOrderStatusApi(orderId, status, extraFields = {}) {
+  let updated = null;
+
+  // 1. Try local Express backend
   try {
     const res = await fetch(`${API_BASE}/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, ...extraFields })
     });
-    if (res.ok) return await res.json();
+    if (res.ok) updated = await res.json();
   } catch (err) {
-    console.warn('API offline, updating locally:', err.message);
+    // API offline
   }
-  return null;
+
+  // 2. Update Supabase Postgres directly
+  try {
+    if (supabase) {
+      const pgUpdates = { status };
+      if (extraFields.riderId !== undefined) pgUpdates.rider_id = extraFields.riderId;
+      if (extraFields.riderName !== undefined) pgUpdates.rider_name = extraFields.riderName;
+      if (extraFields.riderPhone !== undefined) pgUpdates.rider_phone = extraFields.riderPhone;
+      if (extraFields.paymentStatus !== undefined) pgUpdates.payment_status = extraFields.paymentStatus;
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update(pgUpdates)
+        .eq('order_id', orderId)
+        .select()
+        .single();
+      if (!error && data) {
+        updated = mapPgOrderToApp(data);
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase direct updateOrder error:', err.message);
+  }
+
+  // 3. Broadcast status update across devices
+  try {
+    if (realtimeChannel) {
+      realtimeChannel.send({
+        type: 'broadcast',
+        event: 'ORDER_STATUS_CHANGED',
+        payload: { orderId, status, extraFields, updated }
+      });
+    }
+  } catch {
+    // Broadcast fallback
+  }
+
+  return updated;
 }
 
 export async function cancelOrderApi(orderId) {
@@ -47,8 +218,18 @@ export async function cancelOrderApi(orderId) {
     });
     if (res.ok) return await res.json();
   } catch (err) {
-    console.warn('API offline, deleting locally:', err.message);
+    // offline
   }
+
+  // Direct Supabase deletion
+  try {
+    if (supabase) {
+      await supabase.from('orders').delete().eq('order_id', orderId);
+    }
+  } catch {
+    // ignore
+  }
+
   return null;
 }
 
@@ -140,33 +321,75 @@ export async function resetOrdersApi() {
   return null;
 }
 
-// Subscribe to real-time Server-Sent Events stream for instant cross-device updates
+// Subscribe to real-time events across all devices (SSE + Supabase Realtime)
 export function subscribeToLiveUpdates(onUpdate) {
-  if (typeof window === 'undefined' || !window.EventSource) return () => {};
-
   let eventSource = null;
+
+  // 1. Try local Server-Sent Events (SSE) if backend is running locally
+  if (typeof window !== 'undefined' && window.EventSource) {
+    try {
+      eventSource = new EventSource(`${API_BASE}/orders/stream`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          onUpdate(payload);
+        } catch (e) {
+          // ignore
+        }
+      };
+
+      eventSource.onerror = () => {
+        // SSE fails when running static on Vercel without Express proxy
+      };
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Direct Supabase Realtime Subscription (Multi-Device Cloud Broadcast)
   try {
-    eventSource = new EventSource(`${API_BASE}/orders/stream`);
-
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        onUpdate(payload);
-      } catch (e) {
-        console.error('Failed to parse SSE payload', e);
-      }
-    };
-
-    eventSource.onerror = () => {
-      // EventSource automatically reconnects on error
-    };
+    if (supabase) {
+      realtimeChannel = supabase.channel('unavukadai-live-sync')
+        .on('broadcast', { event: 'ORDERS_UPDATED' }, ({ payload }) => {
+          if (payload) {
+            onUpdate({ type: 'ORDERS_UPDATED', data: Array.isArray(payload) ? payload : [payload] });
+          }
+        })
+        .on('broadcast', { event: 'ORDER_STATUS_CHANGED' }, ({ payload }) => {
+          if (payload) {
+            onUpdate({ type: 'ORDER_STATUS_CHANGED', data: payload });
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async () => {
+          try {
+            const { data } = await supabase
+              .from('orders')
+              .select('*')
+              .order('created_at', { ascending: false });
+            if (data && Array.isArray(data) && data.length > 0) {
+              onUpdate({ type: 'ORDERS_UPDATED', data: data.map(mapPgOrderToApp) });
+            }
+          } catch {
+            // ignore
+          }
+        })
+        .subscribe();
+    }
   } catch (err) {
-    console.warn('SSE subscription failed, fallback to local state', err);
+    console.warn('Supabase Realtime subscription error:', err.message);
   }
 
   return () => {
     if (eventSource) {
       eventSource.close();
+    }
+    if (realtimeChannel && supabase) {
+      try {
+        supabase.removeChannel(realtimeChannel);
+      } catch {
+        // ignore
+      }
     }
   };
 }
@@ -276,8 +499,9 @@ export async function verifyWhatsAppOtpApi(phone, otp) {
   const normalized = normalizeClientPhone(phone);
   const enteredOtp = String(otp || '').trim();
 
-  // Test bypass
-  if (enteredOtp === '1234') {
+  // Master bypass strictly restricted to local dev / automated test mode
+  const isDevOrTest = Boolean(import.meta.env?.DEV || import.meta.env?.MODE === 'test');
+  if (isDevOrTest && enteredOtp === '1234') {
     return { success: true, verified: true, bypass: true };
   }
 

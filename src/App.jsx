@@ -376,6 +376,9 @@ export default function App() {
   const [isRegisterRiderOpen, setIsRegisterRiderOpen] = useState(false);
 
   const handleRegisterRider = (newRider, registeredByAdmin = false) => {
+    const isApproved = registeredByAdmin || user?.role === 'admin';
+    const approvalStatus = isApproved ? 'APPROVED' : 'PENDING_APPROVAL';
+
     // 1. Add or upgrade rider in usersList
     setUsersList(prev => {
       const normalizedEmail = newRider.email?.toLowerCase().trim();
@@ -396,8 +399,10 @@ export default function App() {
           vehicleNumber: newRider.vehicleNumber,
           drivingLicense: newRider.drivingLicense,
           payoutUpi: newRider.payoutUpi,
-          riderStatus: 'ACTIVE',
-          status: 'ACTIVE'
+          riderStatus: isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+          approvalStatus,
+          isApproved,
+          status: isApproved ? 'ACTIVE' : 'PENDING_APPROVAL'
         };
         return updated;
       } else {
@@ -412,8 +417,10 @@ export default function App() {
           vehicleNumber: newRider.vehicleNumber,
           drivingLicense: newRider.drivingLicense,
           payoutUpi: newRider.payoutUpi,
-          riderStatus: 'ACTIVE',
-          status: 'ACTIVE',
+          riderStatus: isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
+          approvalStatus,
+          isApproved,
+          status: isApproved ? 'ACTIVE' : 'PENDING_APPROVAL',
           createdAt: newRider.registeredAt || '28 Sep, 2026'
         };
         return [riderUser, ...prev];
@@ -426,7 +433,9 @@ export default function App() {
         ...user,
         role: 'rider',
         name: newRider.name || user.name,
-        phone: newRider.phone || user.phone
+        phone: newRider.phone || user.phone,
+        approvalStatus,
+        isApproved
       };
       setUser(updatedUser);
       localStorage.setItem('unavu_user', JSON.stringify(updatedUser));
@@ -442,8 +451,56 @@ export default function App() {
         lng: 80.0832,
         speed: 24,
         heading: 180,
-        locality: newRider.operatingZone
+        locality: newRider.operatingZone,
+        approvalStatus,
+        isApproved
       }
+    }));
+  };
+
+  // Master Admin: Approve Pending Rider Partner
+  const handleApproveRider = (riderId) => {
+    setUsersList(prev => prev.map(u => {
+      if (u.id === riderId || u.riderId === riderId) {
+        return {
+          ...u,
+          role: 'rider',
+          approvalStatus: 'APPROVED',
+          isApproved: true,
+          status: 'ACTIVE',
+          riderStatus: 'ACTIVE'
+        };
+      }
+      return u;
+    }));
+
+    if (user && (user.id === riderId || user.riderId === riderId)) {
+      const updated = {
+        ...user,
+        role: 'rider',
+        approvalStatus: 'APPROVED',
+        isApproved: true,
+        status: 'ACTIVE',
+        riderStatus: 'ACTIVE'
+      };
+      setUser(updated);
+      localStorage.setItem('unavu_user', JSON.stringify(updated));
+    }
+  };
+
+  // Master Admin: Reject Pending Rider Application
+  const handleRejectRider = (riderId) => {
+    setUsersList(prev => prev.map(u => {
+      if (u.id === riderId || u.riderId === riderId) {
+        return {
+          ...u,
+          approvalStatus: 'REJECTED',
+          isApproved: false,
+          status: 'REJECTED',
+          riderStatus: 'REJECTED'
+        };
+      }
+      return u;
     }));
   };
 
@@ -1541,6 +1598,7 @@ export default function App() {
           riderId={user?.id || 'rider-1'}
           riderLocation={riderLocations[user?.id || 'rider-1'] || riderLocations['rider-1']}
           onUpdateLocation={handleUpdateRiderLocation}
+          currentUser={user}
         />
       )}
 
@@ -1568,6 +1626,8 @@ export default function App() {
           onDeleteRestaurant={handleDeleteRestaurant}
           onApproveAllRestaurants={handleApproveAllRestaurants}
           onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
+          onApproveRider={handleApproveRider}
+          onRejectRider={handleRejectRider}
         />
       )}
 

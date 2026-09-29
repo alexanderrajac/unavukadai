@@ -21,6 +21,8 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 
+import { compressImageFile } from '../utils/imageCompressor';
+
 const SAMPLE_OUTLET_IMAGES = [
   { label: 'Biryani Feast', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80' },
   { label: 'South Tiffin & Dosa', url: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&auto=format&fit=crop&q=80' },
@@ -118,21 +120,24 @@ export default function RegisterRestaurantModal({
 
   if (!isOpen) return null;
 
-  // Handle local image file upload with base64 data URL
-  const handleFileUpload = (e, onDataReady) => {
+  // Handle local image file upload with client-side canvas compression
+  const handleFileUpload = async (e, onDataReady) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Photo size exceeds 5MB. Please choose a smaller image.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        onDataReady(event.target.result);
+    try {
+      const compressed = await compressImageFile(file, 800, 800, 0.75);
+      if (compressed) {
+        onDataReady(compressed);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          onDataReady(event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Add new dish row
