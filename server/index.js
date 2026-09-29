@@ -141,16 +141,17 @@ app.patch('/api/orders/:id', async (req, res) => {
     }
 
     // 1. Enforce Rider Acceptance Constraint:
-    // Riders can ONLY accept orders that have reached 'READY_FOR_PICKUP'
-    if (req.body.riderId && !existingOrder.riderId) {
-      if (existingOrder.status !== 'READY_FOR_PICKUP' && req.body.status !== 'READY_FOR_PICKUP') {
+    // Riders can accept orders when ready, or pre-accept when kitchen is preparing
+    if (req.body.riderId && !existingOrder.riderId && !req.body.forceTransition) {
+      const riderAcceptableStatuses = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'];
+      if (!riderAcceptableStatuses.includes(existingOrder.status) && req.body.status !== 'READY_FOR_PICKUP') {
         return res.status(400).json({
-          error: `Rider cannot accept order #${orderId}. Kitchen must first mark the order as READY_FOR_PICKUP (current status is: ${existingOrder.status}).`
+          error: `Rider cannot accept order #${orderId}. Current status is: ${existingOrder.status}.`
         });
       }
     }
 
-    // 2. Enforce Order State Machine Transitions
+    // 2. Enforce Order State Machine Transitions (bypassed if forceTransition is requested)
     if (req.body.status && req.body.status !== existingOrder.status) {
       const allowedNext = ALLOWED_ORDER_TRANSITIONS[existingOrder.status] || [];
       if (!allowedNext.includes(req.body.status) && !req.body.forceTransition) {

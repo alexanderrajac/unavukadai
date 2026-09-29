@@ -19,7 +19,8 @@ import {
   UserCheck,
   CreditCard,
   Copy,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 
 export default function UserOrdersPage({
@@ -29,11 +30,14 @@ export default function UserOrdersPage({
   onReorder,
   onBackToMenu,
   onOpenAuth,
-  onSwitchUser
+  onSwitchUser,
+  onCancelOrder
 }) {
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'COMPLETED'
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedEmail, setCopiedEmail] = useState(false);
+
+  const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
 
   // Filter orders strictly for THIS individual user
   const userOrders = useMemo(() => {
@@ -64,7 +68,7 @@ export default function UserOrdersPage({
   // Derived metrics for this individual user
   const metrics = useMemo(() => {
     const total = userOrders.length;
-    const active = userOrders.filter(o => o.status !== 'DELIVERED').length;
+    const active = userOrders.filter(o => ACTIVE_STATUSES.includes(o.status)).length;
     const totalSpent = userOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
     
     // Top locality
@@ -78,8 +82,8 @@ export default function UserOrdersPage({
   const displayedOrders = useMemo(() => {
     return userOrders.filter(order => {
       // Status filter
-      if (filterStatus === 'ACTIVE' && order.status === 'DELIVERED') return false;
-      if (filterStatus === 'COMPLETED' && order.status !== 'DELIVERED') return false;
+      if (filterStatus === 'ACTIVE' && !ACTIVE_STATUSES.includes(order.status)) return false;
+      if (filterStatus === 'COMPLETED' && ACTIVE_STATUSES.includes(order.status)) return false;
 
       // Search filter
       if (searchTerm.trim()) {
@@ -310,7 +314,7 @@ export default function UserOrdersPage({
         ) : (
           <div className="individual-orders-grid">
             {displayedOrders.map(order => {
-              const isActive = order.status !== 'DELIVERED';
+              const isActive = ACTIVE_STATUSES.includes(order.status);
 
               return (
                 <div 
@@ -407,6 +411,21 @@ export default function UserOrdersPage({
 
                   {/* Card Actions */}
                   <div className="order-card-action-bar">
+                    {order.status === 'PLACED' && onCancelOrder && (
+                      <button 
+                        className="btn-order-action btn-cancel-order"
+                        style={{ borderColor: '#ef4444', color: '#ef4444', background: 'rgba(239, 68, 68, 0.06)' }}
+                        onClick={() => {
+                          if (window.confirm(`Cancel order #${order.orderId}?`)) {
+                            onCancelOrder(order.orderId);
+                          }
+                        }}
+                      >
+                        <X size={14} />
+                        <span>Cancel</span>
+                      </button>
+                    )}
+
                     <button 
                       className={`btn-order-action ${isActive ? 'btn-track-live-primary' : 'btn-view-receipt'}`}
                       onClick={() => onSelectOrderToTrack && onSelectOrderToTrack(order)}

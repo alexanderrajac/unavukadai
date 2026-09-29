@@ -5,11 +5,23 @@ const API_BASE = '/api';
 // Map Postgres DB row to Unavukadai application state
 export function mapPgOrderToApp(row) {
   if (!row) return null;
+  let customerEmail = row.customer_email || '';
+  let cookingNote = row.cooking_note || '';
+
+  // Decode customerEmail if encoded in cooking_note for Postgres compatibility
+  if (!customerEmail && cookingNote && cookingNote.includes('[email:')) {
+    const match = cookingNote.match(/\[email:([^\]]+)\]/);
+    if (match) {
+      customerEmail = match[1];
+      cookingNote = cookingNote.replace(/\[email:[^\]]+\]\s*/, '').trim();
+    }
+  }
+
   return {
     orderId: row.order_id,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
-    customerEmail: row.customer_email || '',
+    customerEmail,
     restaurantId: row.restaurant_id,
     restaurantName: row.restaurant_name,
     restaurantAddress: row.restaurant_address,
@@ -37,18 +49,24 @@ export function mapPgOrderToApp(row) {
     riderEarnings: Number(row.rider_earnings || 60),
     placedAt: row.placed_at,
     etaMins: Number(row.eta_mins || 25),
-    cookingNote: row.cooking_note,
+    cookingNote,
     createdAt: row.created_at
   };
 }
 
 // Map Unavukadai application order object to Postgres row
 export function mapAppOrderToPg(order) {
+  let cookingNote = order.cookingNote || '';
+  if (order.customerEmail && !cookingNote.includes('[email:')) {
+    cookingNote = `[email:${order.customerEmail.trim()}] ${cookingNote}`.trim();
+  }
+
   return {
     order_id: order.orderId,
     customer_name: order.customerName,
     customer_phone: order.customerPhone,
-    customer_email: order.customerEmail || '',
+    // Note: customer_email is omitted from raw columns to prevent PGRST204 schema cache errors;
+    // it is safely preserved in cooking_note above and decoded transparently.
     restaurant_id: order.restaurantId,
     restaurant_name: order.restaurantName,
     restaurant_address: order.restaurantAddress,
@@ -76,7 +94,7 @@ export function mapAppOrderToPg(order) {
     rider_earnings: order.riderEarnings || 60,
     placed_at: order.placedAt || 'Just now',
     eta_mins: order.etaMins || 25,
-    cooking_note: order.cookingNote || ''
+    cooking_note: cookingNote
   };
 }
 
@@ -194,11 +212,13 @@ export async function updateOrderStatusApi(orderId, status, extraFields = {}) {
   // 2. Update Supabase Postgres directly
   try {
     if (supabase) {
-      const pgUpdates = { status };
+      const pgUpdates = {};
+      if (status) pgUpdates.status = status;
       if (extraFields.riderId !== undefined) pgUpdates.rider_id = extraFields.riderId;
       if (extraFields.riderName !== undefined) pgUpdates.rider_name = extraFields.riderName;
       if (extraFields.riderPhone !== undefined) pgUpdates.rider_phone = extraFields.riderPhone;
       if (extraFields.paymentStatus !== undefined) pgUpdates.payment_status = extraFields.paymentStatus;
+      if (extraFields.cookingNote !== undefined) pgUpdates.cooking_note = extraFields.cookingNote;
 
       const { data, error } = await supabase
         .from('orders')
@@ -240,6 +260,10 @@ export async function cancelOrderApi(orderId) {
   } catch {
     // ignore
   }
+
+  // Broadcast cancellation across tabs and devices
+  broadcastSync('ORDER_CANCELLED', { orderId });
+  broadcastSync('ORDERS_UPDATED', { orderId, status: 'CANCELLED' });
 
   return null;
 }

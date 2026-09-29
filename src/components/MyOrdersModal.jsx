@@ -19,7 +19,8 @@ export default function MyOrdersModal({
   user,
   onSelectOrderToTrack,
   onViewFullOrdersPage,
-  onOpenAuth
+  onOpenAuth,
+  onCancelOrder
 }) {
   // Filter orders strictly for THIS individual user
   const userOrders = useMemo(() => {
@@ -144,7 +145,8 @@ export default function MyOrdersModal({
           ) : (
             <div className="orders-history-list">
               {userOrders.map((order) => {
-                const isActive = order.status !== 'DELIVERED';
+                const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+                const isActive = ACTIVE_STATUSES.includes(order.status);
                 return (
                   <div 
                     key={order.orderId} 
@@ -198,6 +200,35 @@ export default function MyOrdersModal({
                             <Bike size={13} />
                             <span>{order.riderName}</span>
                           </div>
+                        )}
+
+                        {order.status === 'PLACED' && onCancelOrder && (
+                          <button
+                            type="button"
+                            className="btn-cancel-mini"
+                            style={{
+                              color: '#ef4444',
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Cancel order #${order.orderId}?`)) {
+                                onCancelOrder(order.orderId);
+                              }
+                            }}
+                          >
+                            <X size={13} />
+                            <span>Cancel</span>
+                          </button>
                         )}
 
                         <button 

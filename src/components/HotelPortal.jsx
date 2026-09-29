@@ -557,10 +557,30 @@ export default function HotelPortal({
                             </button>
                           )}
                           {s === 'READY_FOR_PICKUP' && (
-                            <div className="mp-waiting-rider"><Clock size={14}/> Awaiting rider pickup</div>
+                            <>
+                              <div className="mp-waiting-rider"><Clock size={14}/> Awaiting rider pickup</div>
+                              <button 
+                                className="mp-btn-accept" 
+                                style={{ background: '#2563eb', borderColor: '#2563eb' }}
+                                onClick={() => onUpdateOrderStatus(order.orderId, 'OUT_FOR_DELIVERY', { riderName: order.riderName || 'Express Dispatch' })}
+                                title="Dispatch order with rider or hotel runner"
+                              >
+                                <Truck size={14}/> Dispatch Order
+                              </button>
+                            </>
                           )}
                           {s === 'OUT_FOR_DELIVERY' && (
-                            <div className="mp-out-badge"><Truck size={14}/> {order.riderName || 'Rider'} picking up</div>
+                            <>
+                              <div className="mp-out-badge"><Truck size={14}/> {order.riderName || 'Rider'} delivering</div>
+                              <button 
+                                className="mp-btn-ready" 
+                                style={{ background: '#059669', borderColor: '#059669' }}
+                                onClick={() => onUpdateOrderStatus(order.orderId, 'DELIVERED')}
+                                title="Mark order as delivered"
+                              >
+                                <CheckCircle size={14}/> Mark Delivered
+                              </button>
+                            </>
                           )}
                           <a href={getWhatsAppOrderUrl(order)} target="_blank" rel="noopener noreferrer" className="mp-btn-wa">
                             <MessageCircle size={14}/> WhatsApp Slip
@@ -661,6 +681,13 @@ export default function HotelPortal({
                       {o.items.map((it, i) => <div key={i} className="mp-kds-item"><strong>{it.quantity}×</strong> {it.name}</div>)}
                     </div>
                     <div className="mp-kds-waiting"><Truck size={13}/> Awaiting rider…</div>
+                    <button 
+                      className="mp-kds-action-btn ready" 
+                      style={{ marginTop: '8px', background: '#2563eb' }}
+                      onClick={() => onUpdateOrderStatus(o.orderId, 'OUT_FOR_DELIVERY', { riderName: o.riderName || 'Express Dispatch' })}
+                    >
+                      ✓ Dispatch Trip
+                    </button>
                   </div>
                 ))}
               </div>

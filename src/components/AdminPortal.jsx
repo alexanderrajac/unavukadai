@@ -388,7 +388,7 @@ export default function AdminPortal({
                       <div className="adm-oc-items">{order.items?.map(i => `${i.quantity}× ${i.name}`).join(' · ')}</div>
                       <div className="adm-oc-footer">
                         <span className="adm-rider-chip">{order.riderName ? `🛵 ${order.riderName}` : '⏳ Awaiting rider'}</span>
-                        <select className="adm-status-select" value={order.status} onChange={e => onUpdateOrderStatus(order.orderId, e.target.value)}>
+                        <select className="adm-status-select" value={order.status} onChange={e => onUpdateOrderStatus(order.orderId, e.target.value, { forceTransition: true })}>
                           <option value="PLACED">Placed</option>
                           <option value="PREPARING">Preparing</option>
                           <option value="READY_FOR_PICKUP">Ready</option>

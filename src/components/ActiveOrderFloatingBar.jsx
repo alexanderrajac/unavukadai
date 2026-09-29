@@ -5,7 +5,8 @@ export default function ActiveOrderFloatingBar({
   activeOrder,
   onOpenTracker
 }) {
-  if (!activeOrder || activeOrder.status === 'DELIVERED') return null;
+  const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+  if (!activeOrder || !ACTIVE_STATUSES.includes(activeOrder.status)) return null;
 
   const getStatusIcon = (status) => {
     switch (status) {

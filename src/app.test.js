@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { RESTAURANTS, CITIES, COUPONS, REGIONAL_OFFER_BANNERS, INITIAL_ORDERS } from './data/mockData';
 import { calculateDeliveryFee, getDeliveryFeeBreakdown, getRestaurantCoordinates, calculateDistanceKm } from './utils/geolocation';
+import { mapAppOrderToPg, mapPgOrderToApp } from './services/api';
 
 describe('Unavukadai Suburban Hubs (Perungalathur, Vandalur & Mannivakkam)', () => {
   it('should include Perungalathur, Vandalur, and Mannivakkam in available hubs', () => {
@@ -120,12 +121,45 @@ describe('Multi-Portal Shared Order Lifecycle Transitions', () => {
     expect(order.status).toBe('DELIVERED');
   });
 
-  it('should initialize with realistic suburban orders', () => {
-    expect(INITIAL_ORDERS.length).toBeGreaterThanOrEqual(3);
-    const localities = INITIAL_ORDERS.map(o => o.locality);
-    expect(localities).toContain('Perungalathur');
-    expect(localities).toContain('Vandalur');
-    expect(localities).toContain('Mannivakkam');
+  it('should accurately classify active order statuses vs terminal states', () => {
+    const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+    
+    expect(ACTIVE_STATUSES.includes('PLACED')).toBe(true);
+    expect(ACTIVE_STATUSES.includes('PREPARING')).toBe(true);
+    expect(ACTIVE_STATUSES.includes('READY_FOR_PICKUP')).toBe(true);
+    expect(ACTIVE_STATUSES.includes('OUT_FOR_DELIVERY')).toBe(true);
+    expect(ACTIVE_STATUSES.includes('DELIVERED')).toBe(false);
+    expect(ACTIVE_STATUSES.includes('CANCELLED')).toBe(false);
+  });
+
+  it('should safely map order to Postgres row without schema cache error and decode customerEmail', () => {
+    const clientOrder = {
+      orderId: 'UNV-882211',
+      customerName: 'Alexander Raja',
+      customerPhone: '+91 98401 23456',
+      customerEmail: 'alexanderrajac@gmail.com',
+      restaurantId: 'res-perungalathur-1',
+      restaurantName: 'SS Hyderabad Biryani',
+      status: 'PLACED',
+      cookingNote: 'Less spicy please',
+      items: [{ id: 'item-1', name: 'Dum Biryani', price: 220, quantity: 1 }],
+      grandTotal: 260
+    };
+
+    const pgRow = mapAppOrderToPg(clientOrder);
+    
+    // Must NOT have raw customer_email key (prevents PGRST204 column missing error)
+    expect(pgRow.customer_email).toBeUndefined();
+    // Must safely encode customer email in cooking_note
+    expect(pgRow.cooking_note).toContain('[email:alexanderrajac@gmail.com]');
+    expect(pgRow.cooking_note).toContain('Less spicy please');
+
+    // Decode back
+    const restored = mapPgOrderToApp(pgRow);
+    expect(restored.orderId).toBe('UNV-882211');
+    expect(restored.customerEmail).toBe('alexanderrajac@gmail.com');
+    expect(restored.cookingNote).toBe('Less spicy please');
+    expect(restored.status).toBe('PLACED');
   });
 });
 

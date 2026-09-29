@@ -588,17 +588,52 @@ export default function App() {
       } else if (payload.type === 'ORDER_STATUS_CHANGED') {
         const { orderId, status, extraFields, updated } = payload.data || {};
         if (orderId) {
-          setOrders(prev => prev.map(o => {
-            if (o.orderId === orderId) {
-              return {
-                ...o,
-                status: status || o.status,
-                ...(extraFields || {}),
-                ...(updated || {})
-              };
+          setOrders(prev => {
+            const next = prev.map(o => {
+              if (o.orderId === orderId) {
+                return {
+                  ...o,
+                  status: status || o.status,
+                  ...(extraFields || {}),
+                  ...(updated || {})
+                };
+              }
+              return o;
+            });
+            try {
+              localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(next));
+            } catch {
+              // ignore
             }
-            return o;
-          }));
+            return next;
+          });
+          setTrackingOrder(prev => (prev && prev.orderId === orderId ? {
+            ...prev,
+            status: status || prev.status,
+            ...(extraFields || {}),
+            ...(updated || {})
+          } : prev));
+          setCompletedOrder(prev => (prev && prev.orderId === orderId ? {
+            ...prev,
+            status: status || prev.status,
+            ...(extraFields || {}),
+            ...(updated || {})
+          } : prev));
+        }
+      } else if (payload.type === 'ORDER_CANCELLED') {
+        const { orderId } = payload.data || {};
+        if (orderId) {
+          setOrders(prev => {
+            const next = prev.filter(o => o.orderId !== orderId);
+            try {
+              localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(next));
+            } catch {
+              // ignore
+            }
+            return next;
+          });
+          setTrackingOrder(prev => (prev && prev.orderId === orderId ? null : prev));
+          setCompletedOrder(prev => (prev && prev.orderId === orderId ? null : prev));
         }
       } else if (payload.type === 'ORDERS_UPDATED') {
         if (Array.isArray(payload.data)) {
@@ -1130,6 +1165,8 @@ export default function App() {
       }
       return updated;
     });
+    setTrackingOrder(prev => (prev && prev.orderId === orderId ? { ...prev, status: newStatus, ...extraFields } : prev));
+    setCompletedOrder(prev => (prev && prev.orderId === orderId ? { ...prev, status: newStatus, ...extraFields } : prev));
     updateOrderStatusApi(orderId, newStatus, extraFields);
   };
 
@@ -1178,6 +1215,8 @@ export default function App() {
       }
       return updated;
     });
+    setTrackingOrder(prev => (prev && prev.orderId === orderId ? { ...prev, ...riderDetails } : prev));
+    setCompletedOrder(prev => (prev && prev.orderId === orderId ? { ...prev, ...riderDetails } : prev));
     updateOrderStatusApi(orderId, targetStatus, riderDetails);
     return true;
   };
@@ -1349,6 +1388,7 @@ export default function App() {
               user={user}
               orders={orders}
               onSelectOrderToTrack={(ord) => setTrackingOrder(ord)}
+              onCancelOrder={handleCancelOrder}
               onReorder={(ord) => {
                 if (ord.items && ord.items.length > 0) {
                   setCartItems(ord.items);
@@ -1553,8 +1593,8 @@ export default function App() {
 
           {/* Active Order Floating Tracker Bar */}
           <ActiveOrderFloatingBar
-            activeOrder={orders.find(o => o.status !== 'DELIVERED')}
-            onOpenTracker={() => setTrackingOrder(orders.find(o => o.status !== 'DELIVERED'))}
+            activeOrder={orders.find(o => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status))}
+            onOpenTracker={() => setTrackingOrder(orders.find(o => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status)))}
           />
 
           {/* Customer Orders & History Modal */}
@@ -1564,6 +1604,7 @@ export default function App() {
             orders={orders}
             user={user}
             onSelectOrderToTrack={(ord) => setTrackingOrder(ord)}
+            onCancelOrder={handleCancelOrder}
             onViewFullOrdersPage={() => {
               setIsMyOrdersOpen(false);
               setActiveTab('orders');
