@@ -269,6 +269,25 @@ export default function OrderSuccessModal({
           </div>
         </div>
 
+        {/* Viral Referral Banner: Share with 3 friends & get ₹50 */}
+        <div className="referral-viral-card animate-fade">
+          <div className="referral-card-left">
+            <span className="referral-emoji">🎁</span>
+            <div>
+              <strong>Share with 3 friends &amp; get ₹50 cashback!</strong>
+              <p>Give your friends 50% OFF their first order with coupon <code>PERUNGAL50</code>.</p>
+            </div>
+          </div>
+          <a 
+            href={`https://wa.me/?text=${encodeURIComponent(`Hey! I just ordered authentic South Indian food on UnavuKadai 🍲.\n\nUse code PERUNGAL50 to get 50% OFF up to ₹120 on your first order! (Perungalathur, Vandalur & Mannivakkam)\n\n👉 Order now: ${typeof window !== 'undefined' ? window.location.origin : ''}/#/customer`)}`}
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="btn-referral-wa"
+          >
+            <span>Invite on WhatsApp</span>
+          </a>
+        </div>
+
         {/* Order Summary Recap */}
         <div className="order-recap-box">
           <div className="recap-header">

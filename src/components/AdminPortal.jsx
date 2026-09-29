@@ -5,7 +5,8 @@ import {
   CheckCircle2, Users, UserCheck, UserX, Search, ArrowRight,
   ExternalLink, ShieldCheck, UserPlus, Bell, BarChart2, Settings,
   Home, Package, X, ChevronDown, RefreshCw, Eye, Edit3,
-  IndianRupee, Zap, Activity, Power, Store, Tag, Sparkles, Camera
+  IndianRupee, Zap, Activity, Power, Store, Tag, Sparkles, Camera,
+  MessageSquare, Copy, Download, Send, Share2
 } from 'lucide-react';
 import { COUPONS, RESTAURANTS } from '../data/mockData';
 import AdminFleetRadarMap from './AdminFleetRadarMap';
@@ -78,6 +79,91 @@ export default function AdminPortal({
     return mq && mr && ms;
   }), [usersList, userSearch, roleFilter, statusFilterUser]);
 
+  // Unique customer WhatsApp contacts collected from orders and signups
+  const customerContacts = useMemo(() => {
+    const map = new Map();
+    orders.forEach(o => {
+      const ph = o.customerPhone ? String(o.customerPhone).replace(/\D/g, '') : '';
+      if (ph.length >= 10 && !map.has(ph)) {
+        map.set(ph, { phone: ph, name: o.customerName || 'Foodie', email: o.customerEmail || '', ordersCount: 1, source: 'Order Placement' });
+      }
+    });
+    usersList.forEach(u => {
+      const ph = u.phone ? String(u.phone).replace(/\D/g, '') : '';
+      if (ph.length >= 10 && !map.has(ph)) {
+        map.set(ph, { phone: ph, name: u.name || 'Member', email: u.email || '', ordersCount: 0, source: 'Account Signup' });
+      }
+    });
+    return Array.from(map.values());
+  }, [orders, usersList]);
+
+  const [copiedTemplateId, setCopiedTemplateId] = useState(null);
+  const [contactsCopied, setContactsCopied] = useState(false);
+
+  const CAMPAIGN_TEMPLATES = [
+    {
+      id: 'biryani-friday',
+      title: 'Friday Biryani Rush',
+      schedule: 'Every Friday at 6:30 PM',
+      tag: 'WEEKEND PEAK',
+      emoji: '🍗',
+      color: '#ea580c',
+      message: `🍗 *WEEKEND SPECIAL BIRYANI ALERT!* 🍗\n\nSS Hyderabad Biryani & Madurai Muniyandi are now firing up dinner handis in Perungalathur & Vandalur!\n\n🔥 *Get 50% OFF up to ₹120 with coupon:* *PERUNGAL50*\n🛵 Piping hot delivery in 20 mins!\n\n👉 *Order your dinner now:* https://unavukadai.com/#/customer`
+    },
+    {
+      id: 'sunday-breakfast',
+      title: 'Sunday Morning Breakfast Hub',
+      schedule: 'Every Sunday at 8:00 AM',
+      tag: 'FAMILY TIFFIN',
+      emoji: '☕',
+      color: '#16a34a',
+      message: `☕ *SUNDAY SPECIAL BREAKFAST DELIVERY!* ☕\n\nSkip the morning cooking! Fresh Crispy Ghee Roast Dosa, Hot Idlis & Filter Coffee from top messes delivered to your doorstep.\n\n✨ *Special 40% OFF with code:* *MANNIVAKKAM40*\n🛵 Arrives hot at your door in 20 mins!\n\n👉 *Order Sunday Breakfast:* https://unavukadai.com/#/customer`
+    },
+    {
+      id: 'rainy-day',
+      title: 'Rainy Day / Monsoon Cravings',
+      schedule: 'During heavy rain & monsoon evenings',
+      tag: 'WEATHER TRIGGER',
+      emoji: '🌧️',
+      color: '#0284c7',
+      message: `🌧️ *RAINING OUTSIDE? STAY COZY!* 🌧️\n\nUnavuKadai delivery captains are on the road! Hot pepper rasam soups, crispy onion pakodas, and spicy fried chicken delivered to your door.\n\n🛵 *Rain or shine, we deliver in 25 mins:*\n👉 *Order Hot Food:* https://unavukadai.com/#/customer`
+    },
+    {
+      id: 'campus-night',
+      title: 'Crescent & College Late-Night Hunger',
+      schedule: 'Daily from 9:30 PM – 12:30 AM',
+      tag: 'STUDENT HOSTELS',
+      emoji: '🎓',
+      color: '#7c3aed',
+      message: `🌙 *LATE NIGHT CRAVINGS? WE GOT YOU!* 🌙\n\nStudying late or chilling in hostel? Shawarma rolls, chicken rice & thick shakes delivered right to your college gate!\n\n🎓 *Student 60% OFF code:* *VANDALUR60*\n🛵 Midnight doorstep delivery in 20 mins.\n\n👉 *Order Midnight Snack:* https://unavukadai.com/#/customer`
+    }
+  ];
+
+  const handleCopyContacts = () => {
+    const numbers = customerContacts.map(c => c.phone.startsWith('91') ? `+${c.phone}` : `+91${c.phone}`).join(', ');
+    navigator.clipboard.writeText(numbers);
+    setContactsCopied(true);
+    setTimeout(() => setContactsCopied(false), 3000);
+  };
+
+  const handleDownloadCsv = () => {
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      ["Name,Phone,Source,Orders Count", ...customerContacts.map(c => `"${c.name}","+${c.phone}","${c.source}",${c.ordersCount}`)].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `unavukadai_whatsapp_contacts_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCopyCampaign = (template) => {
+    navigator.clipboard.writeText(template.message);
+    setCopiedTemplateId(template.id);
+    setTimeout(() => setCopiedTemplateId(null), 3000);
+  };
+
   const handleSaveSettings = (e) => {
     e.preventDefault();
     if (onUpdateSettings) onUpdateSettings({ merchantUpi: upiIdInput.trim(), merchantName: merchantNameInput.trim() });
@@ -108,6 +194,7 @@ export default function AdminPortal({
     { id: 'restaurants', icon: <Store size={17}/>, label: 'Partners' },
     { id: 'fleet', icon: <Bike size={17}/>, label: 'Fleet' },
     { id: 'promos', icon: <Tag size={17}/>, label: 'Promos' },
+    { id: 'whatsapp', icon: <MessageSquare size={17}/>, label: 'WhatsApp Growth', badge: 'PRO' },
     { id: 'settings', icon: <Settings size={17}/>, label: 'Settings' },
   ];
 
@@ -792,6 +879,173 @@ export default function AdminPortal({
                 </div>
               ))}
               {couponsList.length === 0 && <div className="adm-empty"><Tag size={32}/><p>No promo codes yet</p></div>}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            WHATSAPP AUTOMATED GROWTH STUDIO (PILLAR 3)
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'whatsapp' && (
+          <div className="adm-whatsapp-studio animate-fade">
+            {/* Top Gateway Hero Card */}
+            <div className="adm-wa-hero">
+              <div className="adm-wa-hero-left">
+                <div className="adm-wa-live-badge">
+                  <span className="adm-live-dot" />
+                  <span>WHATSAPP MARKETING KING — ONLINE</span>
+                </div>
+                <h3>Automated WhatsApp Growth Engine</h3>
+                <p>
+                  Direct automated transactional OTPs, weekend broadcast campaigns, and viral referral loops built for South Chennai suburbs.
+                </p>
+                <div className="adm-wa-meta-row">
+                  <span className="adm-wa-meta-chip">
+                    Gateway: <code>whatsappmarketingking-production.up.railway.app</code>
+                  </span>
+                  <span className="adm-wa-meta-chip green">
+                    Protocol: API v1 (Live)
+                  </span>
+                </div>
+              </div>
+              <div className="adm-wa-hero-right">
+                <a 
+                  href="https://whatsappmarketingking-production.up.railway.app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="btn-open-wa-portal"
+                >
+                  <ExternalLink size={14} />
+                  <span>Open WhatsApp King Console</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Opted-in Contact Audience & Export Section */}
+            <div className="adm-wa-contacts-card">
+              <div className="adm-wa-card-header">
+                <div>
+                  <div className="adm-card-tag">PILLAR 3 · AUDIENCE BUILDING</div>
+                  <h4>Opted-in Customer Contact List ({customerContacts.length})</h4>
+                  <p>Verified mobile numbers captured from real order checkouts and account registrations.</p>
+                </div>
+                <div className="adm-wa-actions-group">
+                  <button 
+                    type="button" 
+                    className="btn-wa-action"
+                    onClick={handleCopyContacts}
+                  >
+                    <Copy size={14} />
+                    <span>{contactsCopied ? 'Copied All Numbers!' : 'Copy Numbers (+91)'}</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn-wa-action primary"
+                    onClick={handleDownloadCsv}
+                  >
+                    <Download size={14} />
+                    <span>Export Contacts (.CSV)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Contacts preview pills */}
+              <div className="adm-wa-contacts-strip">
+                {customerContacts.slice(0, 10).map((c, idx) => (
+                  <div key={idx} className="adm-wa-contact-chip">
+                    <span className="wa-dot" />
+                    <strong>+{c.phone}</strong>
+                    <span className="wa-name">({c.name})</span>
+                    <span className="wa-source-tag">{c.source}</span>
+                  </div>
+                ))}
+                {customerContacts.length > 10 && (
+                  <div className="adm-wa-more-chip">
+                    +{customerContacts.length - 10} more customer numbers
+                  </div>
+                )}
+                {customerContacts.length === 0 && (
+                  <div className="adm-empty-contacts">
+                    <span>No contacts recorded yet. Place an order to build your opted-in WhatsApp audience!</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Weekly Broadcast Campaigns Grid */}
+            <div className="adm-wa-campaigns-section">
+              <div className="adm-section-header">
+                <div>
+                  <span className="adm-card-tag">WEEKLY BROADCAST DROPS</span>
+                  <h4>High-Converting Suburban Campaign Templates</h4>
+                  <p>Pre-written, tested templates optimized for click-throughs and weekend order spikes.</p>
+                </div>
+              </div>
+
+              <div className="adm-wa-grid">
+                {CAMPAIGN_TEMPLATES.map((tpl) => (
+                  <div key={tpl.id} className="adm-wa-tpl-card">
+                    <div className="adm-tpl-top">
+                      <div className="adm-tpl-badge" style={{ background: `${tpl.color}15`, color: tpl.color, borderColor: `${tpl.color}35` }}>
+                        <span>{tpl.emoji}</span>
+                        <span>{tpl.tag}</span>
+                      </div>
+                      <span className="adm-tpl-schedule">{tpl.schedule}</span>
+                    </div>
+
+                    <h5 className="adm-tpl-title">{tpl.title}</h5>
+
+                    <div className="adm-tpl-bubble">
+                      <pre>{tpl.message}</pre>
+                    </div>
+
+                    <div className="adm-tpl-footer">
+                      <button 
+                        type="button" 
+                        className="btn-tpl-copy"
+                        onClick={() => handleCopyCampaign(tpl)}
+                      >
+                        <Copy size={13} />
+                        <span>{copiedTemplateId === tpl.id ? 'Copied Message!' : 'Copy Text'}</span>
+                      </button>
+                      <a 
+                        href={`https://wa.me/?text=${encodeURIComponent(tpl.message)}`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="btn-tpl-launch"
+                        style={{ background: '#16a34a', color: '#ffffff' }}
+                      >
+                        <Send size={13} />
+                        <span>Launch Broadcast</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Viral Referral Engine Box */}
+            <div className="adm-wa-referral-card">
+              <div className="adm-referral-left">
+                <div className="adm-ref-icon">🎁</div>
+                <div>
+                  <h4>Viral Referral Loop: "Share with 3 Friends, Get ₹50"</h4>
+                  <p>
+                    Customers automatically receive their personal referral link after every successful delivery handoff, unlocking viral friend-to-friend customer acquisition.
+                  </p>
+                </div>
+              </div>
+              <div className="adm-referral-right">
+                <a 
+                  href={`https://wa.me/?text=${encodeURIComponent(`Hey! I just ordered authentic South Indian food on UnavuKadai 🍲.\n\nUse my referral link to get 50% OFF up to ₹120 on your first order! (Perungalathur, Vandalur & Mannivakkam)\n\n👉 Order now: https://unavukadai.com/#/customer`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="btn-test-ref-wa"
+                >
+                  <Share2 size={14} />
+                  <span>Test Referral WhatsApp Link</span>
+                </a>
+              </div>
             </div>
           </div>
         )}
