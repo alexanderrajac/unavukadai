@@ -1728,6 +1728,7 @@ export default function App() {
           onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
           onApproveRider={handleApproveRider}
           onRejectRider={handleRejectRider}
+          onCreateOrder={handleCreateOrder}
         />
       )}
 

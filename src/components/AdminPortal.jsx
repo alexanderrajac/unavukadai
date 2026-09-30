@@ -11,6 +11,7 @@ import {
 import { COUPONS, RESTAURANTS } from '../data/mockData';
 import AdminFleetRadarMap from './AdminFleetRadarMap';
 import EditRestaurantModal from './EditRestaurantModal';
+import { createOrderApi } from '../services/api';
 
 export default function AdminPortal({
   orders,
@@ -35,7 +36,8 @@ export default function AdminPortal({
   onApproveAllRestaurants = () => {},
   onOpenRegisterRider = () => {},
   onApproveRider = () => {},
-  onRejectRider = () => {}
+  onRejectRider = () => {},
+  onCreateOrder
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [fleetSubTab, setFleetSubTab] = useState('radar'); // 'radar' | 'approvals' | 'roster'
@@ -60,6 +62,98 @@ export default function AdminPortal({
   const [newDiscount, setNewDiscount] = useState(50);
   const [newMaxDiscount, setNewMaxDiscount] = useState(120);
   const [orderSearch, setOrderSearch] = useState('');
+
+  // ── Emergency Quick-Dispatch Matrix for Oct 6th Launch ───────────────────
+  const [quickDispatchName, setQuickDispatchName] = useState('Oct 6 Launch Tester');
+  const [quickDispatchPhone, setQuickDispatchPhone] = useState('+91 98401 23456');
+  const [quickDispatchSuccessMsg, setQuickDispatchSuccessMsg] = useState('');
+  const [isQuickDispatchLoading, setIsQuickDispatchLoading] = useState(false);
+
+  const QUICK_DISPATCH_HUBS = [
+    {
+      key: 'kilambakkam',
+      label: 'Kilambakkam (KCBT)',
+      emoji: '🍗',
+      dish: 'Chicken Dum Biryani',
+      price: 240,
+      restaurant: 'SS Hyderabad Biryani',
+      locality: 'Kilambakkam',
+      address: 'Shop 14, Platform 3, Kilambakkam Bus Terminus (KCBT)',
+      bg: 'rgba(239, 68, 68, 0.15)',
+      border: 'rgba(239, 68, 68, 0.4)',
+      color: '#f87171'
+    },
+    {
+      key: 'vandalur',
+      label: 'Vandalur (Crescent/Zoo)',
+      emoji: '🥘',
+      dish: 'Bun Parotta (2x) + Salna',
+      price: 190,
+      restaurant: 'Muniyandi Vilas',
+      locality: 'Vandalur',
+      address: 'Main Gate, Crescent University / Vandalur Zoo Corridor',
+      bg: 'rgba(249, 115, 22, 0.15)',
+      border: 'rgba(249, 115, 22, 0.4)',
+      color: '#fb923c'
+    },
+    {
+      key: 'otteri',
+      label: 'Otteri Hub',
+      emoji: '☕',
+      dish: 'Ghee Roast Dosa + Filter Coffee',
+      price: 160,
+      restaurant: 'Sangeetha Veg Restaurant',
+      locality: 'Otteri',
+      address: 'Plot 12, Lake View Street, Otteri Hub',
+      bg: 'rgba(34, 197, 94, 0.15)',
+      border: 'rgba(34, 197, 94, 0.4)',
+      color: '#4ade80'
+    }
+  ];
+
+  const handleTriggerQuickDispatch = async (hub) => {
+    setIsQuickDispatchLoading(true);
+    const orderId = `UK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newOrder = {
+      orderId,
+      customerName: quickDispatchName.trim() || 'Oct 6 Launch Tester',
+      customerPhone: quickDispatchPhone.trim() || '+91 98401 23456',
+      customerEmail: currentUser?.email || 'admin@unavukadai.com',
+      restaurantId: `res-${hub.key}`,
+      restaurantName: hub.restaurant,
+      restaurantAddress: `${hub.locality} Food Corridor`,
+      customerAddress: hub.address,
+      locality: hub.locality,
+      items: [{ id: `item-${Date.now()}`, name: hub.dish, price: hub.price, quantity: 1 }],
+      itemTotal: hub.price,
+      deliveryFee: 20,
+      taxes: Math.round(hub.price * 0.05),
+      platformFee: 5,
+      discount: 0,
+      grandTotal: hub.price + 25 + Math.round(hub.price * 0.05),
+      status: 'PLACED',
+      paymentMethod: 'UPI',
+      paymentStatus: 'PAID',
+      deliveryOtp: String(Math.floor(1000 + Math.random() * 9000)),
+      placedAt: 'Just now',
+      etaMins: 20,
+      cookingNote: '[Oct 6 Launch Direct Test Order]'
+    };
+
+    try {
+      if (onCreateOrder) {
+        onCreateOrder(newOrder);
+      } else {
+        await createOrderApi(newOrder);
+      }
+      setQuickDispatchSuccessMsg(`🚀 Test Order #${orderId} Dispatched to ${hub.locality}! Active in Kitchen KDS & Rider Radar.`);
+      setTimeout(() => setQuickDispatchSuccessMsg(''), 6000);
+    } catch (err) {
+      console.warn('Quick dispatch error:', err);
+    } finally {
+      setIsQuickDispatchLoading(false);
+    }
+  };
 
   // ── Metrics ────────────────────────────────────────────────────────────────
   const totalGMV = orders.reduce((a, o) => a + (o.grandTotal || 0), 0);
@@ -337,6 +431,61 @@ export default function AdminPortal({
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === 'orders' && (
           <div className="adm-orders-page">
+            {/* ── October 6th Launch Emergency Quick-Dispatch Matrix ── */}
+            <div className="adm-quick-dispatch-matrix animate-fade">
+              <div className="adm-qdm-header">
+                <div className="adm-qdm-title-wrap">
+                  <div className="adm-qdm-pill">⚡ OCT 6 LAUNCH ENGINE</div>
+                  <h3>Emergency Quick-Dispatch Matrix</h3>
+                  <p>1-tap inject guaranteed real test orders to verify Kitchen KDS, Rider Radar, and Customer tracking in real time.</p>
+                </div>
+                <div className="adm-qdm-inputs">
+                  <input
+                    type="text"
+                    className="adm-qdm-input"
+                    placeholder="Customer Name"
+                    value={quickDispatchName}
+                    onChange={e => setQuickDispatchName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="adm-qdm-input"
+                    placeholder="Customer Phone"
+                    value={quickDispatchPhone}
+                    onChange={e => setQuickDispatchPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {quickDispatchSuccessMsg && (
+                <div className="adm-qdm-success-banner animate-slide-down">
+                  <CheckCircle2 size={16} className="text-green" />
+                  <span>{quickDispatchSuccessMsg}</span>
+                </div>
+              )}
+
+              <div className="adm-qdm-buttons-grid">
+                {QUICK_DISPATCH_HUBS.map(hub => (
+                  <button
+                    key={hub.key}
+                    type="button"
+                    className="adm-qdm-btn"
+                    style={{ background: hub.bg, borderColor: hub.border }}
+                    disabled={isQuickDispatchLoading}
+                    onClick={() => handleTriggerQuickDispatch(hub)}
+                  >
+                    <span className="adm-qdm-btn-emoji">{hub.emoji}</span>
+                    <div className="adm-qdm-btn-text">
+                      <strong style={{ color: hub.color }}>{hub.label}</strong>
+                      <span className="adm-qdm-dish">{hub.dish} • ₹{hub.price}</span>
+                      <small className="adm-qdm-res">{hub.restaurant}</small>
+                    </div>
+                    <span className="adm-qdm-action-chip">Dispatch ⚡</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Toolbar */}
             <div className="adm-toolbar">
               <div className="adm-search-wrap">
