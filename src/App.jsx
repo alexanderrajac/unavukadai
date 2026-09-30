@@ -24,6 +24,7 @@ import { ArrowRight, Flame } from 'lucide-react';
 import HotelPortal from './components/HotelPortal';
 import RiderPortal from './components/RiderPortal';
 import AdminPortal from './components/AdminPortal';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import { CITIES, RESTAURANTS, INITIAL_ORDERS, COUPONS } from './data/mockData';
 import {
@@ -1194,6 +1195,15 @@ export default function App() {
     sendOrderWhatsAppNotificationApi(newOrderObj);
   };
 
+  const handleCreateOrder = (newOrder) => {
+    setOrders(prev => [newOrder, ...prev]);
+    try {
+      localStorage.setItem('unavu_ecosystem_orders', JSON.stringify([newOrder, ...orders]));
+    } catch {}
+    createOrderApi(newOrder);
+    sendOrderWhatsAppNotificationApi(newOrder);
+  };
+
   const handleUpdateOrderStatus = (orderId, newStatus, extraFields = {}) => {
     setOrders(prev => {
       const updated = prev.map(o => {
@@ -1745,32 +1755,34 @@ export default function App() {
 
       {/* 4. SUPER ADMIN CONSOLE */}
       {currentPortal === 'admin' && (
-        <AdminPortal
-          orders={orders}
-          onUpdateOrderStatus={handleUpdateOrderStatus}
-          onAddCoupon={handleAddCoupon}
-          couponsList={couponsList}
-          riderLocations={riderLocations}
-          settings={settings}
-          onUpdateSettings={handleUpdateSettings}
-          onResetOrders={handleResetOrders}
-          usersList={usersList}
-          onUpdateUserRole={handleUpdateUserRole}
-          onToggleUserStatus={handleToggleUserStatus}
-          currentUser={user}
-          onSwitchPortal={setCurrentPortal}
-          restaurantsList={restaurantsList}
-          onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
-          onApproveRestaurant={handleApproveRestaurant}
-          onRejectRestaurant={handleRejectRestaurant}
-          onUpdateRestaurantDetails={handleUpdateRestaurantDetails}
-          onDeleteRestaurant={handleDeleteRestaurant}
-          onApproveAllRestaurants={handleApproveAllRestaurants}
-          onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
-          onApproveRider={handleApproveRider}
-          onRejectRider={handleRejectRider}
-          onCreateOrder={handleCreateOrder}
-        />
+        <ErrorBoundary>
+          <AdminPortal
+            orders={orders}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onAddCoupon={handleAddCoupon}
+            couponsList={couponsList}
+            riderLocations={riderLocations}
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+            onResetOrders={handleResetOrders}
+            usersList={usersList}
+            onUpdateUserRole={handleUpdateUserRole}
+            onToggleUserStatus={handleToggleUserStatus}
+            currentUser={user}
+            onSwitchPortal={setCurrentPortal}
+            restaurantsList={restaurantsList}
+            onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
+            onApproveRestaurant={handleApproveRestaurant}
+            onRejectRestaurant={handleRejectRestaurant}
+            onUpdateRestaurantDetails={handleUpdateRestaurantDetails}
+            onDeleteRestaurant={handleDeleteRestaurant}
+            onApproveAllRestaurants={handleApproveAllRestaurants}
+            onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
+            onApproveRider={handleApproveRider}
+            onRejectRider={handleRejectRider}
+            onCreateOrder={handleCreateOrder}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Global Restaurant Registration & Merchant Onboarding Modal */}

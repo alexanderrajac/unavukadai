@@ -14,7 +14,7 @@ import EditRestaurantModal from './EditRestaurantModal';
 import { createOrderApi } from '../services/api';
 
 export default function AdminPortal({
-  orders,
+  orders = [],
   onUpdateOrderStatus,
   onAddCoupon,
   couponsList = COUPONS,
@@ -37,7 +37,7 @@ export default function AdminPortal({
   onOpenRegisterRider = () => {},
   onApproveRider = () => {},
   onRejectRider = () => {},
-  onCreateOrder
+  onCreateOrder = () => {}
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [fleetSubTab, setFleetSubTab] = useState('radar'); // 'radar' | 'approvals' | 'roster'
@@ -156,44 +156,46 @@ export default function AdminPortal({
   };
 
   // ── Metrics ────────────────────────────────────────────────────────────────
-  const totalGMV = orders.reduce((a, o) => a + (o.grandTotal || 0), 0);
-  const platformRevenue = Math.round(totalGMV * 0.15) + orders.length * 5;
-  const activeOrdersCount = orders.filter(o => !['DELIVERED','CANCELLED'].includes(o.status)).length;
-  const completedToday = orders.filter(o => o.status === 'DELIVERED').length;
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeUsersList = Array.isArray(usersList) ? usersList : [];
+  const totalGMV = safeOrders.reduce((a, o) => a + (o.grandTotal || 0), 0);
+  const platformRevenue = Math.round(totalGMV * 0.15) + safeOrders.length * 5;
+  const activeOrdersCount = safeOrders.filter(o => !['DELIVERED','CANCELLED'].includes(o.status)).length;
+  const completedToday = safeOrders.filter(o => o.status === 'DELIVERED').length;
 
   // ── Filtered data ──────────────────────────────────────────────────────────
-  const filteredOrders = useMemo(() => orders.filter(o => {
+  const filteredOrders = useMemo(() => safeOrders.filter(o => {
     const ml = filterLocality === 'ALL' || o.locality === filterLocality;
     const ms = statusFilter === 'ALL' || o.status === statusFilter;
     const mq = !orderSearch.trim() || o.orderId?.toLowerCase().includes(orderSearch.toLowerCase()) || o.customerName?.toLowerCase().includes(orderSearch.toLowerCase());
     return ml && ms && mq;
-  }), [orders, filterLocality, statusFilter, orderSearch]);
+  }), [safeOrders, filterLocality, statusFilter, orderSearch]);
 
-  const filteredUsers = useMemo(() => usersList.filter(u => {
+  const filteredUsers = useMemo(() => safeUsersList.filter(u => {
     const q = userSearch.toLowerCase().trim();
     const mq = !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.phone?.replace(/\D/g,'').includes(q);
     const mr = roleFilter === 'ALL' || u.role === roleFilter;
     const ms = statusFilterUser === 'ALL' || u.status === statusFilterUser;
     return mq && mr && ms;
-  }), [usersList, userSearch, roleFilter, statusFilterUser]);
+  }), [safeUsersList, userSearch, roleFilter, statusFilterUser]);
 
   // Unique customer WhatsApp contacts collected from orders and signups
   const customerContacts = useMemo(() => {
     const map = new Map();
-    orders.forEach(o => {
+    safeOrders.forEach(o => {
       const ph = o.customerPhone ? String(o.customerPhone).replace(/\D/g, '') : '';
       if (ph.length >= 10 && !map.has(ph)) {
         map.set(ph, { phone: ph, name: o.customerName || 'Foodie', email: o.customerEmail || '', ordersCount: 1, source: 'Order Placement' });
       }
     });
-    usersList.forEach(u => {
+    safeUsersList.forEach(u => {
       const ph = u.phone ? String(u.phone).replace(/\D/g, '') : '';
       if (ph.length >= 10 && !map.has(ph)) {
         map.set(ph, { phone: ph, name: u.name || 'Member', email: u.email || '', ordersCount: 0, source: 'Account Signup' });
       }
     });
     return Array.from(map.values());
-  }, [orders, usersList]);
+  }, [safeOrders, safeUsersList]);
 
   const [copiedTemplateId, setCopiedTemplateId] = useState(null);
   const [contactsCopied, setContactsCopied] = useState(false);
