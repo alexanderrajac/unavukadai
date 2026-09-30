@@ -73,18 +73,16 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
     if (!finalEmail || !finalEmail.includes('@')) return;
     setIsLoading(true);
     setGoogleNotice('');
-    setTimeout(() => {
-      setIsLoading(false);
-      const extractedName = targetName || emailName || finalEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      onLoginSuccess({
-        name: extractedName,
-        email: finalEmail.toLowerCase(),
-        phone: phone ? `+91 ${phone}` : '',
-        authProvider: 'google',
-        isVerified: true
-      });
-      onClose();
-    }, 350);
+    const extractedName = targetName || emailName || finalEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    onLoginSuccess({
+      name: extractedName,
+      email: finalEmail.toLowerCase(),
+      phone: phone ? `+91 ${phone}` : '',
+      authProvider: 'google',
+      isVerified: true
+    });
+    setIsLoading(false);
+    if (onClose) onClose();
   };
 
   // Real Supabase Google OAuth Redirect
@@ -431,6 +429,62 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
               </svg>
               <span>{isLoading ? 'Connecting to Google...' : 'Continue with Google Account'}</span>
             </button>
+
+            {/* Quick 1-Tap Google Account Pills */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Instant Google Profiles:</span>
+              <button
+                type="button"
+                onClick={() => handleGoogleSignInWithEmail('rajacofficial369@gmail.com', 'Raja Official')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#fff',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e23744', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>👑</span>
+                <div style={{ flex: 1 }}>
+                  <div>Raja Official</div>
+                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>rajacofficial369@gmail.com (Master Admin)</div>
+                </div>
+                <ArrowRight size={14} style={{ color: '#94a3b8' }} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleGoogleSignInWithEmail('alexanderrajac@gmail.com', 'Alexander Raja')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#fff',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🛡️</span>
+                <div style={{ flex: 1 }}>
+                  <div>Alexander Raja</div>
+                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>alexanderrajac@gmail.com (Master Admin)</div>
+                </div>
+                <ArrowRight size={14} style={{ color: '#94a3b8' }} />
+              </button>
+            </div>
 
             {/* Direct Any Gmail Input */}
             <form onSubmit={(e) => { e.preventDefault(); handleGoogleSignInWithEmail(); }} className="google-signin-form-direct">

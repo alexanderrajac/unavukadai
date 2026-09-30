@@ -48,6 +48,10 @@ import './App.css';
 export default function App() {
   // Helper to determine portal from URL
   const getPortalFromUrl = () => {
+    // If returning from Google OAuth, keep portal as customer while Supabase reads tokens
+    if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token') || window.location.hash.includes('error='))) {
+      return 'customer';
+    }
     const hash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
     const params = new URLSearchParams(window.location.search);
     const queryPortal = params.get('portal');
@@ -63,12 +67,19 @@ export default function App() {
 
   const setCurrentPortal = (portal) => {
     setCurrentPortalState(portal);
-    window.location.hash = `#/${portal}`;
+    // Don't overwrite hash if OAuth tokens are currently being parsed
+    if (!window.location.hash.includes('access_token') && !window.location.hash.includes('refresh_token')) {
+      window.location.hash = `#/${portal}`;
+    }
   };
 
   // Listen to browser hash changes (direct link clicks, back/forward buttons, auth modal deep links)
   useEffect(() => {
     const handleHashChange = () => {
+      // Don't disturb Supabase OAuth token exchange
+      if (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token')) {
+        return;
+      }
       const rawHash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
       if (rawHash === 'login' || rawHash === 'signin') {
         setAuthInitialTab('login');
@@ -983,6 +994,7 @@ export default function App() {
       authProvider: userData.authProvider || (userData.email ? 'google' : 'phone')
     };
     setUser(updatedUser);
+    setIsAuthOpen(false);
 
     // Strict Role-Based Portal Routing
     if (effectiveRole === 'restaurant') {
@@ -1011,11 +1023,16 @@ export default function App() {
           authProvider: 'google',
           isVerified: true
         });
+
+        // Clean up OAuth tokens from URL after successful session restoration
+        if (typeof window !== 'undefined' && window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+      if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
         const supaUser = session.user;
         const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
         const googleEmail = supaUser.email;
@@ -1027,13 +1044,18 @@ export default function App() {
           authProvider: 'google',
           isVerified: true
         });
+
+        // Clean up OAuth tokens from URL
+        if (typeof window !== 'undefined' && window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
       }
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, [usersList]);
+  }, []);
 
   // Strict Role Route Guard: non-admins are kept in their focused portals unless explicitly switching
   useEffect(() => {
