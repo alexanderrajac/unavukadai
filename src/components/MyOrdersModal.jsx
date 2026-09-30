@@ -9,7 +9,8 @@ import {
   ShieldCheck,
   User,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 
 export default function MyOrdersModal({
@@ -230,6 +231,47 @@ export default function MyOrdersModal({
                             <span>Cancel</span>
                           </button>
                         )}
+
+                        <button 
+                          type="button"
+                          className="btn-wa-bill-mini"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            background: 'rgba(34,197,94,0.12)',
+                            color: '#4ade80',
+                            border: '1px solid rgba(34,197,94,0.3)',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const itemsSummary = order.items?.map(i => `• ${i.quantity}x ${i.name} - ₹${i.price * i.quantity}`).join('\n') || '';
+                            const pinPart = order.deliveryOtp ? `\n🔑 *Delivery PIN:* ${order.deliveryOtp}` : '';
+                            const text = 
+                              `🍲 *UNAVUKADAI ORDER RECEIPT*\n` +
+                              `━━━━━━━━━━━━━━━━━━━\n` +
+                              `📦 *Order ID:* #${order.orderId}\n` +
+                              `🏨 *Restaurant:* ${order.restaurantName} (${order.locality} Hub)\n` +
+                              `📊 *Status:* ${order.status.replace(/_/g, ' ')}\n` +
+                              `${pinPart}\n\n` +
+                              `📋 *Items Ordered:*\n${itemsSummary}\n\n` +
+                              `💰 *Grand Total:* ₹${order.grandTotal} (${order.paymentMethod || 'UPI'})\n` +
+                              `📍 *Delivery Address:* ${order.customerAddress || order.locality}\n` +
+                              `━━━━━━━━━━━━━━━━━━━\n` +
+                              `🚀 *Track Live:* ${window.location.origin}`;
+
+                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                          }}
+                          title="Share receipt via WhatsApp"
+                        >
+                          <MessageSquare size={13} />
+                          <span>WhatsApp</span>
+                        </button>
 
                         <button 
                           className="btn-track-order"

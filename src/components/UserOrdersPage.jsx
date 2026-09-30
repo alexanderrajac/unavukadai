@@ -20,7 +20,13 @@ import {
   CreditCard,
   Copy,
   Check,
-  X
+  X,
+  MessageSquare,
+  KeyRound,
+  ChefHat,
+  Package,
+  Zap,
+  Share2
 } from 'lucide-react';
 
 export default function UserOrdersPage({
@@ -38,6 +44,52 @@ export default function UserOrdersPage({
   const [copiedEmail, setCopiedEmail] = useState(false);
 
   const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+
+  // Helper for WhatsApp Order Receipt Share
+  const handleShareReceiptWhatsApp = (order) => {
+    const itemsSummary = order.items?.map(i => `• ${i.quantity}x ${i.name} - ₹${i.price * i.quantity}`).join('\n') || '';
+    const pinPart = order.deliveryOtp ? `\n🔑 *Delivery PIN:* ${order.deliveryOtp}` : '';
+    const text = 
+      `🍲 *UNAVUKADAI ORDER RECEIPT*\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `📦 *Order ID:* #${order.orderId}\n` +
+      `🏨 *Restaurant:* ${order.restaurantName} (${order.locality} Hub)\n` +
+      `📊 *Status:* ${order.status.replace(/_/g, ' ')}\n` +
+      `${pinPart}\n\n` +
+      `📋 *Items Ordered:*\n${itemsSummary}\n\n` +
+      `💰 *Grand Total:* ₹${order.grandTotal} (${order.paymentMethod || 'UPI'})\n` +
+      `📍 *Delivery Address:* ${order.customerAddress || order.locality}\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `🚀 *Track Live:* ${window.location.origin}`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const getStatusAdvice = (status, riderName) => {
+    switch (status) {
+      case 'PLACED':
+        return 'Order received! Sending to restaurant kitchen...';
+      case 'CONFIRMED':
+        return 'Restaurant confirmed order. Chef is preparing the kitchen.';
+      case 'PREPARING':
+        return '👨‍🍳 Chef is cooking fresh hot food in the kitchen.';
+      case 'READY_FOR_PICKUP':
+        return '📦 Food is packed! Rider is picking up parcel from counter.';
+      case 'OUT_FOR_DELIVERY':
+        return `🚀 ${riderName ? `${riderName} is` : 'Captain is'} on the way to your doorstep!`;
+      case 'DELIVERED':
+        return '✅ Order successfully delivered. Bon Appétit!';
+      default:
+        return 'Order is processing.';
+    }
+  };
+
+  const getStatusIndex = (status) => {
+    const steps = ['PLACED', 'CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+    if (status === 'READY_FOR_PICKUP') return 2;
+    const idx = steps.indexOf(status);
+    return idx === -1 ? 0 : idx;
+  };
 
   // Filter orders strictly for THIS individual user
   const userOrders = useMemo(() => {
@@ -361,6 +413,51 @@ export default function UserOrdersPage({
                     )}
                   </div>
 
+                  {/* Live Progress Bar & PIN Card for Active Orders */}
+                  {isActive && (
+                    <div className="live-customer-tracker-card animate-fade">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="live-dot-pulse mini" />
+                          <span>LIVE STATUS TRACKER</span>
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>ETA: ~{order.etaMins || 25} mins</span>
+                      </div>
+
+                      <div className="live-order-lifecycle-bar">
+                        {['Placed', 'Accepted', 'Cooking', 'On the Way', 'Delivered'].map((label, stepIdx) => {
+                          const currentStep = getStatusIndex(order.status);
+                          const isDone = stepIdx < currentStep;
+                          const isCurrent = stepIdx === currentStep;
+
+                          return (
+                            <div key={label} className="live-order-step-node">
+                              <div className={`step-node-dot ${isDone ? 'done' : isCurrent ? 'current' : ''}`}>
+                                {isDone ? '✓' : stepIdx + 1}
+                              </div>
+                              <span className={`step-node-label ${isCurrent ? 'active' : ''}`}>{label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#cbd5e1', fontStyle: 'italic', textAlign: 'center' }}>
+                        "{getStatusAdvice(order.status, order.riderName)}"
+                      </p>
+
+                      {/* Large Doorstep PIN Card */}
+                      {order.deliveryOtp && (
+                        <div className="live-customer-pin-strip">
+                          <div className="pin-info-left">
+                            <span className="pin-label-small">🔑 YOUR DELIVERY PIN</span>
+                            <span className="pin-subtext-small">Share with rider at doorstep</span>
+                          </div>
+                          <div className="pin-badge-giant">{order.deliveryOtp}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Delivery Location Details */}
                   <div className="order-delivery-address-row">
                     <MapPin size={14} className="address-icon" />
@@ -433,6 +530,15 @@ export default function UserOrdersPage({
                       <Bike size={15} />
                       <span>{isActive ? 'Track Live on Map' : 'View Full Receipt'}</span>
                       <ChevronRight size={14} />
+                    </button>
+
+                    <button 
+                      className="btn-order-action btn-share-whatsapp"
+                      onClick={() => handleShareReceiptWhatsApp(order)}
+                      title="Share receipt via WhatsApp"
+                    >
+                      <MessageSquare size={14} style={{ color: '#22c55e' }} />
+                      <span>WhatsApp Bill</span>
                     </button>
 
                     {onReorder && (

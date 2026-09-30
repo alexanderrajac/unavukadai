@@ -681,3 +681,31 @@ export async function sendOrderWhatsAppNotificationApi(orderData) {
   return { success: true, fallback: true };
 }
 
+// ── Offline Menu & Restaurant Caching Engine ─────────────────────────────────
+export function cacheOfflineMenuData(restaurants) {
+  try {
+    if (Array.isArray(restaurants) && restaurants.length > 0) {
+      localStorage.setItem('unavu_offline_menus_v3', JSON.stringify({
+        timestamp: Date.now(),
+        data: restaurants
+      }));
+    }
+  } catch (e) {
+    console.warn('Failed to save offline menu cache:', e);
+  }
+}
+
+export function getOfflineMenuData() {
+  try {
+    const cached = localStorage.getItem('unavu_offline_menus_v3');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return parsed.data || null;
+    }
+  } catch (e) {
+    console.warn('Failed to read offline menu cache:', e);
+  }
+  return null;
+}
+
+

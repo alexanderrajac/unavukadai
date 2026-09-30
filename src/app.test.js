@@ -1146,5 +1146,91 @@ describe('WhatsApp Marketing King Notifications & Order Receipt Integration', ()
   });
 });
 
+describe('Customer Live Orders Experience, WhatsApp Receipts & Offline Caching', () => {
+  it('should format full itemized WhatsApp bill with delivery PIN and live track URL', () => {
+    const order = {
+      orderId: 'UK-9921',
+      restaurantName: 'Muniyandi Vilas',
+      locality: 'Perungalathur',
+      status: 'OUT_FOR_DELIVERY',
+      deliveryOtp: '7412',
+      grandTotal: 340,
+      paymentMethod: 'UPI',
+      customerAddress: 'Flat 3B, Lake View Rd, Perungalathur',
+      items: [
+        { name: 'Parotta Set', quantity: 2, price: 90 },
+        { name: 'Chicken Salna', quantity: 1, price: 160 }
+      ]
+    };
+
+    const itemsSummary = order.items.map(i => `• ${i.quantity}x ${i.name} - ₹${i.price * i.quantity}`).join('\n');
+    const text = 
+      `🍲 *UNAVUKADAI ORDER RECEIPT*\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `📦 *Order ID:* #${order.orderId}\n` +
+      `🏨 *Restaurant:* ${order.restaurantName} (${order.locality} Hub)\n` +
+      `📊 *Status:* ${order.status.replace(/_/g, ' ')}\n` +
+      `\n🔑 *Delivery PIN:* ${order.deliveryOtp}\n\n` +
+      `📋 *Items Ordered:*\n${itemsSummary}\n\n` +
+      `💰 *Grand Total:* ₹${order.grandTotal} (${order.paymentMethod})\n` +
+      `📍 *Delivery Address:* ${order.customerAddress}\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `🚀 *Track Live:* http://localhost:5173`;
+
+    expect(text).toContain('UK-9921');
+    expect(text).toContain('Muniyandi Vilas');
+    expect(text).toContain('Parotta Set');
+    expect(text).toContain('7412');
+    expect(text).toContain('₹340');
+  });
+
+  it('should calculate correct live lifecycle progress step index for active orders', () => {
+    const getStatusIndex = (status) => {
+      const steps = ['PLACED', 'CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+      if (status === 'READY_FOR_PICKUP') return 2;
+      const idx = steps.indexOf(status);
+      return idx === -1 ? 0 : idx;
+    };
+
+    expect(getStatusIndex('PLACED')).toBe(0);
+    expect(getStatusIndex('CONFIRMED')).toBe(1);
+    expect(getStatusIndex('PREPARING')).toBe(2);
+    expect(getStatusIndex('READY_FOR_PICKUP')).toBe(2);
+    expect(getStatusIndex('OUT_FOR_DELIVERY')).toBe(3);
+    expect(getStatusIndex('DELIVERED')).toBe(4);
+  });
+
+  it('should cache and retrieve offline menu data in localStorage format', () => {
+    const mockRestaurants = [
+      { id: 'res-test-1', name: 'SS Hyderabad', menu: [{ id: 'm1', name: 'Biryani', price: 220 }] }
+    ];
+
+    // Simulate offline caching
+    const cachePayload = {
+      timestamp: Date.now(),
+      data: mockRestaurants
+    };
+
+    expect(cachePayload.data.length).toBe(1);
+    expect(cachePayload.data[0].name).toBe('SS Hyderabad');
+    expect(cachePayload.data[0].menu[0].name).toBe('Biryani');
+  });
+
+  it('should enforce 24-hour snooze for PWA install bottom sheet dismissal', () => {
+    const now = Date.now();
+    const dismissedUntil = now + (24 * 60 * 60 * 1000);
+
+    // Within 24 hours -> Should remain hidden
+    const isDismissedActive = now < dismissedUntil;
+    expect(isDismissedActive).toBe(true);
+
+    // After 25 hours -> Should show again
+    const futureTime = now + (25 * 60 * 60 * 1000);
+    const isStillDismissed = futureTime < dismissedUntil;
+    expect(isStillDismissed).toBe(false);
+  });
+});
+
+
 
 

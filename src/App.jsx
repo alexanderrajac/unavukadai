@@ -15,6 +15,7 @@ import ActiveOrderFloatingBar from './components/ActiveOrderFloatingBar';
 import AuthModal from './components/AuthModal';
 import AddressBookModal from './components/AddressBookModal';
 import MobileBottomNav from './components/MobileBottomNav';
+import PwaInstallBottomSheet from './components/PwaInstallBottomSheet';
 import Footer from './components/Footer';
 import RegisterRestaurantModal from './components/RegisterRestaurantModal';
 import RegisterRiderModal from './components/RegisterRiderModal';
@@ -37,7 +38,8 @@ import {
   updateSettingsApi,
   resetOrdersApi,
   subscribeToLiveUpdates,
-  sendOrderWhatsAppNotificationApi
+  sendOrderWhatsAppNotificationApi,
+  cacheOfflineMenuData
 } from './services/api';
 import { supabase, signOutSupabase } from './services/supabaseAuth';
 import './App.css';
@@ -148,6 +150,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('unavu_restaurants_v2', JSON.stringify(restaurantsList));
+      cacheOfflineMenuData(restaurantsList);
     } catch (e) {
       console.warn('Failed to cache restaurantsList', e);
     }
@@ -1596,6 +1599,9 @@ export default function App() {
             activeOrder={orders.find(o => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status))}
             onOpenTracker={() => setTrackingOrder(orders.find(o => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status)))}
           />
+
+          {/* Sleek Mobile PWA Install Bottom Sheet */}
+          <PwaInstallBottomSheet />
 
           {/* Customer Orders & History Modal */}
           <MyOrdersModal
