@@ -687,6 +687,23 @@ export default function App() {
             return [single, ...prev];
           });
         }
+      } else if (payload.type === 'USER_LOGGED_IN' && payload.data) {
+        const incomingUser = payload.data;
+        setUsersList(prev => {
+          const normIncomingEmail = incomingUser.email?.toLowerCase().trim();
+          const normIncomingPhone = incomingUser.phone?.replace(/\D/g, '');
+          const exists = prev.some(u => {
+            if (normIncomingEmail && u.email?.toLowerCase().trim() === normIncomingEmail) return true;
+            if (normIncomingPhone && u.phone && u.phone.replace(/\D/g, '') === normIncomingPhone) return true;
+            return false;
+          });
+          if (!exists) {
+            const nextList = [incomingUser, ...prev];
+            try { localStorage.setItem('unavu_registered_users', JSON.stringify(nextList)); } catch {}
+            return nextList;
+          }
+          return prev;
+        });
       } else if (payload.type === 'STOCK_UPDATED') {
         if (payload.data) setRestaurantStock(payload.data);
       } else if (payload.type === 'COUPONS_UPDATED') {
@@ -953,6 +970,9 @@ export default function App() {
         try { localStorage.setItem('unavu_registered_users', JSON.stringify(nextList)); } catch {}
         return nextList;
       });
+      broadcastSync('USER_LOGGED_IN', newUserRecord);
+    } else {
+      broadcastSync('USER_LOGGED_IN', existing);
     }
 
     const roleAvatar = effectiveRole === 'restaurant' ? '👨‍🍳' : effectiveRole === 'rider' ? '🛵' : effectiveRole === 'admin' ? '🛡️' : '🍲';
@@ -1686,6 +1706,7 @@ export default function App() {
             prefilledCoupon={prefilledCoupon}
             savedAddresses={savedAddresses}
             onOpenAddressBook={() => setIsAddressBookOpen(true)}
+            onOpenAuth={handleOpenAuth}
           />
 
           {/* Active Order Floating Tracker Bar */}

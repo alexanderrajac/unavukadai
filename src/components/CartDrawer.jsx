@@ -14,7 +14,9 @@ import {
   Crosshair,
   Loader2,
   Phone,
-  Navigation
+  Navigation,
+  Lock,
+  LogIn
 } from 'lucide-react';
 import { COUPONS } from '../data/mockData';
 import { 
@@ -42,7 +44,8 @@ export default function CartDrawer({
   couponsList = COUPONS,
   prefilledCoupon = '',
   savedAddresses = [],
-  onOpenAddressBook
+  onOpenAddressBook,
+  onOpenAuth
 }) {
   const [customCoupon, setCustomCoupon] = useState(null);
   const couponCode = customCoupon !== null ? customCoupon : (prefilledCoupon || '');
@@ -185,6 +188,10 @@ export default function CartDrawer({
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
+    if (!user) {
+      if (onOpenAuth) onOpenAuth('login');
+      return;
+    }
     setIsPaymentModalOpen(true);
   };
 
@@ -587,24 +594,56 @@ export default function CartDrawer({
         {/* Footer Checkout CTA */}
         {cartItems.length > 0 && (
           <div className="cart-drawer-footer">
+            {!user && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'rgba(226, 55, 68, 0.12)',
+                border: '1px solid rgba(226, 55, 68, 0.3)',
+                color: '#f87171',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                marginBottom: '10px'
+              }}>
+                <Lock size={14} style={{ flexShrink: 0 }} />
+                <span>Login required to place order & track delivery OTP</span>
+              </div>
+            )}
             <div className="footer-amount-summary">
               <span className="pay-label">Total to pay</span>
               <span className="pay-amount">₹{grandTotal}</span>
             </div>
-            <button 
-              className="checkout-btn" 
-              onClick={handleCheckout}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <div className="spinner-loader"></div>
-              ) : (
-                <>
-                  <span>Place Order</span>
-                  <ArrowRight size={18} />
-                </>
-              )}
-            </button>
+            {!user ? (
+              <button 
+                type="button"
+                className="checkout-btn" 
+                style={{ background: 'linear-gradient(135deg, #e23744, #b91c1c)' }}
+                onClick={() => {
+                  if (onOpenAuth) onOpenAuth('login');
+                }}
+              >
+                <LogIn size={18} />
+                <span>Login to Place Order</span>
+              </button>
+            ) : (
+              <button 
+                className="checkout-btn" 
+                onClick={handleCheckout}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <div className="spinner-loader"></div>
+                ) : (
+                  <>
+                    <span>Place Order</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
         </div>

@@ -171,13 +171,47 @@ export default function AdminPortal({
     return ml && ms && mq;
   }), [safeOrders, filterLocality, statusFilter, orderSearch]);
 
-  const filteredUsers = useMemo(() => safeUsersList.filter(u => {
+  // ── Master Users Directory (Registered Users + Customers from Orders) ──────
+  const allKnownUsers = useMemo(() => {
+    const list = [...safeUsersList];
+    const emailMap = new Set(list.map(u => u.email?.toLowerCase().trim()).filter(Boolean));
+    const phoneMap = new Set(list.map(u => u.phone ? String(u.phone).replace(/\D/g, '') : '').filter(Boolean));
+
+    // Discover and aggregate unique customers from real orders placed
+    safeOrders.forEach(o => {
+      const email = o.customerEmail ? o.customerEmail.toLowerCase().trim() : '';
+      const phone = o.customerPhone ? String(o.customerPhone).replace(/\D/g, '') : '';
+      const isKnown = (email && emailMap.has(email)) || (phone && phoneMap.has(phone));
+
+      if (!isKnown && (email || phone)) {
+        if (email) emailMap.add(email);
+        if (phone) phoneMap.add(phone);
+        list.push({
+          id: o.customerId || ('usr-' + (phone || email.replace(/[^a-z0-9]/gi, ''))),
+          name: o.customerName || (email ? email.split('@')[0] : 'Customer'),
+          email: email || '',
+          phone: o.customerPhone || '',
+          role: 'customer',
+          authProvider: email ? 'google' : 'phone',
+          status: 'ACTIVE',
+          isVerified: true,
+          createdAt: o.placedAt || 'Active Customer',
+          totalOrders: safeOrders.filter(x => (email && x.customerEmail?.toLowerCase() === email) || (phone && x.customerPhone?.replace(/\D/g, '') === phone)).length,
+          totalSpent: safeOrders.filter(x => (email && x.customerEmail?.toLowerCase() === email) || (phone && x.customerPhone?.replace(/\D/g, '') === phone)).reduce((acc, curr) => acc + (curr.grandTotal || 0), 0)
+        });
+      }
+    });
+
+    return list;
+  }, [safeUsersList, safeOrders]);
+
+  const filteredUsers = useMemo(() => allKnownUsers.filter(u => {
     const q = userSearch.toLowerCase().trim();
     const mq = !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.phone?.replace(/\D/g,'').includes(q);
     const mr = roleFilter === 'ALL' || u.role === roleFilter;
     const ms = statusFilterUser === 'ALL' || u.status === statusFilterUser;
     return mq && mr && ms;
-  }), [safeUsersList, userSearch, roleFilter, statusFilterUser]);
+  }), [allKnownUsers, userSearch, roleFilter, statusFilterUser]);
 
   // Unique customer WhatsApp contacts collected from orders and signups
   const customerContacts = useMemo(() => {
@@ -302,7 +336,7 @@ export default function AdminPortal({
   const TABS = [
     { id: 'dashboard', icon: <Home size={17}/>, label: 'Dashboard' },
     { id: 'orders', icon: <Package size={17}/>, label: 'Orders', badge: activeOrdersCount || null },
-    { id: 'users', icon: <Users size={17}/>, label: 'Users', badge: usersList.length || null },
+    { id: 'users', icon: <Users size={17}/>, label: 'Users', badge: allKnownUsers.length || null },
     { id: 'restaurants', icon: <Store size={17}/>, label: 'Restaurants', badge: pendingRestaurantsCount || null },
     { id: 'fleet', icon: <Bike size={17}/>, label: 'Fleet & Riders', badge: pendingRidersList.length || null },
     { id: 'promos', icon: <Tag size={17}/>, label: 'Promos' },
@@ -460,7 +494,7 @@ export default function AdminPortal({
             <div className="adm-qa-grid">
               {[
                 { label:'Live Orders', icon:<Package size={18}/>, tab:'orders', badge: activeOrdersCount },
-                { label:'Users', icon:<Users size={18}/>, tab:'users', badge: usersList.length },
+                { label:'Users', icon:<Users size={18}/>, tab:'users', badge: allKnownUsers.length },
                 { label:'Fleet GPS', icon:<Bike size={18}/>, tab:'fleet' },
                 { label:'Promos', icon:<Tag size={18}/>, tab:'promos' },
                 { label:'Partners', icon:<Store size={18}/>, tab:'restaurants' },
@@ -630,11 +664,11 @@ export default function AdminPortal({
             {/* Stats row */}
             <div className="adm-user-stats">
               {[
-                { label:'Total', val: usersList.length, color:'#3b82f6' },
-                { label:'Customers', val: usersList.filter(u=>u.role==='customer').length, color:'#10b981' },
-                { label:'Merchants', val: usersList.filter(u=>u.role==='restaurant').length, color:'#f97316' },
-                { label:'Riders', val: usersList.filter(u=>u.role==='rider').length, color:'#8b5cf6' },
-                { label:'Admins', val: usersList.filter(u=>u.role==='admin').length, color:'#e23744' },
+                { label:'Total', val: allKnownUsers.length, color:'#3b82f6' },
+                { label:'Customers', val: allKnownUsers.filter(u=>u.role==='customer').length, color:'#10b981' },
+                { label:'Merchants', val: allKnownUsers.filter(u=>u.role==='restaurant').length, color:'#f97316' },
+                { label:'Riders', val: allKnownUsers.filter(u=>u.role==='rider').length, color:'#8b5cf6' },
+                { label:'Admins', val: allKnownUsers.filter(u=>u.role==='admin').length, color:'#e23744' },
               ].map(s => (
                 <div key={s.label} className="adm-ustat" style={{ borderTop:`2px solid ${s.color}` }}>
                   <strong style={{ color:s.color }}>{s.val}</strong>
@@ -668,7 +702,7 @@ export default function AdminPortal({
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {[['ALL','All'], ['customer','🍲'], ['restaurant','👨‍🍳'], ['rider','🛵'], ['admin','🛡️']].map(([r,l]) => (
                     <button key={r} className={`adm-role-pill ${roleFilter===r?'active':''}`} onClick={()=>setRoleFilter(r)}>
-                      {l} {r!=='ALL' && `(${usersList.filter(u=>u.role===r).length})`}
+                      {l} {r!=='ALL' && `(${allKnownUsers.filter(u=>u.role===r).length})`}
                     </button>
                   ))}
                 </div>
