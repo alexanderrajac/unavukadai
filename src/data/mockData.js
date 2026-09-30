@@ -12,6 +12,8 @@ export const CITIES = [
   { id: 'perungalathur', name: 'Perungalathur', locality: 'GST Road & Peerkankaranai', area: 'Perungalathur Hub', isSuburban: true },
   { id: 'vandalur', name: 'Vandalur', locality: 'Zoo Junction & Crescent Campus', area: 'Vandalur City', isSuburban: true },
   { id: 'mannivakkam', name: 'Mannivakkam', locality: 'Mannivakkam Junction & Mudichur Rd', area: 'Mannivakkam', isSuburban: true },
+  { id: 'kilambakkam', name: 'Kilambakkam', locality: 'KCBT Bus Terminus & GST Road', area: 'Kilambakkam Hub', isSuburban: true },
+  { id: 'otteri', name: 'Otteri', locality: 'Otteri Junction & Vandalur Extension', area: 'Otteri Hub', isSuburban: true },
   { id: 'chn', name: 'Chennai Central', locality: 'T. Nagar, Chennai', area: 'Central Chennai' },
   { id: 'cbe', name: 'Coimbatore', locality: 'RS Puram, Coimbatore', area: 'City Centre' },
   { id: 'blr', name: 'Bengaluru', locality: 'Indiranagar, Bengaluru', area: 'East Bangalore' }
@@ -878,12 +880,110 @@ export const RESTAURANTS = [
         bestSeller: true
       }
     ]
+  },
+  {
+    id: 'res-kilambakkam-1',
+    name: 'KCBT Express Biryani & Grills',
+    region: 'Kilambakkam',
+    cuisines: ['Biryani', 'Grills', 'Fast Food', 'South Indian'],
+    rating: 4.7,
+    ratingCount: '9.8k',
+    deliveryTime: '15-20 min',
+    deliveryTimeMins: 18,
+    distance: '0.8 km',
+    costForTwo: 450,
+    offer: '50% OFF up to ₹120 | Use KCBT50',
+    pureVeg: false,
+    delivery: true,
+    diningOut: true,
+    nightlife: false,
+    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
+    address: 'Shop 14, Food Corridor, Kilambakkam Bus Terminus (KCBT)',
+    safetyScore: '4.9 KCBT Hub Certified',
+    menu: [
+      {
+        id: 'kcbt-1',
+        name: 'KCBT Chicken Dum Biryani Handi',
+        price: 240,
+        rating: 4.8,
+        votes: 4200,
+        isVeg: false,
+        inStock: true,
+        category: 'Biryani Specials',
+        description: 'Fresh steaming chicken dum biryani prepared hot for KCBT commuters and travelers, served with egg & raita.',
+        image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80',
+        bestSeller: true
+      },
+      {
+        id: 'kcbt-2',
+        name: 'Kothu Parotta (Egg & Chicken)',
+        price: 180,
+        rating: 4.7,
+        votes: 3100,
+        isVeg: false,
+        inStock: true,
+        category: 'Highway Specials',
+        description: 'Street-style shredded flaky parotta tossed with scrambled eggs, chicken chunks and thick spicy salna.',
+        image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=400&auto=format&fit=crop&q=80',
+        bestSeller: true
+      }
+    ]
+  },
+  {
+    id: 'res-otteri-1',
+    name: 'Otteri Sri Krishna Tiffin & Mess',
+    region: 'Otteri',
+    cuisines: ['South Indian', 'Tiffin', 'Dosa', 'Filter Coffee'],
+    rating: 4.6,
+    ratingCount: '6.4k',
+    deliveryTime: '15-20 min',
+    deliveryTimeMins: 18,
+    distance: '1.1 km',
+    costForTwo: 280,
+    offer: '40% OFF up to ₹100 | Use OTTERI40',
+    pureVeg: true,
+    delivery: true,
+    diningOut: true,
+    nightlife: false,
+    image: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&auto=format&fit=crop&q=80',
+    address: 'Near Otteri Junction & Lake View Main Rd, Otteri',
+    safetyScore: '4.8 Traditional Veg Kitchen',
+    menu: [
+      {
+        id: 'ott-1',
+        name: 'Special Ghee Roast Dosa + Vada',
+        price: 130,
+        rating: 4.8,
+        votes: 3600,
+        isVeg: true,
+        inStock: true,
+        category: 'Tiffin Specials',
+        description: 'Golden crispy thin crepe roasted in pure ghee, served with medu vada, 3 chutneys and hot sambar.',
+        image: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=400&auto=format&fit=crop&q=80',
+        bestSeller: true
+      },
+      {
+        id: 'ott-2',
+        name: 'Otteri Degree Filter Coffee (2x Flask)',
+        price: 70,
+        rating: 4.9,
+        votes: 2900,
+        isVeg: true,
+        inStock: true,
+        category: 'Beverages',
+        description: 'Piping hot authentic South Indian chicory-blend filter kaapi brewed fresh in brass dabara.',
+        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&auto=format&fit=crop&q=80',
+        bestSeller: true
+      }
+    ]
   }
 ];
 
 export const COUPONS = [
-  { code: 'PERUNGAL50', region: 'Perungalathur', discountPercent: 50, maxDiscount: 120, minOrder: 199, label: '50% OFF up to ₹120 (Perungalathur)' },
+  { code: 'KCBT50', region: 'Kilambakkam', discountPercent: 50, maxDiscount: 120, minOrder: 199, label: '50% OFF up to ₹120 (Kilambakkam KCBT)' },
   { code: 'VANDALUR60', region: 'Vandalur', discountPercent: 60, maxDiscount: 150, minOrder: 199, label: '60% OFF up to ₹150 (Vandalur)' },
+  { code: 'OTTERI40', region: 'Otteri', discountPercent: 40, maxDiscount: 100, minOrder: 149, label: '40% OFF up to ₹100 (Otteri Hub)' },
+  { code: 'PERUNGAL50', region: 'Perungalathur', discountPercent: 50, maxDiscount: 120, minOrder: 199, label: '50% OFF up to ₹120 (Perungalathur)' },
   { code: 'MANNIVAKKAM40', region: 'Mannivakkam', discountPercent: 40, maxDiscount: 100, minOrder: 149, label: '40% OFF up to ₹100 (Mannivakkam)' },
   { code: 'UNAVU50', discountPercent: 50, maxDiscount: 100, minOrder: 199, label: '50% OFF up to ₹100 (All Zones)' },
   { code: 'FREEDEL', discountAmount: 35, minOrder: 200, label: 'Free Delivery over ₹200' }

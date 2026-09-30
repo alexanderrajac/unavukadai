@@ -30,6 +30,24 @@ export const SUBURB_CENTERS = [
     isSuburban: true
   },
   {
+    id: 'kilambakkam',
+    name: 'Kilambakkam',
+    locality: 'KCBT Bus Terminus & GST Road',
+    area: 'Kilambakkam Hub',
+    lat: 12.8688,
+    lng: 80.0768,
+    isSuburban: true
+  },
+  {
+    id: 'otteri',
+    name: 'Otteri',
+    locality: 'Otteri Junction & Vandalur Extension',
+    area: 'Otteri Hub',
+    lat: 12.8790,
+    lng: 80.0900,
+    isSuburban: true
+  },
+  {
     id: 'chn',
     name: 'Chennai Central',
     locality: 'T. Nagar, Chennai',
@@ -195,6 +213,8 @@ export function getRestaurantCoordinates(restaurantId, region) {
     'perungalathur': [12.9056, 80.0832],
     'vandalur': [12.8893, 80.0815],
     'mannivakkam': [12.8941, 80.0526],
+    'kilambakkam': [12.8688, 80.0768],
+    'otteri': [12.8790, 80.0900],
     'chn': [13.0827, 80.2707]
   };
 
