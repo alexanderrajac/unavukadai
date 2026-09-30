@@ -91,28 +91,40 @@ export default function UserOrdersPage({
     return idx === -1 ? 0 : idx;
   };
 
-  // Filter orders strictly for THIS individual user
+  // Filter orders for THIS user (by email, phone, name, OR placed on this device)
   const userOrders = useMemo(() => {
-    if (!user) return [];
-    const normalizedUserEmail = user.email ? user.email.toLowerCase().trim() : '';
-    const normalizedUserPhone = user.phone ? user.phone.replace(/\D/g, '') : '';
-    const normalizedUserName = user.name ? user.name.toLowerCase().trim() : '';
+    let deviceOrderIds = [];
+    try {
+      deviceOrderIds = JSON.parse(localStorage.getItem('unavu_my_placed_order_ids') || '[]');
+    } catch {}
+
+    const normalizedUserEmail = user?.email ? user.email.toLowerCase().trim() : '';
+    const normalizedUserPhone = user?.phone ? user.phone.replace(/\D/g, '') : '';
+    const normalizedUserName = user?.name ? user.name.toLowerCase().trim() : '';
 
     return orders.filter(order => {
-      const orderEmail = order.customerEmail ? order.customerEmail.toLowerCase().trim() : '';
-      const orderPhone = order.customerPhone ? order.customerPhone.replace(/\D/g, '') : '';
-      const orderName = order.customerName ? order.customerName.toLowerCase().trim() : '';
+      // 1. Device match: if placed on this device, it always belongs to this user
+      if (order.orderId && deviceOrderIds.includes(order.orderId)) {
+        return true;
+      }
 
-      // Match by verified email first, or phone, or name
-      if (normalizedUserEmail && orderEmail) {
-        return normalizedUserEmail === orderEmail;
+      // 2. Profile match if user is logged in
+      if (user) {
+        const orderEmail = order.customerEmail ? order.customerEmail.toLowerCase().trim() : '';
+        const orderPhone = order.customerPhone ? order.customerPhone.replace(/\D/g, '') : '';
+        const orderName = order.customerName ? order.customerName.toLowerCase().trim() : '';
+
+        if (normalizedUserEmail && orderEmail && normalizedUserEmail === orderEmail) {
+          return true;
+        }
+        if (normalizedUserPhone && orderPhone && normalizedUserPhone === orderPhone) {
+          return true;
+        }
+        if (normalizedUserName && orderName && normalizedUserName === orderName) {
+          return true;
+        }
       }
-      if (normalizedUserPhone && orderPhone) {
-        return normalizedUserPhone === orderPhone;
-      }
-      if (normalizedUserName && orderName) {
-        return normalizedUserName === orderName;
-      }
+
       return false;
     });
   }, [orders, user]);
@@ -157,8 +169,8 @@ export default function UserOrdersPage({
     }
   };
 
-  // If user is guest / not logged in
-  if (!user) {
+  // If user is guest and has NO orders placed on this device, prompt to sign in
+  if (!user && userOrders.length === 0) {
     return (
       <div className="user-orders-page-wrapper container py-5">
         <div className="user-orders-not-logged-card animate-scale">
@@ -190,6 +202,14 @@ export default function UserOrdersPage({
     );
   }
 
+  // Active display profile (supports guest users who placed orders on this browser)
+  const activeUser = user || {
+    name: 'Guest Customer',
+    email: 'Device Session Orders',
+    phone: '+91 Delivery Contact',
+    role: 'customer'
+  };
+
   return (
     <div className="user-orders-page-wrapper container py-4 animate-fade">
       {/* Top Navigation Bar */}
@@ -208,42 +228,44 @@ export default function UserOrdersPage({
       <section className="user-individual-profile-card">
         <div className="user-profile-card-left">
           <div className="user-main-avatar">
-            {user.avatar || '🍲'}
+            {activeUser.avatar || '🍲'}
           </div>
           <div className="user-main-meta">
             <div className="user-name-role-row">
-              <h1 className="user-full-name">{user.name}</h1>
-              <span className={`user-role-badge ${user.role || 'customer'}`}>
-                {user.role === 'admin' ? '👑 Master Admin' : user.role === 'restaurant' ? '👨‍🍳 Merchant' : user.role === 'rider' ? '🛵 Fleet Captain' : '🍲 Foodie Customer'}
+              <h1 className="user-full-name">{activeUser.name}</h1>
+              <span className={`user-role-badge ${activeUser.role || 'customer'}`}>
+                {activeUser.role === 'admin' ? '👑 Master Admin' : activeUser.role === 'restaurant' ? '👨‍🍳 Merchant' : activeUser.role === 'rider' ? '🛵 Fleet Captain' : '🍲 Foodie Customer'}
               </span>
             </div>
 
             {/* Email ID Display */}
-            <div className="user-email-display-pill" title="Verified Account Email">
+            <div className="user-email-display-pill" title="Account Email">
               <Mail size={15} className="email-icon" />
-              <strong className="user-email-text">{user.email || 'No email registered'}</strong>
+              <strong className="user-email-text">{activeUser.email || 'Guest Session'}</strong>
               <span className="verified-check-tag">
                 <ShieldCheck size={13} />
-                <span>Verified Account</span>
+                <span>{user ? 'Verified Account' : 'Device Session'}</span>
               </span>
-              <button 
-                type="button" 
-                className="copy-email-btn" 
-                onClick={handleCopyEmail}
-                title="Copy Email Address"
-              >
-                {copiedEmail ? <Check size={13} className="text-green" /> : <Copy size={13} />}
-              </button>
+              {user?.email && (
+                <button 
+                  type="button" 
+                  className="copy-email-btn" 
+                  onClick={handleCopyEmail}
+                  title="Copy Email Address"
+                >
+                  {copiedEmail ? <Check size={13} className="text-green" /> : <Copy size={13} />}
+                </button>
+              )}
             </div>
 
             <div className="user-secondary-details">
               <span className="user-phone-tag">
                 <Phone size={13} />
-                <span>{user.phone || '+91 98401 23456'}</span>
+                <span>{activeUser.phone || '+91 Delivery Contact'}</span>
               </span>
               <span className="user-registered-tag">
                 <UserCheck size={13} />
-                <span>Active Member • South Chennai</span>
+                <span>{user ? 'Active Member • South Chennai' : 'Guest Browser Session'}</span>
               </span>
             </div>
           </div>
@@ -251,14 +273,15 @@ export default function UserOrdersPage({
 
         {/* Account Switcher / Sign Out */}
         <div className="user-profile-card-right">
-          <div className="quick-switch-label">Active Account</div>
+          <div className="quick-switch-label">{user ? 'Active Account' : 'Guest Mode'}</div>
           <button 
-            type="button"
-            className="btn-secondary"
+            type="button" 
+            className="btn-secondary" 
             style={{ fontSize: '12px', padding: '6px 14px' }}
             onClick={() => onOpenAuth ? onOpenAuth('login') : null}
           >
-            <span>Switch Account / Sign In</span>
+            <RotateCcw size={13} />
+            <span>{user ? 'Switch User' : 'Sign In with Google'}</span>
           </button>
         </div>
       </section>

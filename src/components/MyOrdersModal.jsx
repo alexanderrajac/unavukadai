@@ -23,27 +23,40 @@ export default function MyOrdersModal({
   onOpenAuth,
   onCancelOrder
 }) {
-  // Filter orders strictly for THIS individual user
+  // Filter orders for THIS user (by email, phone, name, OR placed on this device)
   const userOrders = useMemo(() => {
-    if (!user) return [];
-    const normalizedUserEmail = user.email ? user.email.toLowerCase().trim() : '';
-    const normalizedUserPhone = user.phone ? user.phone.replace(/\D/g, '') : '';
-    const normalizedUserName = user.name ? user.name.toLowerCase().trim() : '';
+    let deviceOrderIds = [];
+    try {
+      deviceOrderIds = JSON.parse(localStorage.getItem('unavu_my_placed_order_ids') || '[]');
+    } catch {}
+
+    const normalizedUserEmail = user?.email ? user.email.toLowerCase().trim() : '';
+    const normalizedUserPhone = user?.phone ? user.phone.replace(/\D/g, '') : '';
+    const normalizedUserName = user?.name ? user.name.toLowerCase().trim() : '';
 
     return orders.filter(order => {
-      const orderEmail = order.customerEmail ? order.customerEmail.toLowerCase().trim() : '';
-      const orderPhone = order.customerPhone ? order.customerPhone.replace(/\D/g, '') : '';
-      const orderName = order.customerName ? order.customerName.toLowerCase().trim() : '';
+      // 1. Device match: if placed on this device, it always belongs to this user
+      if (order.orderId && deviceOrderIds.includes(order.orderId)) {
+        return true;
+      }
 
-      if (normalizedUserEmail && orderEmail) {
-        return normalizedUserEmail === orderEmail;
+      // 2. Profile match if user is logged in
+      if (user) {
+        const orderEmail = order.customerEmail ? order.customerEmail.toLowerCase().trim() : '';
+        const orderPhone = order.customerPhone ? order.customerPhone.replace(/\D/g, '') : '';
+        const orderName = order.customerName ? order.customerName.toLowerCase().trim() : '';
+
+        if (normalizedUserEmail && orderEmail && normalizedUserEmail === orderEmail) {
+          return true;
+        }
+        if (normalizedUserPhone && orderPhone && normalizedUserPhone === orderPhone) {
+          return true;
+        }
+        if (normalizedUserName && orderName && normalizedUserName === orderName) {
+          return true;
+        }
       }
-      if (normalizedUserPhone && orderPhone) {
-        return normalizedUserPhone === orderPhone;
-      }
-      if (normalizedUserName && orderName) {
-        return normalizedUserName === orderName;
-      }
+
       return false;
     });
   }, [orders, user]);

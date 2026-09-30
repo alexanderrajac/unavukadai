@@ -537,7 +537,11 @@ export default function App() {
   const handleResetOrders = () => {
     setOrders([]);
     setCompletedOrder(null);
-    localStorage.removeItem('unavu_ecosystem_orders');
+    setTrackingOrder(null);
+    try {
+      localStorage.setItem('unavu_ecosystem_orders', JSON.stringify([]));
+      localStorage.removeItem('unavu_my_placed_order_ids');
+    } catch {}
     resetOrdersApi();
   };
 
@@ -573,6 +577,9 @@ export default function App() {
       // Server is Single Source of Truth: if API responds, it takes precedence over stale localStorage
       if (remoteOrders && Array.isArray(remoteOrders)) {
         setOrders(remoteOrders);
+        try {
+          localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(remoteOrders));
+        } catch {}
       }
     });
 
@@ -589,6 +596,14 @@ export default function App() {
         if (payload.data?.coupons?.length > 0) setCouponsList(payload.data.coupons);
         if (payload.data?.riderLocations) setRiderLocations(payload.data.riderLocations);
         if (payload.data?.settings) setSettings(payload.data.settings);
+      } else if (payload.type === 'ORDERS_RESET') {
+        setOrders([]);
+        setCompletedOrder(null);
+        setTrackingOrder(null);
+        try {
+          localStorage.setItem('unavu_ecosystem_orders', JSON.stringify([]));
+          localStorage.removeItem('unavu_my_placed_order_ids');
+        } catch {}
       } else if (payload.type === 'ORDER_STATUS_CHANGED') {
         const { orderId, status, extraFields, updated } = payload.data || {};
         if (orderId) {
@@ -641,16 +656,27 @@ export default function App() {
         }
       } else if (payload.type === 'ORDERS_UPDATED') {
         if (Array.isArray(payload.data)) {
-          setOrders(prev => {
-            const map = new Map();
-            prev.forEach(o => { if (o && o.orderId) map.set(o.orderId, o); });
-            payload.data.forEach(o => {
-              if (o && o.orderId) {
-                map.set(o.orderId, { ...(map.get(o.orderId) || {}), ...o });
-              }
+          if (payload.data.length === 0) {
+            setOrders([]);
+            try {
+              localStorage.setItem('unavu_ecosystem_orders', JSON.stringify([]));
+            } catch {}
+          } else {
+            setOrders(prev => {
+              const map = new Map();
+              prev.forEach(o => { if (o && o.orderId) map.set(o.orderId, o); });
+              payload.data.forEach(o => {
+                if (o && o.orderId) {
+                  map.set(o.orderId, { ...(map.get(o.orderId) || {}), ...o });
+                }
+              });
+              const merged = Array.from(map.values());
+              try {
+                localStorage.setItem('unavu_ecosystem_orders', JSON.stringify(merged));
+              } catch {}
+              return merged;
             });
-            return Array.from(map.values());
-          });
+          }
         } else if (payload.data && payload.data.orderId) {
           const single = payload.data;
           setOrders(prev => {
@@ -1154,8 +1180,9 @@ export default function App() {
     const newOrderId = orderSummary?.orderId || ('UNV-' + Math.floor(100000 + Math.random() * 900000));
     const newOrderObj = {
       orderId: newOrderId,
-      customerName: user ? user.name : 'Suburban Foodie',
-      customerEmail: user?.email || 'rajacofficial369@gmail.com',
+      customerId: user ? user.id : ('guest-' + (orderSummary?.customerPhone?.replace(/\D/g, '') || newOrderId)),
+      customerName: user ? user.name : (orderSummary?.customerName || 'Suburban Foodie'),
+      customerEmail: user?.email ? user.email : (orderSummary?.customerEmail || ''),
       customerPhone: orderSummary?.customerPhone || (user ? user.phone : '+91 98401 23456'),
       restaurantId: cartItems[0]?.restaurantId || 'res-perungalathur-1',
       restaurantName: cartItems[0]?.restaurantName || 'SS Hyderabad Biryani',
@@ -1187,6 +1214,14 @@ export default function App() {
       cookingNote: orderSummary?.cookingNote || ''
     };
 
+    // Link order to this device so customer can immediately track and view in My Orders
+    try {
+      const myIds = JSON.parse(localStorage.getItem('unavu_my_placed_order_ids') || '[]');
+      if (!myIds.includes(newOrderId)) {
+        localStorage.setItem('unavu_my_placed_order_ids', JSON.stringify([newOrderId, ...myIds]));
+      }
+    } catch {}
+
     setOrders(prev => [newOrderObj, ...prev]);
     setCompletedOrder(newOrderObj);
     setCartItems([]);
@@ -1196,6 +1231,14 @@ export default function App() {
   };
 
   const handleCreateOrder = (newOrder) => {
+    if (newOrder?.orderId) {
+      try {
+        const myIds = JSON.parse(localStorage.getItem('unavu_my_placed_order_ids') || '[]');
+        if (!myIds.includes(newOrder.orderId)) {
+          localStorage.setItem('unavu_my_placed_order_ids', JSON.stringify([newOrder.orderId, ...myIds]));
+        }
+      } catch {}
+    }
     setOrders(prev => [newOrder, ...prev]);
     try {
       localStorage.setItem('unavu_ecosystem_orders', JSON.stringify([newOrder, ...orders]));

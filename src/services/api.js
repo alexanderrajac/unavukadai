@@ -149,7 +149,7 @@ export async function fetchOrdersFromApi() {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         return data.map(mapPgOrderToApp);
       }
     }
@@ -345,15 +345,30 @@ export async function updateSettingsApi(settings) {
 }
 
 export async function resetOrdersApi() {
+  // 1. Reset local Express backend if running
   try {
     const res = await fetch(`${API_BASE}/orders/reset`, {
       method: 'POST'
     });
-    if (res.ok) return await res.json();
+    if (res.ok) await res.json();
   } catch (err) {
     console.warn('API offline:', err.message);
   }
-  return null;
+
+  // 2. Clear all orders directly from Supabase Postgres database
+  try {
+    if (supabase) {
+      await supabase.from('orders').delete().neq('order_id', '__never_match__');
+    }
+  } catch (err) {
+    console.warn('Supabase direct orders reset error:', err.message);
+  }
+
+  // 3. Broadcast real-time wipe to all connected browsers & tabs
+  broadcastSync('ORDERS_RESET', {});
+  broadcastSync('ORDERS_UPDATED', []);
+
+  return { success: true };
 }
 
 // Subscribe to real-time events across all devices & tabs (Local Broadcast + SSE + Supabase Realtime + Fast Heartbeat)
@@ -372,11 +387,15 @@ export function subscribeToLiveUpdates(onUpdate) {
 
   // 2. Listen to localStorage storage events (fallback for multi-tab sync)
   const handleStorageChange = (e) => {
-    if (e.key === 'unavu_ecosystem_orders' && e.newValue) {
+    if (e.key === 'unavu_ecosystem_orders') {
       try {
-        const parsed = JSON.parse(e.newValue);
+        const parsed = e.newValue ? JSON.parse(e.newValue) : [];
         if (Array.isArray(parsed)) {
-          onUpdate({ type: 'ORDERS_UPDATED', data: parsed });
+          if (parsed.length === 0) {
+            onUpdate({ type: 'ORDERS_RESET' });
+          } else {
+            onUpdate({ type: 'ORDERS_UPDATED', data: parsed });
+          }
         }
       } catch {
         // ignore
@@ -418,6 +437,9 @@ export function subscribeToLiveUpdates(onUpdate) {
             onUpdate({ type: 'ORDERS_UPDATED', data: payload });
           }
         })
+        .on('broadcast', { event: 'ORDERS_RESET' }, () => {
+          onUpdate({ type: 'ORDERS_RESET' });
+        })
         .on('broadcast', { event: 'ORDER_STATUS_CHANGED' }, ({ payload }) => {
           if (payload) {
             onUpdate({ type: 'ORDER_STATUS_CHANGED', data: payload });
@@ -436,7 +458,7 @@ export function subscribeToLiveUpdates(onUpdate) {
                 .from('orders')
                 .select('*')
                 .order('created_at', { ascending: false });
-              if (data && Array.isArray(data) && data.length > 0) {
+              if (data && Array.isArray(data)) {
                 onUpdate({ type: 'ORDERS_UPDATED', data: data.map(mapPgOrderToApp) });
               }
             }
