@@ -989,6 +989,7 @@ export default function App() {
     const roleAvatar = effectiveRole === 'restaurant' ? '👨‍🍳' : effectiveRole === 'rider' ? '🛵' : effectiveRole === 'admin' ? '🛡️' : '🍲';
     const updatedUser = { 
       ...userData, 
+      name: userData.name || (userData.email ? userData.email.split('@')[0] : 'Customer'),
       role: effectiveRole, 
       avatar: roleAvatar,
       authProvider: userData.authProvider || (userData.email ? 'google' : 'phone')
@@ -996,15 +997,12 @@ export default function App() {
     setUser(updatedUser);
     setIsAuthOpen(false);
 
-    // Strict Role-Based Portal Routing
-    if (effectiveRole === 'restaurant') {
+    // Keep user in current portal unless they are a dedicated merchant or rider
+    // Master admins have access across all portals (including customer food ordering), so never boot them away from customer ordering
+    if (effectiveRole === 'restaurant' && currentPortal !== 'hotel') {
       setCurrentPortal('hotel');
-    } else if (effectiveRole === 'rider') {
+    } else if (effectiveRole === 'rider' && currentPortal !== 'rider') {
       setCurrentPortal('rider');
-    } else if (effectiveRole === 'admin') {
-      setCurrentPortal('admin');
-    } else {
-      setCurrentPortal('customer');
     }
   };
 

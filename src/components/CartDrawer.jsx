@@ -66,6 +66,12 @@ export default function CartDrawer({
   const [isPinMapOpen, setIsPinMapOpen] = useState(false);
   const [locationDetectedNotice, setLocationDetectedNotice] = useState('');
 
+  useEffect(() => {
+    if (user?.phone && !customerPhone) {
+      setCustomerPhone(user.phone);
+    }
+  }, [user]);
+
   const handleConfirmPinLocation = ({ coords, street, locality, displayName, suburb, distanceKm, deliveryFee }) => {
     setDeliveryCoords(coords);
     if (street) setStreetAddress(street);

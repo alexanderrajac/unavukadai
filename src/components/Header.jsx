@@ -485,17 +485,17 @@ export default function Header({
                   className="user-profile-chip" 
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 >
-                  <div className="user-avatar">{user.avatar || user.name.charAt(0)}</div>
-                  <span className="user-name">{user.name.split(' ')[0]}</span>
+                  <div className="user-avatar">{user.avatar || (user.name ? user.name.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U'))}</div>
+                  <span className="user-name">{(user.name || user.email || 'Customer').split(' ')[0]}</span>
                   <ChevronDown size={13} className={`chevron-mini ${isUserMenuOpen ? 'rotated' : ''}`} />
                 </div>
 
                 {isUserMenuOpen && (
                   <div className="user-profile-dropdown-menu animate-scale">
                     <div className="user-dropdown-header">
-                      <div className="dropdown-user-avatar">{user.avatar || '🍲'}</div>
+                      <div className="dropdown-user-avatar">{user.avatar || (user.name ? user.name.charAt(0).toUpperCase() : '🍲')}</div>
                       <div className="dropdown-user-info">
-                        <strong>{user.name}</strong>
+                        <strong>{user.name || user.email || 'Customer'}</strong>
                         <span className="dropdown-email">{user.email || user.phone}</span>
                         {user.authProvider === 'google' && (
                           <span className="google-verified-tag">✓ Google Verified</span>

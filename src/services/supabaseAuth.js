@@ -56,6 +56,10 @@ export async function signInWithGoogleOAuth(options = {}) {
       return { success: false, error: error.message };
     }
 
+    if (data?.url && typeof window !== 'undefined') {
+      window.location.href = data.url;
+    }
+
     return { success: true, data };
   } catch (err) {
     console.warn('Google OAuth exception:', err.message);

@@ -430,87 +430,51 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
               <span>{isLoading ? 'Connecting to Google...' : 'Continue with Google Account'}</span>
             </button>
 
-            {/* Quick 1-Tap Google Account Pills */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Instant Google Profiles:</span>
-              <button
-                type="button"
-                onClick={() => handleGoogleSignInWithEmail('rajacofficial369@gmail.com', 'Raja Official')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: '#fff',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e23744', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>👑</span>
-                <div style={{ flex: 1 }}>
-                  <div>Raja Official</div>
-                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>rajacofficial369@gmail.com (Master Admin)</div>
-                </div>
-                <ArrowRight size={14} style={{ color: '#94a3b8' }} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleGoogleSignInWithEmail('alexanderrajac@gmail.com', 'Alexander Raja')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: '#fff',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🛡️</span>
-                <div style={{ flex: 1 }}>
-                  <div>Alexander Raja</div>
-                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>alexanderrajac@gmail.com (Master Admin)</div>
-                </div>
-                <ArrowRight size={14} style={{ color: '#94a3b8' }} />
-              </button>
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 12px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px' }}>OR SIGN IN WITH EMAIL</span>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
             </div>
 
-            {/* Direct Any Gmail Input */}
+            {/* Direct Any Gmail/Email Input */}
             <form onSubmit={(e) => { e.preventDefault(); handleGoogleSignInWithEmail(); }} className="google-signin-form-direct">
               <div className="auth-input-group mb-2">
-                <label>Or Enter Any Google / Gmail Address:</label>
+                <label>Your Google / Gmail Address:</label>
                 <div className="gmail-input-wrap">
                   <Mail size={16} className="input-adornment" />
                   <input 
                     type="email" 
                     className="auth-input-field with-icon"
-                    placeholder="Enter your Gmail address" 
+                    placeholder="e.g. name@gmail.com" 
                     value={customEmail}
                     onChange={(e) => setCustomEmail(e.target.value)}
+                    required
                   />
                 </div>
               </div>
 
-              {customEmail && customEmail.includes('@') && (
-                <button 
-                  type="submit" 
-                  className="btn-primary w-full animate-fade"
-                  disabled={isLoading}
-                >
-                  <span>Sign In as {customEmail}</span>
-                </button>
+              {tab === 'signup' && (
+                <div className="auth-input-group mb-2">
+                  <label>Your Name (Optional)</label>
+                  <input 
+                    type="text" 
+                    className="auth-input-field"
+                    placeholder="Enter your name" 
+                    value={emailName}
+                    onChange={(e) => setEmailName(e.target.value)}
+                  />
+                </div>
               )}
+
+              <button 
+                type="submit" 
+                className="btn-primary w-full"
+                disabled={isLoading || !customEmail || !customEmail.includes('@')}
+                style={{ marginTop: '8px' }}
+              >
+                <span>{isLoading ? 'Signing in...' : (customEmail && customEmail.includes('@') ? `Sign In as ${customEmail}` : 'Sign In with Email')}</span>
+              </button>
             </form>
           </div>
         )}
