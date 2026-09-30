@@ -62,6 +62,8 @@ export default function AdminPortal({
   const [newDiscount, setNewDiscount] = useState(50);
   const [newMaxDiscount, setNewMaxDiscount] = useState(120);
   const [orderSearch, setOrderSearch] = useState('');
+  const [porterModalOrder, setPorterModalOrder] = useState(null);
+  const [copiedPorterText, setCopiedPorterText] = useState(false);
 
   // ── Emergency Quick-Dispatch Matrix for Oct 6th Launch ───────────────────
   const [quickDispatchName, setQuickDispatchName] = useState('Oct 6 Launch Tester');
@@ -566,6 +568,8 @@ export default function AdminPortal({
                   <option value="Perungalathur">Perungalathur</option>
                   <option value="Vandalur">Vandalur</option>
                   <option value="Mannivakkam">Mannivakkam</option>
+                  <option value="Kilambakkam">Kilambakkam</option>
+                  <option value="Otteri">Otteri</option>
                 </select>
                 <select className="adm-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                   <option value="ALL">All Status</option>
@@ -603,8 +607,31 @@ export default function AdminPortal({
                         <span>🏠 {order.restaurantName}</span>
                       </div>
                       <div className="adm-oc-items">{order.items?.map(i => `${i.quantity}× ${i.name}`).join(' · ')}</div>
-                      <div className="adm-oc-footer">
-                        <span className="adm-rider-chip">{order.riderName ? `🛵 ${order.riderName}` : '⏳ Awaiting rider'}</span>
+                      <div className="adm-oc-footer" style={{ flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '160px' }}>
+                          <span className="adm-rider-chip">{order.riderName ? `🛵 ${order.riderName}` : '⏳ Awaiting rider'}</span>
+                          <button
+                            type="button"
+                            onClick={() => setPorterModalOrder(order)}
+                            style={{
+                              background: 'rgba(59, 130, 246, 0.15)',
+                              border: '1px solid rgba(59, 130, 246, 0.4)',
+                              color: '#93c5fd',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Open Porter 2-Wheeler Dispatch"
+                          >
+                            <Bike size={12} />
+                            <span>📦 Porter 2W</span>
+                          </button>
+                        </div>
                         <select className="adm-status-select" value={order.status} onChange={e => onUpdateOrderStatus(order.orderId, e.target.value, { forceTransition: true })}>
                           <option value="PLACED">Placed</option>
                           <option value="PREPARING">Preparing</option>
@@ -1529,6 +1556,152 @@ export default function AdminPortal({
           }}
         />
       )}
+
+      {/* Porter 2-Wheeler On-Demand Logistics Gateway Modal */}
+      {porterModalOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }} onClick={() => setPorterModalOrder(null)}>
+          <div style={{
+            background: '#1e293b',
+            border: '1.5px solid rgba(59, 130, 246, 0.4)',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '24px',
+            color: '#f8fafc',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  📦
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#60a5fa' }}>Porter 2-Wheeler Dispatch</h3>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Order #{porterModalOrder.orderId} · {porterModalOrder.locality} Hub</p>
+                </div>
+              </div>
+              <button onClick={() => setPorterModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20}/></button>
+            </div>
+
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', borderRadius: '10px', padding: '12px', marginBottom: '16px', fontSize: '12px' }}>
+              <div style={{ marginBottom: '10px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' }}>📍 Step 1: Restaurant Pickup</span>
+                <div style={{ fontWeight: 700, color: '#fff', marginTop: '2px' }}>{porterModalOrder.restaurantName}</div>
+                <div style={{ color: '#94a3b8', fontSize: '11.5px' }}>{porterModalOrder.restaurantAddress || `${porterModalOrder.locality} Food Corridor, Chennai`}</div>
+              </div>
+
+              <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '10px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>🎯 Step 2: Customer Drop</span>
+                <div style={{ fontWeight: 700, color: '#fff', marginTop: '2px' }}>{porterModalOrder.customerName} ({porterModalOrder.customerPhone})</div>
+                <div style={{ color: '#94a3b8', fontSize: '11.5px' }}>{porterModalOrder.customerAddress || porterModalOrder.address || `${porterModalOrder.locality}, Chennai`}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '8px', padding: '10px 14px', marginBottom: '18px' }}>
+              <div>
+                <span style={{ fontSize: '11px', color: '#93c5fd' }}>Estimated Porter 2W Fare:</span>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>₹40 – ₹55</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>Customer Delivery Fee Paid:</span>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#34d399' }}>+₹{porterModalOrder.deliveryFee || 25}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `PORTER 2-WHEELER DELIVERY BOOKING\n\n[PICKUP]: ${porterModalOrder.restaurantName}, ${porterModalOrder.restaurantAddress || porterModalOrder.locality}\n\n[DROP]: ${porterModalOrder.customerName} (${porterModalOrder.customerPhone}), ${porterModalOrder.customerAddress || porterModalOrder.address}\n\n[PARCEL]: ${porterModalOrder.items?.map(i => `${i.quantity}x ${i.name}`).join(', ')}`;
+                  navigator.clipboard.writeText(text);
+                  setCopiedPorterText(true);
+                  setTimeout(() => setCopiedPorterText(false), 3000);
+                }}
+                style={{
+                  padding: '10px',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Copy size={14} />
+                <span>{copiedPorterText ? '✅ Addresses Copied to Clipboard!' : 'Copy Addresses for Porter App'}</span>
+              </button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <a
+                  href="https://porter.in/book-online"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: '#2563eb',
+                    color: '#fff',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <ExternalLink size={14} />
+                  <span>Open Porter</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateOrderStatus(porterModalOrder.orderId, 'OUT_FOR_DELIVERY', {
+                      riderName: 'Porter 2W Partner',
+                      riderPhone: 'Assigned via Porter'
+                    });
+                    setPorterModalOrder(null);
+                  }}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: '#10b981',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Check size={14} />
+                  <span>Mark Assigned</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
