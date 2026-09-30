@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Unavukadai - October 6th Launch Master Checklist</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #1f2937;
+      background: #ffffff;
+      line-height: 1.45;
+      font-size: 11.5px;
+    }
+
+    .page {
+      padding: 4px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2.5px solid #dc2626;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-badge {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: white;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
+    }
+
+    .brand-text h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 21px;
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      font-weight: 600;
+      color: #dc2626;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .header-meta {
+      text-align: right;
+    }
+
+    .launch-badge {
+      display: inline-block;
+      background: #fef2f2;
+      border: 1.5px solid #fecaca;
+      color: #b91c1c;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+
+    .meta-sub {
+      font-size: 10px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    /* Target Bar */
+    .target-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .target-pill {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .target-pill .num {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .target-pill .lbl {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 13px;
+      page-break-inside: avoid;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-left: 3.5px solid #dc2626;
+      padding-left: 8px;
+      margin-bottom: 7px;
+    }
+
+    .section-title .step-tag {
+      background: #111827;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Checklist Grid */
+    .check-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #fdfdfd;
+      border: 1px solid #f3f4f6;
+      border-radius: 6px;
+      padding: 6px 8px;
+    }
+
+    .check-box {
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid #9ca3af;
+      border-radius: 3px;
+      margin-top: 1.5px;
+      flex-shrink: 0;
+    }
+
+    .check-content strong {
+      display: block;
+      font-size: 11px;
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .check-content span {
+      display: block;
+      font-size: 10px;
+      color: #4b5563;
+      margin-top: 1px;
+    }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin-top: 4px;
+    }
+
+    th {
+      background: #f3f4f6;
+      color: #374151;
+      text-align: left;
+      padding: 6px 8px;
+      font-weight: 700;
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid #e5e7eb;
+    }
+
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: middle;
+    }
+
+    .badge-code {
+      display: inline-block;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      font-weight: 800;
+      font-family: monospace;
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+
+    /* Hour by hour schedule */
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 5px;
+    }
+
+    .time-slot {
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 6px 8px;
+    }
+
+    .time-slot .time {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      color: #dc2626;
+      font-size: 11px;
+    }
+
+    .time-slot .act {
+      font-size: 10px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-top: 2px;
+    }
+
+    .time-slot .note {
+      font-size: 9px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    /* WhatsApp Script Box */
+    .script-box {
+      background: #f0fdf4;
+      border: 1.5px dashed #86efac;
+      border-radius: 8px;
+      padding: 9px 12px;
+      margin-top: 4px;
+      font-size: 10px;
+      color: #166534;
+      line-height: 1.45;
+    }
+
+    .script-box strong {
+      color: #14532d;
+    }
+
+    /* Footer */
+    .footer {
+      border-top: 1.5px solid #e5e7eb;
+      padding-top: 8px;
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9.5px;
+      color: #6b7280;
+    }
+
+    .footer strong {
+      color: #111827;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand-box">
+        <div class="logo-badge">🍲</div>
+        <div class="brand-text">
+          <h1>UNAVUKADAI EXPRESS</h1>
+          <p>Founder Launch Operations & Execution Protocol</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="launch-badge">🎯 LAUNCH DATE: OCTOBER 6, 2026</div>
+        <div class="meta-sub">Founder: Alexander Raja | Target: South Chennai Hubs</div>
+      </div>
+    </div>
+
+    <!-- Quick Target Metrics -->
+    <div class="target-bar">
+      <div class="target-pill">
+        <div class="num" style="color: #dc2626;">6 Orders</div>
+        <div class="lbl">Minimum Day-1 Target</div>
+      </div>
+      <div class="target-pill">
+        <div class="num" style="color: #ea580c;">3 Hubs</div>
+        <div class="lbl">Kilambakkam, Vandalur, Otteri</div>
+      </div>
+      <div class="target-pill">
+        <div class="num" style="color: #16a34a;">20 Mins</div>
+        <div class="lbl">Doorstep Delivery Target</div>
+      </div>
+      <div class="target-pill">
+        <div class="num" style="color: #2563eb;">100% UPI</div>
+        <div class="lbl">8248651695-3@ybl (GPay/PhonePe)</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Pre-Launch Technical Checklist -->
+    <div class="section">
+      <div class="section-title">
+        <span class="step-tag">Phase 1</span>
+        <span>Pre-Flight Technical Verification (Complete by Oct 5 Evening)</span>
+      </div>
+      <div class="check-grid">
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div class="check-content">
+            <strong>Super Admin Mobile Access</strong>
+            <span>Log into <code>unavukadai.com/#/admin</code> on your phone. Verify Master Admin badge shows 🛡️.</span>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div class="check-content">
+            <strong>Real ₹10 Live UPI Test Order</strong>
+            <span>Place a test order via GPay/PhonePe to verify direct bank transfer to <code>8248651695-3@ybl</code>.</span>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div class="check-content">
+            <strong>Rider Radar Phone Setup</strong>
+            <span>Open <code>unavukadai.com/#/rider</code> on the delivery bike phone. Verify GPS radar is active.</span>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div class="check-content">
+            <strong>Emergency Bypass PIN Check</strong>
+            <span>Confirm Master OTP <code>1234</code> works for completing deliveries if a customer phone dies.</span>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div class="check-content">
+            <strong>Customer PWA Install Test</strong>
+            <span>Install Unavukadai on your phone via "Add to Home Screen" to test 1-tap app icon experience.</span>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div class="check-content">
+            <strong>Quick-Dispatch Test Order</strong>
+            <span>Use the Red Quick-Dispatch button in Super Admin to push a test order to Kitchen KDS.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Guaranteed 6-Order Target Matrix -->
+    <div class="section">
+      <div class="section-title">
+        <span class="step-tag">Phase 2</span>
+        <span>Target Customers & Promo Strategy (6 Guaranteed Deliveries)</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Hub / Region</th>
+            <th>Target Customer</th>
+            <th>Recommended Menu Item</th>
+            <th>Promo Code</th>
+            <th>Expected Delivery</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>📍 Kilambakkam (KCBT)</strong></td>
+            <td>Commuter 1 (Bus traveler / Staff)</td>
+            <td>KCBT Chicken Dum Biryani Handi (₹240)</td>
+            <td><span class="badge-code">KCBT50</span> (₹120 OFF)</td>
+            <td>Platform 3 / KCBT Bus Gate (18m)</td>
+          </tr>
+          <tr>
+            <td><strong>📍 Kilambakkam (KCBT)</strong></td>
+            <td>Commuter 2 (Shop keeper / Friend)</td>
+            <td>Kothu Parotta (Egg & Chicken) (₹180)</td>
+            <td><span class="badge-code">KCBT50</span> (50% OFF)</td>
+            <td>GST Road Junction drop (20m)</td>
+          </tr>
+          <tr>
+            <td><strong>📍 Vandalur</strong></td>
+            <td>Crescent College Student / Hostel</td>
+            <td>Bun Parotta (2x) + Salna Combo (₹190)</td>
+            <td><span class="badge-code">VANDALUR60</span> (₹150 OFF)</td>
+            <td>Crescent University Main Gate (15m)</td>
+          </tr>
+          <tr>
+            <td><strong>📍 Vandalur</strong></td>
+            <td>Local resident / Zoo staff</td>
+            <td>Madurai Muniyandi Dum Biryani (₹280)</td>
+            <td><span class="badge-code">VANDALUR60</span> (60% OFF)</td>
+            <td>Vandalur Zoo Junction Corridor (15m)</td>
+          </tr>
+          <tr>
+            <td><strong>📍 Otteri</strong></td>
+            <td>Family friend / Neighbor 1</td>
+            <td>Special Ghee Roast Dosa + Vada (₹130)</td>
+            <td><span class="badge-code">OTTERI40</span> (₹100 OFF)</td>
+            <td>Lake View Street, Otteri (15m)</td>
+          </tr>
+          <tr>
+            <td><strong>📍 Otteri</strong></td>
+            <td>Family friend / Neighbor 2</td>
+            <td>Otteri Degree Filter Coffee (2x Flask) (₹70)</td>
+            <td><span class="badge-code">OTTERI40</span> (40% OFF)</td>
+            <td>Otteri Extension Main Rd (12m)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 3: Sunday Oct 6th Hour-by-Hour Timeline -->
+    <div class="section">
+      <div class="section-title">
+        <span class="step-tag">Phase 3</span>
+        <span>Launch Day Execution Timeline (Sunday, Oct 6th)</span>
+      </div>
+      <div class="timeline">
+        <div class="time-slot">
+          <div class="time">07:30 AM</div>
+          <div class="act">Bike & Gear Check</div>
+          <div class="note">Fuel full, delivery bag strapped, phone charger 100%, helmet ready.</div>
+        </div>
+        <div class="time-slot">
+          <div class="time">08:00 AM</div>
+          <div class="act">Admin Clean Slate</div>
+          <div class="note">Hit <strong>Reset Orders</strong> in Super Admin to start GMV at ₹0 / 0 orders.</div>
+        </div>
+        <div class="time-slot">
+          <div class="time">08:30 AM</div>
+          <div class="act">Morning WhatsApp Wave</div>
+          <div class="note">Send Breakfast WhatsApp Flyer to 25 contacts in Otteri & Vandalur.</div>
+        </div>
+        <div class="time-slot">
+          <div class="time">11:30 AM</div>
+          <div class="act">Lunch Biryani Wave</div>
+          <div class="note">Send Biryani Flyer to Kilambakkam KCBT commuters & friends.</div>
+        </div>
+      </div>
+      <div class="timeline" style="margin-top: 6px;">
+        <div class="time-slot">
+          <div class="time">12:30 - 02:30 PM</div>
+          <div class="act">Live Delivery Runs</div>
+          <div class="note">Pick up hot meals, navigate with 1-tap Google Maps, verify 4-digit PIN.</div>
+        </div>
+        <div class="time-slot">
+          <div class="time">03:00 PM</div>
+          <div class="act">Customer Follow-up</div>
+          <div class="note">Send WhatsApp receipt + ask for a 5-star review / selfie.</div>
+        </div>
+        <div class="time-slot">
+          <div class="time">06:30 PM</div>
+          <div class="act">Evening Tiffin Push</div>
+          <div class="note">Push remaining orders for evening filter coffee & hot parottas.</div>
+        </div>
+        <div class="time-slot">
+          <div class="time">09:00 PM</div>
+          <div class="act">Founder Day-1 Review</div>
+          <div class="note">Export CSV from Super Admin, tally net UPI collections, celebrate!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: WhatsApp Launch Script -->
+    <div class="section">
+      <div class="section-title">
+        <span class="step-tag">Phase 4</span>
+        <span>WhatsApp Broadcast Script (Copy & Send to 25 Friends / Contacts)</span>
+      </div>
+      <div class="script-box">
+        🚀 <strong>Unavukadai Express is LIVE Today!</strong> 🍲<br>
+        Hi! We have officially launched our hyperlocal 20-min food delivery service in <strong>Kilambakkam (KCBT), Vandalur, and Otteri</strong> today!<br>
+        🔥 <strong>Launch Day Flat Discount Codes:</strong><br>
+        • <strong>Kilambakkam KCBT:</strong> Use <strong><code>KCBT50</code></strong> for 50% OFF on hot Dum Biryani<br>
+        • <strong>Vandalur:</strong> Use <strong><code>VANDALUR60</code></strong> for 60% OFF on Bun Parotta & Meals<br>
+        • <strong>Otteri:</strong> Use <strong><code>OTTERI40</code></strong> for 40% OFF on Crispy Ghee Roast Dosa & Degree Coffee<br>
+        🛵 <strong>Order 1-Tap on Web:</strong> https://unavukadai.com (Live GPS tracking to your doorstep!)
+      </div>
+    </div>
+
+    <!-- Section 5: Emergency Escalation Protocols -->
+    <div class="section">
+      <div class="section-title">
+        <span class="step-tag">Phase 5</span>
+        <span>Emergency Fallback Protocols</span>
+      </div>
+      <div class="check-grid">
+        <div class="check-item">
+          <div class="check-box" style="background:#fee2e2; border-color:#dc2626;"></div>
+          <div class="check-content">
+            <strong>Customer Phone Switched Off?</strong>
+            <span>Use direct dialer button in Rider Radar or use WhatsApp Delivery PIN resend button.</span>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box" style="background:#fee2e2; border-color:#dc2626;"></div>
+          <div class="check-content">
+            <strong>Customer Forgot Delivery PIN?</strong>
+            <span>Type Master Bypass PIN <code>1234</code> on Rider Portal to complete handoff instantly.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div>Official Document: <strong>Unavukadai Launch Operations Protocol v3.1</strong></div>
+      <div>App URL: <strong>https://unavukadai.com</strong> | Super Admin: <strong>/#/admin</strong></div>
+      <div>Founder: <strong>Alexander Raja (+91 82486 51695)</strong></div>
+    </div>
+  </div>
+
+</body>
+</html>
