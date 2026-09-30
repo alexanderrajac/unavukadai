@@ -16,20 +16,27 @@ export default function AdminFleetRadarMap({
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [12.8970, 80.0720], // Center of Perungalathur-Vandalur-Mannivakkam
-        zoom: 13,
-        zoomControl: true,
-        attributionControl: false
-      });
+      if (mapContainerRef.current._leaflet_id) {
+        mapContainerRef.current._leaflet_id = null;
+      }
+      try {
+        const map = L.map(mapContainerRef.current, {
+          center: [12.8970, 80.0720], // Center of Perungalathur-Vandalur-Mannivakkam
+          zoom: 13,
+          zoomControl: true,
+          attributionControl: false
+        });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18
-      }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18
+        }).addTo(map);
 
-      const markersGroup = L.layerGroup().addTo(map);
-      markersLayerRef.current = markersGroup;
-      mapInstanceRef.current = map;
+        const markersGroup = L.layerGroup().addTo(map);
+        markersLayerRef.current = markersGroup;
+        mapInstanceRef.current = map;
+      } catch (err) {
+        console.warn('AdminFleetRadarMap initialization warning:', err);
+      }
     }
 
     const triggerResize = () => {

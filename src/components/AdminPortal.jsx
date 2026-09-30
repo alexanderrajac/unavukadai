@@ -322,9 +322,75 @@ export default function AdminPortal({
             </div>
           </div>
         </div>
-        <div className="adm-header-right">
+        <div className="adm-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="adm-portal-switch-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#fca5a5',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+            onClick={() => onSwitchPortal('customer')}
+            title="Switch to Customer Foodie App"
+          >
+            <span>🍲 Customer App</span>
+          </button>
+
+          <button
+            type="button"
+            className="adm-portal-switch-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(249, 115, 22, 0.15)',
+              border: '1px solid rgba(249, 115, 22, 0.35)',
+              color: '#fdba74',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+            onClick={() => onSwitchPortal('hotel')}
+            title="Switch to Kitchen KDS"
+          >
+            <span>👨‍🍳 Kitchen KDS</span>
+          </button>
+
+          <button
+            type="button"
+            className="adm-portal-switch-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(139, 92, 246, 0.15)',
+              border: '1px solid rgba(139, 92, 246, 0.35)',
+              color: '#c4b5fd',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+            onClick={() => onSwitchPortal('rider')}
+            title="Switch to Rider Duty"
+          >
+            <span>🛵 Rider Radar</span>
+          </button>
+
           <div className="adm-live-pill"><span className="adm-live-dot"/><span>Live</span></div>
-          {currentUser && <div className="adm-user-chip">🛡️ {currentUser.name?.split(' ')[0]}</div>}
+          {currentUser && <div className="adm-user-chip">🛡️ {currentUser.name?.split(' ')[0] || 'Admin'}</div>}
         </div>
       </div>
 

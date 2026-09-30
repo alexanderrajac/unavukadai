@@ -420,39 +420,45 @@ export default function Header({
                   </div>
 
                   {/* Quick Shortcut for active roles */}
-                  {(user?.role === 'restaurant' || user?.role === 'rider' || user?.role === 'admin') && (
-                    <div className="partner-dropdown-footer">
-                      <span className="footer-lead">Already registered?</span>
-                      <div className="footer-links">
-                        {(user.role === 'restaurant' || user.role === 'admin') && (
-                          <button 
-                            type="button" 
-                            className="footer-portal-link"
-                            onClick={() => {
-                              setIsPartnerMenuOpen(false);
-                              onSwitchPortal('hotel');
-                            }}
-                          >
-                            <Store size={12} />
-                            <span>Kitchen Portal</span>
-                          </button>
-                        )}
-                        {(user.role === 'rider' || user.role === 'admin') && (
-                          <button 
-                            type="button" 
-                            className="footer-portal-link purple"
-                            onClick={() => {
-                              setIsPartnerMenuOpen(false);
-                              onSwitchPortal('rider');
-                            }}
-                          >
-                            <Bike size={12} />
-                            <span>Rider Portal</span>
-                          </button>
-                        )}
-                      </div>
+                  <div className="partner-dropdown-footer">
+                    <span className="footer-lead">Portals &amp; Console:</span>
+                    <div className="footer-links">
+                      <button 
+                        type="button" 
+                        className="footer-portal-link"
+                        onClick={() => {
+                          setIsPartnerMenuOpen(false);
+                          onSwitchPortal('hotel');
+                        }}
+                      >
+                        <Store size={12} />
+                        <span>Kitchen</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        className="footer-portal-link purple"
+                        onClick={() => {
+                          setIsPartnerMenuOpen(false);
+                          onSwitchPortal('rider');
+                        }}
+                      >
+                        <Bike size={12} />
+                        <span>Rider</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        className="footer-portal-link red"
+                        style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.35)', background: 'rgba(239, 68, 68, 0.1)' }}
+                        onClick={() => {
+                          setIsPartnerMenuOpen(false);
+                          onSwitchPortal('admin');
+                        }}
+                      >
+                        <ShieldAlert size={12} />
+                        <span>Super Admin</span>
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>

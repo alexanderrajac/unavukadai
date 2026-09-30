@@ -83,7 +83,7 @@ export default function PortalSwitcher({
   }
 
   // 3. MASTER ADMIN (UNRESTRICTED MULTI-PORTAL GOVERNANCE)
-  if (role === 'admin') {
+  if (role === 'admin' || currentPortal === 'admin') {
     return (
       <div className="portal-switcher-bar admin-role-bar">
         <div className="portal-switcher-inner">

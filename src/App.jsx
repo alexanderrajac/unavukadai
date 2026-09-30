@@ -734,7 +734,24 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('unavu_user');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const u = JSON.parse(saved);
+        const normEmail = u?.email?.toLowerCase().trim();
+        const normPhone = u?.phone?.replace(/\D/g, '');
+        // Founder & Master Admin automatic upgrade
+        if (
+          normEmail === 'alexanderrajac@gmail.com' ||
+          normEmail === 'rajacofficial369@gmail.com' ||
+          normEmail === 'admin@unavukadai.com' ||
+          normEmail === 'murugan@unavukadai.com' ||
+          normPhone === '918248651695' ||
+          normPhone === '8248651695'
+        ) {
+          u.role = 'admin';
+        }
+        return u;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -742,6 +759,15 @@ export default function App() {
 
   // Master Registered Users Directory & Roles
   const INITIAL_USERS = [
+    {
+      id: 'usr-admin-alex',
+      name: 'Alexander Raja (Master Admin)',
+      email: 'alexanderrajac@gmail.com',
+      phone: '+91 82486 51695',
+      role: 'admin',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
     {
       id: 'usr-admin-0',
       name: 'Murugan (Master Admin)',
@@ -756,6 +782,15 @@ export default function App() {
       name: 'Master Admin (HQ)',
       email: 'admin@unavukadai.com',
       phone: '+91 98400 11111',
+      role: 'admin',
+      status: 'ACTIVE',
+      createdAt: '28 Sep, 2026'
+    },
+    {
+      id: 'usr-admin-2',
+      name: 'Raja Official',
+      email: 'rajacofficial369@gmail.com',
+      phone: '+91 98401 23456',
       role: 'admin',
       status: 'ACTIVE',
       createdAt: '28 Sep, 2026'
@@ -777,24 +812,6 @@ export default function App() {
       role: 'rider',
       status: 'ACTIVE',
       createdAt: '28 Sep, 2026'
-    },
-    {
-      id: 'usr-admin-2',
-      name: 'Raja Official',
-      email: 'rajacofficial369@gmail.com',
-      phone: '+91 98401 23456',
-      role: 'admin',
-      status: 'ACTIVE',
-      createdAt: '28 Sep, 2026'
-    },
-    {
-      id: 'usr-cust-1',
-      name: 'Alexander Raja',
-      email: 'alexanderrajac@gmail.com',
-      phone: '+91 98401 23456',
-      role: 'customer',
-      status: 'ACTIVE',
-      createdAt: '28 Sep, 2026'
     }
   ];
 
@@ -802,14 +819,29 @@ export default function App() {
     try {
       const saved = localStorage.getItem('unavu_registered_users');
       if (saved) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
+        // Ensure Alexander Raja admin is always present and has role 'admin'
+        const alexIndex = parsed.findIndex(u => u.email?.toLowerCase().trim() === 'alexanderrajac@gmail.com');
+        if (alexIndex !== -1) {
+          parsed[alexIndex].role = 'admin';
+          parsed[alexIndex].name = 'Alexander Raja (Master Admin)';
+          parsed[alexIndex].phone = '+91 82486 51695';
+        } else {
+          parsed.unshift(INITIAL_USERS[0]);
+        }
         // Ensure Raja Official admin is always present
-        if (!parsed.some(u => u.email?.toLowerCase() === 'rajacofficial369@gmail.com')) {
-          parsed.push(INITIAL_USERS[4]);
+        const rajaIndex = parsed.findIndex(u => u.email?.toLowerCase().trim() === 'rajacofficial369@gmail.com');
+        if (rajaIndex !== -1) {
+          parsed[rajaIndex].role = 'admin';
+        } else {
+          parsed.push(INITIAL_USERS[3]);
         }
         // Ensure 8248651695 master admin is always present
-        if (!parsed.some(u => u.phone?.replace(/\D/g, '') === '918248651695' || u.phone?.replace(/\D/g, '') === '8248651695')) {
-          parsed.unshift(INITIAL_USERS[0]);
+        const phoneAdmin = parsed.find(u => u.phone?.replace(/\D/g, '') === '918248651695' || u.phone?.replace(/\D/g, '') === '8248651695');
+        if (phoneAdmin) {
+          phoneAdmin.role = 'admin';
+        } else {
+          parsed.unshift(INITIAL_USERS[1]);
         }
         return parsed;
       }
@@ -862,12 +894,20 @@ export default function App() {
     const normalizedPhone = userData.phone?.replace(/\D/g, '');
     const isGenericPhone = !normalizedPhone || normalizedPhone === '919840123456' || normalizedPhone === '9840123456';
 
+    const isMasterAdmin = 
+      normalizedEmail === 'alexanderrajac@gmail.com' ||
+      normalizedEmail === 'rajacofficial369@gmail.com' ||
+      normalizedEmail === 'admin@unavukadai.com' ||
+      normalizedEmail === 'murugan@unavukadai.com' ||
+      normalizedPhone === '918248651695' ||
+      normalizedPhone === '8248651695';
+
     const existing = usersList.find(u => {
       if (normalizedEmail && u.email?.toLowerCase().trim() === normalizedEmail) return true;
       if (!isGenericPhone && u.phone && u.phone.replace(/\D/g, '') === normalizedPhone) return true;
       return false;
     });
-    const effectiveRole = existing ? existing.role : (userData.role || 'customer');
+    const effectiveRole = isMasterAdmin ? 'admin' : (existing ? existing.role : (userData.role || 'customer'));
 
     if (!existing) {
       const newUserRecord = {
@@ -948,15 +988,16 @@ export default function App() {
     };
   }, [usersList]);
 
-  // Strict Role Route Guard: non-admins are locked strictly to their respective app portal
+  // Strict Role Route Guard: non-admins are kept in their focused portals unless explicitly switching
   useEffect(() => {
     if (!user) return;
-    if (user.role === 'restaurant' && currentPortal !== 'hotel') {
+    // Master admins have unrestricted access to all 4 portals (customer, hotel, rider, admin)
+    if (user.role === 'admin') return;
+
+    if (user.role === 'restaurant' && currentPortal !== 'hotel' && currentPortal !== 'customer') {
       setCurrentPortal('hotel');
-    } else if (user.role === 'rider' && currentPortal !== 'rider') {
+    } else if (user.role === 'rider' && currentPortal !== 'rider' && currentPortal !== 'customer') {
       setCurrentPortal('rider');
-    } else if (user.role === 'customer' && currentPortal !== 'customer') {
-      setCurrentPortal('customer');
     }
   }, [user, currentPortal]);
 
