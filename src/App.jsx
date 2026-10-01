@@ -779,6 +779,23 @@ export default function App() {
   const [completedOrder, setCompletedOrder] = useState(null);
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [prefilledCoupon, setPrefilledCoupon] = useState('');
+  const [dismissedFloatingOrderIds, setDismissedFloatingOrderIds] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('unavu_dismissed_floating_orders') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const handleDismissFloatingOrder = (orderId) => {
+    setDismissedFloatingOrderIds(prev => {
+      const next = [...new Set([...prev, orderId])];
+      try {
+        sessionStorage.setItem('unavu_dismissed_floating_orders', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const handleOpenAuth = (tab = 'login') => {
     setAuthInitialTab(tab);
@@ -1477,6 +1494,49 @@ export default function App() {
   const pendingKitchenOrdersCount = orders.filter(o => o.status === 'PLACED' || o.status === 'PREPARING').length;
   const availableRiderTripsCount = orders.filter(o => o.status === 'READY_FOR_PICKUP' && !o.riderId).length;
 
+  // Derive the active in-flight order for THIS specific user / device
+  const userActiveOrder = useMemo(() => {
+    // Only show on customer views (never obstruct Hotel, Rider, or Admin portals)
+    if (currentPortal !== 'customer' || ['admin', 'hotel', 'rider'].includes(activeTab)) return null;
+
+    // Do not show floating bar if the tracker modal or completed modal is already open
+    if (trackingOrder || completedOrder) return null;
+
+    let deviceOrderIds = [];
+    try {
+      deviceOrderIds = JSON.parse(localStorage.getItem('unavu_my_placed_order_ids') || '[]');
+    } catch {}
+
+    const normalizedUserEmail = user?.email ? user.email.toLowerCase().trim() : '';
+    const normalizedUserPhone = user?.phone ? user.phone.replace(/\D/g, '') : '';
+    const normalizedUserName = user?.name ? user.name.toLowerCase().trim() : '';
+
+    const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+
+    return orders.find(order => {
+      if (!order || !ACTIVE_STATUSES.includes(order.status)) return false;
+      if (dismissedFloatingOrderIds.includes(order.orderId)) return false;
+
+      // 1. Device match: if placed on this device, it belongs to this user
+      if (order.orderId && deviceOrderIds.includes(order.orderId)) {
+        return true;
+      }
+
+      // 2. Profile match if user is logged in
+      if (user) {
+        const orderEmail = order.customerEmail ? order.customerEmail.toLowerCase().trim() : '';
+        const orderPhone = order.customerPhone ? order.customerPhone.replace(/\D/g, '') : '';
+        const orderName = order.customerName ? order.customerName.toLowerCase().trim() : '';
+
+        if (normalizedUserEmail && orderEmail && normalizedUserEmail === orderEmail) return true;
+        if (normalizedUserPhone && orderPhone && normalizedUserPhone === orderPhone) return true;
+        if (normalizedUserName && orderName && normalizedUserName === orderName) return true;
+      }
+
+      return false;
+    }) || null;
+  }, [orders, user, activeTab, currentPortal, trackingOrder, completedOrder, dismissedFloatingOrderIds]);
+
   return (
     <div className="app-root">
       {/* Universal Multi-Portal Switcher Bar (Role Sensitive) */}
@@ -1731,8 +1791,9 @@ export default function App() {
 
           {/* Active Order Floating Tracker Bar */}
           <ActiveOrderFloatingBar
-            activeOrder={orders.find(o => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status))}
-            onOpenTracker={() => setTrackingOrder(orders.find(o => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.status)))}
+            activeOrder={userActiveOrder}
+            onOpenTracker={(ord) => setTrackingOrder(ord || userActiveOrder)}
+            onDismiss={handleDismissFloatingOrder}
           />
 
           {/* Sleek Mobile PWA Install Bottom Sheet */}

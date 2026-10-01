@@ -1229,7 +1229,123 @@ describe('Customer Live Orders Experience, WhatsApp Receipts & Offline Caching',
     const isStillDismissed = futureTime < dismissedUntil;
     expect(isStillDismissed).toBe(false);
   });
+
+  describe('Active Order Floating Bar Isolation & Real-Time Functionality', () => {
+    const ACTIVE_STATUSES = ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
+
+    const resolveUserActiveOrder = ({
+      orders = [],
+      user = null,
+      deviceOrderIds = [],
+      dismissedIds = [],
+      currentPortal = 'customer',
+      activeTab = 'home',
+      isTrackerOpen = false
+    }) => {
+      if (currentPortal !== 'customer' || ['admin', 'hotel', 'rider'].includes(activeTab)) return null;
+      if (isTrackerOpen) return null;
+
+      const normEmail = user?.email?.toLowerCase().trim() || '';
+      const normPhone = user?.phone?.replace(/\D/g, '') || '';
+      const normName = user?.name?.toLowerCase().trim() || '';
+
+      return orders.find(order => {
+        if (!order || !ACTIVE_STATUSES.includes(order.status)) return false;
+        if (dismissedIds.includes(order.orderId)) return false;
+
+        // Device match
+        if (order.orderId && deviceOrderIds.includes(order.orderId)) return true;
+
+        // User match
+        if (user) {
+          const ordEmail = order.customerEmail?.toLowerCase().trim() || '';
+          const ordPhone = order.customerPhone?.replace(/\D/g, '') || '';
+          const ordName = order.customerName?.toLowerCase().trim() || '';
+
+          if (normEmail && ordEmail && normEmail === ordEmail) return true;
+          if (normPhone && ordPhone && normPhone === ordPhone) return true;
+          if (normName && ordName && normName === ordName) return true;
+        }
+
+        return false;
+      }) || null;
+    };
+
+    it('should strictly isolate active orders to the current device/user and not expose other users orders', () => {
+      const mockOrders = [
+        { orderId: 'UNV-111', customerEmail: 'other@example.com', status: 'PREPARING' },
+        { orderId: 'UNV-222', customerEmail: 'me@example.com', status: 'OUT_FOR_DELIVERY' }
+      ];
+
+      // Guest with no placed order on this device
+      const guestResult = resolveUserActiveOrder({
+        orders: mockOrders,
+        user: null,
+        deviceOrderIds: []
+      });
+      expect(guestResult).toBeNull();
+
+      // User logged in as me@example.com
+      const userResult = resolveUserActiveOrder({
+        orders: mockOrders,
+        user: { email: 'me@example.com' },
+        deviceOrderIds: []
+      });
+      expect(userResult).not.toBeNull();
+      expect(userResult.orderId).toBe('UNV-222');
+
+      // Guest who placed UNV-111 on this device
+      const deviceResult = resolveUserActiveOrder({
+        orders: mockOrders,
+        user: null,
+        deviceOrderIds: ['UNV-111']
+      });
+      expect(deviceResult).not.toBeNull();
+      expect(deviceResult.orderId).toBe('UNV-111');
+    });
+
+    it('should hide floating bar when dismissed by user or when tracking modal is already open', () => {
+      const mockOrders = [
+        { orderId: 'UNV-333', status: 'PLACED' }
+      ];
+
+      // Not dismissed
+      const active = resolveUserActiveOrder({
+        orders: mockOrders,
+        deviceOrderIds: ['UNV-333'],
+        dismissedIds: []
+      });
+      expect(active).not.toBeNull();
+
+      // Dismissed
+      const dismissed = resolveUserActiveOrder({
+        orders: mockOrders,
+        deviceOrderIds: ['UNV-333'],
+        dismissedIds: ['UNV-333']
+      });
+      expect(dismissed).toBeNull();
+
+      // Modal already open
+      const modalOpen = resolveUserActiveOrder({
+        orders: mockOrders,
+        deviceOrderIds: ['UNV-333'],
+        dismissedIds: [],
+        isTrackerOpen: true
+      });
+      expect(modalOpen).toBeNull();
+    });
+
+    it('should hide floating bar in Hotel, Rider, or Admin portals to prevent UI obstruction', () => {
+      const mockOrders = [{ orderId: 'UNV-444', status: 'PREPARING' }];
+
+      expect(resolveUserActiveOrder({ orders: mockOrders, deviceOrderIds: ['UNV-444'], currentPortal: 'hotel' })).toBeNull();
+      expect(resolveUserActiveOrder({ orders: mockOrders, deviceOrderIds: ['UNV-444'], currentPortal: 'rider' })).toBeNull();
+      expect(resolveUserActiveOrder({ orders: mockOrders, deviceOrderIds: ['UNV-444'], activeTab: 'admin' })).toBeNull();
+      expect(resolveUserActiveOrder({ orders: mockOrders, deviceOrderIds: ['UNV-444'], currentPortal: 'customer', activeTab: 'home' })).not.toBeNull();
+    });
+  });
 });
+
 
 
 

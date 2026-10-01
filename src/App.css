@@ -4128,6 +4128,13 @@
   color: #9ca3af;
 }
 
+.floating-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .floating-bar-cta {
   display: flex;
   align-items: center;
@@ -4139,6 +4146,40 @@
   font-size: 12.5px;
   font-weight: 700;
   white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.floating-bar-cta:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.floating-bar-dismiss-btn {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #9ca3af;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.floating-bar-dismiss-btn:hover {
+  background: rgba(239, 68, 68, 0.28);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.floating-bar-dismiss-btn:active {
+  transform: scale(0.92);
 }
 
 /* My Orders Modal */
@@ -8652,7 +8693,7 @@
   }
 
   .floating-bar-info {
-    max-width: calc(100vw - 190px);
+    max-width: calc(100vw - 220px);
   }
 
   .floating-bar-title-row strong {
@@ -8666,10 +8707,19 @@
     text-overflow: ellipsis;
   }
 
+  .floating-bar-actions {
+    gap: 6px;
+  }
+
   .floating-bar-cta {
     font-size: 11.5px;
     padding: 6px 10px;
     flex-shrink: 0;
+  }
+
+  .floating-bar-dismiss-btn {
+    width: 26px;
+    height: 26px;
   }
 
   /* 10. Native Mobile Bottom Sheet Conversion for Modals (max-height: 88vh) */

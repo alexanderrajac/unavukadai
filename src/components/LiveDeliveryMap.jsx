@@ -138,10 +138,14 @@ export default function LiveDeliveryMap({
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        zoomControl: false,
-        attributionControl: false
-      });
+      if (mapContainerRef.current._leaflet_id) {
+        mapContainerRef.current._leaflet_id = null;
+      }
+      try {
+        const map = L.map(mapContainerRef.current, {
+          zoomControl: false,
+          attributionControl: false
+        });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18
@@ -194,6 +198,9 @@ export default function LiveDeliveryMap({
       });
 
       mapInstanceRef.current = map;
+      } catch (err) {
+        console.warn('Leaflet map init notice:', err);
+      }
     }
 
     // Schedule invalidateSize calls to accommodate modal opening animations & layout shifts

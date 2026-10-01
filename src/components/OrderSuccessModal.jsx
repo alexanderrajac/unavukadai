@@ -94,7 +94,9 @@ export default function OrderSuccessModal({
           <h2>
             {liveOrder.status === 'DELIVERED' 
               ? 'Order Delivered Successfully!' 
-              : 'Order Placed & Live Tracking'}
+              : liveOrder.status === 'PLACED'
+                ? 'Order Placed & Kitchen Notified'
+                : 'Live Order Tracking'}
           </h2>
           <p className="order-id-code">Order ID: #{liveOrder.orderId}</p>
         </div>
@@ -299,10 +301,10 @@ export default function OrderSuccessModal({
           </div>
 
           <div className="recap-items-list">
-            {liveOrder.items.map(item => (
-              <div key={item.id} className="recap-item-row">
-                <span>{item.quantity}x {item.name}</span>
-                <span>₹{item.price * item.quantity}</span>
+            {(Array.isArray(liveOrder.items) ? liveOrder.items : []).map((item, idx) => (
+              <div key={item?.id || idx} className="recap-item-row">
+                <span>{item?.quantity || 1}x {item?.name || 'Dish Item'}</span>
+                <span>₹{(Number(item?.price) || 0) * (Number(item?.quantity) || 1)}</span>
               </div>
             ))}
           </div>
