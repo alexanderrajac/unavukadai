@@ -1124,6 +1124,58 @@ export default function App() {
       hasExistingLocalUser: !!user
     });
 
+    // 0a. Immediate synchronous extraction of hash tokens (#access_token=...&refresh_token=...)
+    if (hasOAuthTokens) {
+      try {
+        const rawHash = hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(rawHash);
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken) {
+          console.log('[Supabase Auth] Synchronously extracting access_token from URL hash...');
+          setIsAuthenticatingOAuth(true);
+          
+          let decodedEmail = '';
+          let decodedName = '';
+          try {
+            const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            decodedEmail = payload.email || '';
+            decodedName = payload.user_metadata?.full_name || payload.user_metadata?.name || decodedEmail.split('@')[0];
+          } catch (e) {
+            console.warn('Error parsing token payload', e);
+          }
+
+          if (refreshToken) {
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            }).then(({ data }) => {
+              if (data?.session) {
+                processSupabaseSession(data.session, 'setSession:hashToken');
+              }
+            }).catch(e => console.warn('setSession error', e));
+          }
+
+          if (decodedEmail) {
+            const norm = decodedEmail.toLowerCase().trim();
+            const isAdmin = norm === 'rajacofficial369@gmail.com' || norm === 'alexanderrajac@gmail.com' || norm === 'admin@unavukadai.com';
+            const cleanHash = isAdmin ? '#/admin' : '#/orders';
+            window.history.replaceState(null, '', window.location.pathname + cleanHash);
+            
+            handleLoginSuccessRef.current({
+              name: decodedName,
+              email: decodedEmail,
+              authProvider: 'google',
+              isVerified: true
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[Supabase Auth] Hash token processing error:', err);
+      }
+    }
+
     // Helper to process a Supabase session into our app's login
     const processSupabaseSession = (session, source) => {
       console.log(`[Supabase Auth] processSupabaseSession called from "${source}"`, {
