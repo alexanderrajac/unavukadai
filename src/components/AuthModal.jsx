@@ -6,17 +6,10 @@ import {
   Eye, 
   EyeOff, 
   User, 
-  Phone, 
   ArrowRight, 
-  ShieldCheck, 
-  Sparkles, 
   Check, 
   AlertCircle, 
-  Loader2,
-  Zap,
-  Store,
-  Bike,
-  ShieldAlert
+  Loader2 
 } from 'lucide-react';
 import { 
   signInWithGoogleOAuth, 
@@ -38,50 +31,6 @@ export default function AuthModal({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successNotice, setSuccessNotice] = useState('');
-
-  // Pre-configured Quick One-Click Accounts for seamless developer & role testing
-  const QUICK_DEMO_ACCOUNTS = [
-    {
-      name: 'Rishi Kumar',
-      email: 'rajacofficial369@gmail.com',
-      role: 'admin',
-      roleLabel: 'Master Admin',
-      icon: '👑',
-      badgeClass: 'admin'
-    },
-    {
-      name: 'Alexander Raja',
-      email: 'alexanderrajac@gmail.com',
-      role: 'admin',
-      roleLabel: 'Founder & Admin',
-      icon: '🛡️',
-      badgeClass: 'admin'
-    },
-    {
-      name: 'Chef Sundaram',
-      email: 'kuppanna.kitchen@gmail.com',
-      role: 'restaurant',
-      roleLabel: 'Junior Kuppanna Kitchen',
-      icon: '👨‍🍳',
-      badgeClass: 'restaurant'
-    },
-    {
-      name: 'Murugan S.',
-      email: 'murugan.rider@gmail.com',
-      role: 'rider',
-      roleLabel: 'Fleet Captain Rider',
-      icon: '🛵',
-      badgeClass: 'rider'
-    },
-    {
-      name: 'Priya Raman',
-      email: 'priya.foodie@gmail.com',
-      role: 'customer',
-      roleLabel: 'Foodie Customer',
-      icon: '🍲',
-      badgeClass: 'customer'
-    }
-  ];
 
   // Sync tab when opened
   useEffect(() => {
@@ -111,27 +60,7 @@ export default function AuthModal({
     }
   };
 
-  // 2. Quick 1-Tap Demo Login
-  const handleQuickDemoLogin = (account) => {
-    setIsLoading(true);
-    setErrorMessage('');
-    setSuccessNotice(`Welcome back, ${account.name}!`);
-
-    setTimeout(() => {
-      onLoginSuccess({
-        name: account.name,
-        email: account.email,
-        phone: '+91 98401 23456',
-        role: account.role,
-        authProvider: 'google',
-        isVerified: true
-      });
-      setIsLoading(false);
-      onClose();
-    }, 400);
-  };
-
-  // 3. Email & Password Form Submit (Login or Sign Up)
+  // 2. Email & Password Form Submit (Login or Sign Up)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -143,8 +72,8 @@ export default function AuthModal({
       return;
     }
 
-    if (!password || password.length < 4) {
-      setErrorMessage('Please enter a password with at least 4 characters.');
+    if (!password || password.length < 6) {
+      setErrorMessage('Please enter a password with at least 6 characters.');
       return;
     }
 
@@ -166,13 +95,15 @@ export default function AuthModal({
         });
 
         if (!res.success && !res.user) {
-          // If Supabase sign up had an issue, fallback to immediate local registration
-          console.warn('[AuthModal] Supabase signup error, activating local user:', res.error);
+          setErrorMessage(res.error || 'Failed to sign up. Please try again.');
+          setIsLoading(false);
+          return;
         }
 
         setSuccessNotice('Account successfully created!');
         setTimeout(() => {
           onLoginSuccess({
+            id: res.user?.id,
             name: displayName,
             email: effectiveEmail,
             phone: !isEmail ? trimmedInput : '',
@@ -191,29 +122,8 @@ export default function AuthModal({
       try {
         const res = await signInWithEmailPassword(effectiveEmail, password);
         
-        // If Supabase rejected password, check if it's a known admin/demo user
         if (!res.success) {
-          const isMasterAdmin = 
-            effectiveEmail === 'rajacofficial369@gmail.com' ||
-            effectiveEmail === 'alexanderrajac@gmail.com' ||
-            effectiveEmail === 'admin@unavukadai.com';
-
-          // Allow master admin or instant user entry with notice
-          if (isMasterAdmin || password === '1234' || password === 'admin123' || password === 'unavu123') {
-            onLoginSuccess({
-              name: displayName,
-              email: effectiveEmail,
-              phone: !isEmail ? trimmedInput : '',
-              role: isMasterAdmin ? 'admin' : 'customer',
-              authProvider: 'email',
-              isVerified: true
-            });
-            setIsLoading(false);
-            onClose();
-            return;
-          }
-
-          setErrorMessage(res.error || 'Invalid email or password. Please try again.');
+          setErrorMessage(res.error || 'Invalid email/phone or password. Please try again.');
           setIsLoading(false);
           return;
         }
@@ -359,17 +269,12 @@ export default function AuthModal({
           <div className="new-input-group">
             <div className="new-label-row">
               <label>Password</label>
-              {tab === 'login' && (
-                <span className="new-forgot-link" onClick={() => setErrorMessage('Default demo password: 1234 or your Supabase account password.')}>
-                  Forgot Password?
-                </span>
-              )}
             </div>
             <div className="new-input-wrapper">
               <Lock size={16} className="new-input-icon" />
               <input 
                 type={showPassword ? 'text' : 'password'} 
-                placeholder={tab === 'signup' ? 'Create a secure password' : 'Enter password (or test with 1234)'} 
+                placeholder={tab === 'signup' ? 'Create a secure password (min 6 chars)' : 'Enter your password'} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
@@ -404,31 +309,6 @@ export default function AuthModal({
             )}
           </button>
         </form>
-
-        {/* 1-Tap Quick Demo Role Switcher */}
-        <div className="new-demo-accounts-box">
-          <div className="new-demo-header">
-            <Zap size={13} className="text-orange" />
-            <span>Instant Demo Accounts (1-Tap Switch)</span>
-          </div>
-          <div className="new-demo-buttons-grid">
-            {QUICK_DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                className={`new-demo-chip ${acc.badgeClass}`}
-                onClick={() => handleQuickDemoLogin(acc)}
-                title={`Log in as ${acc.name} (${acc.roleLabel})`}
-              >
-                <span className="demo-chip-icon">{acc.icon}</span>
-                <div className="demo-chip-info">
-                  <span className="demo-chip-name">{acc.name}</span>
-                  <span className="demo-chip-role">{acc.roleLabel}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Terms Note */}
         <p className="new-auth-terms-note">
