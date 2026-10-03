@@ -26,7 +26,8 @@ import {
   ChefHat,
   Package,
   Zap,
-  Share2
+  Share2,
+  LogOut
 } from 'lucide-react';
 
 export default function UserOrdersPage({
@@ -37,7 +38,9 @@ export default function UserOrdersPage({
   onBackToMenu,
   onOpenAuth,
   onSwitchUser,
-  onCancelOrder
+  onCancelOrder,
+  onLogout,
+  onSwitchPortal
 }) {
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'COMPLETED'
   const [searchTerm, setSearchTerm] = useState('');
@@ -272,17 +275,40 @@ export default function UserOrdersPage({
         </div>
 
         {/* Account Switcher / Sign Out */}
-        <div className="user-profile-card-right">
+        <div className="user-profile-card-right" style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
           <div className="quick-switch-label">{user ? 'Active Account' : 'Guest Mode'}</div>
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            style={{ fontSize: '12px', padding: '6px 14px' }}
-            onClick={() => onOpenAuth ? onOpenAuth('login') : null}
-          >
-            <RotateCcw size={13} />
-            <span>{user ? 'Switch User' : 'Sign In with Google'}</span>
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {user?.role === 'admin' && onSwitchPortal && (
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ fontSize: '12px', padding: '6px 14px', background: '#ef4444', borderColor: '#ef4444' }}
+                onClick={() => onSwitchPortal('admin')}
+              >
+                <span>👑 Super Admin Console</span>
+              </button>
+            )}
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              style={{ fontSize: '12px', padding: '6px 14px' }}
+              onClick={() => onOpenAuth ? onOpenAuth('login') : null}
+            >
+              <RotateCcw size={13} />
+              <span>{user ? 'Switch Account' : 'Sign In with Google'}</span>
+            </button>
+            {user && onLogout && (
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                style={{ fontSize: '12px', padding: '6px 14px', color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                onClick={onLogout}
+              >
+                <LogOut size={13} />
+                <span>Log Out</span>
+              </button>
+            )}
+          </div>
         </div>
       </section>
 

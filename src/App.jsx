@@ -1047,6 +1047,11 @@ export default function App() {
       setAuthBannerNotice(null);
     }, 12000);
 
+    // Immediately open My Account & Orders page so user visually sees their logged-in account
+    if (effectiveRole !== 'restaurant' && effectiveRole !== 'rider') {
+      setActiveTab('orders');
+    }
+
     // Keep user in current portal unless they are a dedicated merchant or rider
     // Master admins have access across all portals (including customer food ordering), so never boot them away from customer ordering
     if (effectiveRole === 'restaurant' && currentPortal !== 'hotel') {
@@ -1841,6 +1846,8 @@ export default function App() {
                   });
                 }
               }}
+              onLogout={handleLogout}
+              onSwitchPortal={setCurrentPortal}
             />
           ) : (
             <main className="main-content">
@@ -2029,8 +2036,8 @@ export default function App() {
             onDismiss={handleDismissFloatingOrder}
           />
 
-          {/* Sleek Mobile PWA Install Bottom Sheet */}
-          <PwaInstallBottomSheet />
+          {/* Sleek Mobile PWA Install Bottom Sheet temporarily disabled */}
+          {/* <PwaInstallBottomSheet /> */}
 
           {/* Customer Orders & History Modal */}
           <MyOrdersModal
@@ -2098,6 +2105,7 @@ export default function App() {
             cartTotal={totalCartAmount}
             activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
             currentAddressTag={savedAddresses.find(a => a.id === activeAddressId)?.tag || 'Home'}
+            user={user}
           />
         </>
       )}

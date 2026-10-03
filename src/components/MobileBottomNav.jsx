@@ -11,7 +11,8 @@ export default function MobileBottomNav({
   cartCount = 0,
   cartTotal = 0,
   activeOrdersCount = 0,
-  currentAddressTag = 'Home'
+  currentAddressTag = 'Home',
+  user
 }) {
   return (
     <nav className="cust-bottom-nav" aria-label="Mobile Navigation">
@@ -44,16 +45,24 @@ export default function MobileBottomNav({
         <span className="cust-nav-label">{currentAddressTag || 'Address'}</span>
       </button>
 
-      {/* 4. Orders */}
-      <button type="button" className="cust-nav-item" onClick={onOpenMyOrders}>
+      {/* 4. Orders & Account */}
+      <button 
+        type="button" 
+        className={`cust-nav-item ${activeTab === 'orders' ? 'active' : ''}`} 
+        onClick={onOpenMyOrders}
+      >
         <div className="cust-nav-icon" style={{ position: 'relative' }}>
-          <ReceiptText size={21}/>
+          {user?.avatar ? (
+            <span style={{ fontSize: '18px', lineHeight: 1 }}>{user.avatar}</span>
+          ) : (
+            <ReceiptText size={21}/>
+          )}
           {activeOrdersCount > 0 && (
             <span className="cust-nav-live-dot"/>
           )}
         </div>
         <span className="cust-nav-label">
-          {activeOrdersCount > 0 ? `${activeOrdersCount} Live` : 'Orders'}
+          {user ? 'My Account' : 'Orders'}
         </span>
       </button>
 
