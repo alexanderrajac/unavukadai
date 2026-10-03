@@ -986,6 +986,7 @@ export default function App() {
     localStorage.removeItem('unavu_oauth_intended_role');
     signOutSupabase();
     setCurrentPortal('customer');
+    setActiveTab('delivery');
   };
 
   // Track timestamp of last manual login so getSession() doesn't overwrite it
