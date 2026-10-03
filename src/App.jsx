@@ -1137,12 +1137,18 @@ export default function App() {
         console.error('[Supabase Auth] handleLoginSuccessRef.current is not a function!', handleLoginSuccessRef.current);
       }
 
-      // Clean up OAuth tokens from URL after successful session processing
+      // Clean up OAuth tokens & PKCE code from URL after successful session processing
       setTimeout(() => {
-        if (typeof window !== 'undefined' && window.location.hash &&
-            (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))) {
-          console.log('[Supabase Auth] Cleaning up OAuth tokens from URL hash');
-          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          const hasTokens = url.hash.includes('access_token') || url.hash.includes('refresh_token');
+          const hasCode = url.searchParams.has('code');
+          if (hasTokens || hasCode) {
+            url.searchParams.delete('code');
+            if (hasTokens) url.hash = '';
+            console.log('[Supabase Auth] Cleaning up OAuth tokens/code from URL');
+            window.history.replaceState(null, '', url.pathname + (url.search ? url.search : '') + url.hash);
+          }
         }
       }, 300);
     };
