@@ -739,8 +739,26 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Customer Navigation & Location (Defaults to Perungalathur Hub)
-  const [activeTab, setActiveTab] = useState('delivery');
+  // Customer Navigation & Location (Defaults to Perungalathur Hub, opens orders on OAuth return)
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const hash = window.location.hash || '';
+      if (search.includes('code=') || hash.includes('access_token') || hash.includes('orders') || hash.includes('account')) {
+        return 'orders';
+      }
+    }
+    return 'delivery';
+  });
+
+  const [isAuthenticatingOAuth, setIsAuthenticatingOAuth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const hash = window.location.hash || '';
+      return search.includes('code=') || hash.includes('access_token');
+    }
+    return false;
+  });
   const [selectedCity, setSelectedCity] = useState(CITIES[0]); // All Locations (Chennai)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -1101,8 +1119,11 @@ export default function App() {
 
       if (!session?.user) {
         console.log(`[Supabase Auth] No user session found from "${source}", skipping.`);
+        setIsAuthenticatingOAuth(false);
         return;
       }
+
+      setIsAuthenticatingOAuth(false);
 
       // Prevent double-fire: skip if this exact access token was already processed and user is logged in
       if (lastProcessedTokenRef.current === session.access_token && user) {
@@ -1161,15 +1182,26 @@ export default function App() {
       supabase.auth.exchangeCodeForSession(oauthCode).then(({ data, error }) => {
         if (error) {
           console.warn('[Supabase Auth] exchangeCodeForSession notice:', error.message);
+          // If detectSessionInUrl already consumed the single-use code, check existing session
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+              processSupabaseSession(session, 'exchangeCodeForSession:fallback');
+            } else {
+              setIsAuthenticatingOAuth(false);
+            }
+          });
         } else if (data?.session) {
           console.log('[Supabase Auth] exchangeCodeForSession successful for:', data.session.user?.email);
           processSupabaseSession(data.session, 'exchangeCodeForSession');
-          const cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete('code');
-          window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + cleanUrl.hash);
+        } else {
+          setIsAuthenticatingOAuth(false);
         }
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('code');
+        window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + cleanUrl.hash);
       }).catch(err => {
         console.error('[Supabase Auth] exchangeCodeForSession exception:', err);
+        setIsAuthenticatingOAuth(false);
       });
     }
 
@@ -1694,6 +1726,28 @@ export default function App() {
         onOpenAuth={() => handleOpenAuth('login')}
       />
 
+      {/* OAuth Verifying High-Visibility Banner */}
+      {isAuthenticatingOAuth && (
+        <div className="oauth-verifying-banner animate-fade" style={{
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)',
+          color: '#ffffff',
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          fontSize: '14px',
+          fontWeight: 600,
+          borderBottom: '2px solid #3b82f6',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10000
+        }}>
+          <span className="live-dot-pulse" style={{ background: '#38bdf8' }} />
+          <span>Verifying Google Account &amp; Signing In... Please wait a moment.</span>
+        </div>
+      )}
+
       {/* Real-time Interactive Login Confirmation Banner */}
       {authBannerNotice && (
         <div className="auth-welcome-banner animate-fade" style={{
@@ -1814,7 +1868,7 @@ export default function App() {
             setIsAuthOpen={setIsAuthOpen}
             onOpenAuth={handleOpenAuth}
             user={user}
-            onOpenMyOrders={() => setIsMyOrdersOpen(true)}
+            onOpenMyOrders={() => setActiveTab('orders')}
             activeOrdersCount={orders.filter(o => o.status !== 'DELIVERED').length}
             onOpenAddressBook={() => setIsAddressBookOpen(true)}
             onLogout={handleLogout}
@@ -1823,6 +1877,94 @@ export default function App() {
             onOpenRegisterRestaurant={() => setIsRegisterRestaurantOpen(true)}
             onOpenRegisterRider={() => setIsRegisterRiderOpen(true)}
           />
+
+          {/* Always-visible Auth & Account Identity Strip */}
+          <div className="auth-account-identity-strip">
+            <div className="container auth-identity-inner">
+              {user ? (
+                <div className="auth-identity-logged">
+                  <div className="auth-identity-user-info">
+                    <span className="auth-identity-avatar">{user.avatar || '🍲'}</span>
+                    <div className="auth-identity-details">
+                      <span className="auth-identity-name">
+                        <strong>{user.name || user.email?.split('@')[0] || 'User'}</strong>
+                        <span className={`auth-badge-role ${user.role || 'customer'}`}>
+                          {user.role === 'admin' ? '👑 Master Admin' : user.role === 'restaurant' ? '👨‍🍳 Merchant' : user.role === 'rider' ? '🛵 Fleet Rider' : '✓ Verified Foodie'}
+                        </span>
+                      </span>
+                      <span className="auth-identity-email">{user.email || user.phone}</span>
+                    </div>
+                  </div>
+                  <div className="auth-identity-actions">
+                    {user.role === 'admin' && (
+                      <button
+                        type="button"
+                        className="btn-identity-pill admin-pill"
+                        onClick={() => setCurrentPortal('admin')}
+                      >
+                        👑 Super Admin Console
+                      </button>
+                    )}
+                    {user.role === 'restaurant' && (
+                      <button
+                        type="button"
+                        className="btn-identity-pill merchant-pill"
+                        onClick={() => setCurrentPortal('hotel')}
+                      >
+                        👨‍🍳 Kitchen Portal
+                      </button>
+                    )}
+                    {user.role === 'rider' && (
+                      <button
+                        type="button"
+                        className="btn-identity-pill rider-pill"
+                        onClick={() => setCurrentPortal('rider')}
+                      >
+                        🛵 Rider Radar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`btn-identity-pill ${activeTab === 'orders' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('orders')}
+                    >
+                      👤 My Account &amp; Orders
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-identity-pill logout-pill"
+                      onClick={handleLogout}
+                    >
+                      Log Out
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="auth-identity-guest">
+                  <div className="auth-identity-guest-info">
+                    <span className="guest-dot" />
+                    <span>Browsing as <strong>Guest</strong> — Sign in to save addresses, track live orders, and manage access</span>
+                  </div>
+                  <div className="auth-identity-guest-actions">
+                    <button
+                      type="button"
+                      className="btn-identity-pill signin-pill"
+                      onClick={() => handleOpenAuth('login')}
+                    >
+                      🔑 Sign in with Google / Mobile
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-identity-pill signup-pill"
+                      onClick={() => handleOpenAuth('signup')}
+                    >
+                      ✨ Create Account
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {activeTab === 'orders' ? (
             <UserOrdersPage
