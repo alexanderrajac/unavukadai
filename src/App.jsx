@@ -1023,6 +1023,13 @@ export default function App() {
     }
   };
 
+  // Keep a ref to the latest handleLoginSuccess so the Supabase auth listener
+  // never captures a stale closure (avoids lost usersList on OAuth redirect).
+  const handleLoginSuccessRef = React.useRef(handleLoginSuccess);
+  useEffect(() => {
+    handleLoginSuccessRef.current = handleLoginSuccess;
+  });
+
   // Listen to Supabase Google OAuth session changes on redirect
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1031,7 +1038,7 @@ export default function App() {
         const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
         const googleEmail = supaUser.email;
 
-        handleLoginSuccess({
+        handleLoginSuccessRef.current({
           name: googleName,
           email: googleEmail,
           phone: supaUser.phone || '',
@@ -1047,12 +1054,13 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
+      // INITIAL_SESSION fires for all users on load — only process real sign-in events
+      if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
         const supaUser = session.user;
         const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
         const googleEmail = supaUser.email;
 
-        handleLoginSuccess({
+        handleLoginSuccessRef.current({
           name: googleName,
           email: googleEmail,
           phone: supaUser.phone || '',
