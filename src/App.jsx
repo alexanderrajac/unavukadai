@@ -960,6 +960,9 @@ export default function App() {
     setCurrentPortal('customer');
   };
 
+  // Track timestamp of last manual login so getSession() doesn't overwrite it
+  const lastManualLoginRef = React.useRef(0);
+
   const handleLoginSuccess = (userData) => {
     // Check if user already exists in master registered users directory (only admin can change role in Admin panel)
     const normalizedEmail = userData.email?.toLowerCase().trim();
@@ -1011,6 +1014,13 @@ export default function App() {
       avatar: roleAvatar,
       authProvider: userData.authProvider || (userData.email ? 'google' : 'phone')
     };
+
+    // Write to localStorage immediately — don't rely on the async useEffect
+    // This ensures the user persists even if React batches the state update
+    try { localStorage.setItem('unavu_user', JSON.stringify(updatedUser)); } catch {}
+    // Mark the timestamp so getSession() doesn't overwrite this login
+    lastManualLoginRef.current = Date.now();
+
     setUser(updatedUser);
     setIsAuthOpen(false);
 
@@ -1034,6 +1044,9 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
+        // Don't overwrite a WhatsApp/OTP login that just happened (within last 5s)
+        if (Date.now() - lastManualLoginRef.current < 5000) return;
+
         const supaUser = session.user;
         const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
         const googleEmail = supaUser.email;
