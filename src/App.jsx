@@ -40,7 +40,8 @@ import {
   resetOrdersApi,
   subscribeToLiveUpdates,
   sendOrderWhatsAppNotificationApi,
-  cacheOfflineMenuData
+  cacheOfflineMenuData,
+  broadcastSync
 } from './services/api';
 import { supabase, signOutSupabase } from './services/supabaseAuth';
 import './App.css';
