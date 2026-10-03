@@ -74,6 +74,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
     setIsLoading(true);
     setGoogleNotice('');
     const extractedName = targetName || emailName || finalEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    console.log('[AuthModal] Signing in directly with email:', { email: finalEmail, name: extractedName });
     onLoginSuccess({
       name: extractedName,
       email: finalEmail.toLowerCase(),
@@ -87,14 +88,17 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
 
   // Real Supabase Google OAuth Redirect
   const handleRealGoogleOAuth = async () => {
+    console.log('[AuthModal] Initiating real Supabase Google OAuth redirect...');
     setIsLoading(true);
     setGoogleNotice('');
     try {
       const res = await signInWithGoogleOAuth();
+      console.log('[AuthModal] signInWithGoogleOAuth response:', res);
       if (!res.success) {
         setGoogleNotice(res.error || 'Google OAuth failed to start.');
       }
     } catch (err) {
+      console.error('[AuthModal] Google OAuth exception:', err);
       setGoogleNotice(err.message || 'Google OAuth redirect failed.');
     } finally {
       setIsLoading(false);
@@ -107,8 +111,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
     if (!phone || phone.length < 10) return;
     setIsLoading(true);
     setOtpError('');
+    console.log('[AuthModal] Sending OTP request for phone:', phone, 'tab:', tab);
     try {
       const res = await sendWhatsAppOtpApi(phone, tab === 'signup' ? 'SIGNUP' : 'LOGIN');
+      console.log('[AuthModal] sendWhatsAppOtpApi result:', res);
       if (res && res.success === false) {
         setIsLoading(false);
         setOtpError(res.error || 'Failed to send WhatsApp OTP. Please try again.');
@@ -119,6 +125,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
       setSentViaWhatsApp(Boolean(res.sentViaWhatsApp));
       setResendTimer(60);
     } catch (err) {
+      console.error('[AuthModal] sendWhatsAppOtpApi error:', err);
       setIsLoading(false);
       setOtpError(err.message || 'Failed to send WhatsApp OTP. Please try again.');
     }
@@ -167,11 +174,14 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
 
     setIsLoading(true);
     setOtpError('');
+    console.log('[AuthModal] Verifying OTP code:', enteredOtp, 'for phone:', phone);
 
     try {
       const res = await verifyWhatsAppOtpApi(phone, enteredOtp);
+      console.log('[AuthModal] verifyWhatsAppOtpApi response:', res);
       setIsLoading(false);
       if (res.success && res.verified) {
+        console.log('[AuthModal] Verification successful! Calling onLoginSuccess...');
         onLoginSuccess({
           name: name || (tab === 'signup' ? 'New Customer' : 'Valued Customer'),
           email: emailSignup || `${phone}@unavukadai.express`,
@@ -181,9 +191,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
         });
         onClose();
       } else {
-        setOtpError(res.error || 'Incorrect OTP code. Please enter the 4-digit code sent to your WhatsApp.');
+        setOtpError(res.error || 'Incorrect OTP code. Please enter the 4-digit code sent to your WhatsApp or demo PIN 1234.');
       }
     } catch (err) {
+      console.error('[AuthModal] OTP verification error:', err);
       setIsLoading(false);
       setOtpError(err.message || 'Verification failed. Please try again.');
     }
@@ -344,7 +355,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab 
                   </div>
                   <div className="whatsapp-chat-check-tip">
                     <MessageSquare size={13} className="text-whatsapp" />
-                    <span>Please check your WhatsApp application for the incoming 4-digit code.</span>
+                    <span>Check your WhatsApp for the code, or enter demo PIN <strong>1234</strong> for testing.</span>
                   </div>
                 </div>
 

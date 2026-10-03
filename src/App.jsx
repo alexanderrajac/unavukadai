@@ -49,7 +49,12 @@ export default function App() {
   // Helper to determine portal from URL
   const getPortalFromUrl = () => {
     // If returning from Google OAuth, keep portal as customer while Supabase reads tokens
-    if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token') || window.location.hash.includes('error='))) {
+    if (typeof window !== 'undefined' && (
+      window.location.hash.includes('access_token') || 
+      window.location.hash.includes('refresh_token') || 
+      window.location.hash.includes('error=') ||
+      window.location.search.includes('code=')
+    )) {
       return 'customer';
     }
     const hash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
@@ -829,6 +834,9 @@ export default function App() {
     }
   });
 
+  // Real-time Visual Login Confirmation Toast Banner
+  const [authBannerNotice, setAuthBannerNotice] = useState(null);
+
   // Master Registered Users Directory & Roles
   const INITIAL_USERS = [
     {
@@ -953,6 +961,8 @@ export default function App() {
   }, [user]);
 
   const handleLogout = () => {
+    console.log('[Auth] handleLogout invoked — clearing user session');
+    lastProcessedTokenRef.current = null;
     setUser(null);
     localStorage.removeItem('unavu_user');
     localStorage.removeItem('unavu_oauth_intended_role');
@@ -964,6 +974,8 @@ export default function App() {
   const lastManualLoginRef = React.useRef(0);
 
   const handleLoginSuccess = (userData) => {
+    console.log('[Auth] handleLoginSuccess called with:', userData);
+
     // Check if user already exists in master registered users directory (only admin can change role in Admin panel)
     const normalizedEmail = userData.email?.toLowerCase().trim();
     const normalizedPhone = userData.phone?.replace(/\D/g, '');
@@ -1015,6 +1027,8 @@ export default function App() {
       authProvider: userData.authProvider || (userData.email ? 'google' : 'phone')
     };
 
+    console.log('[Auth] Setting active user state & saving to localStorage:', updatedUser);
+
     // Write to localStorage immediately — don't rely on the async useEffect
     // This ensures the user persists even if React batches the state update
     try { localStorage.setItem('unavu_user', JSON.stringify(updatedUser)); } catch {}
@@ -1023,6 +1037,15 @@ export default function App() {
 
     setUser(updatedUser);
     setIsAuthOpen(false);
+
+    // Show visual login confirmation banner immediately so user clearly sees login reflected
+    setAuthBannerNotice({
+      user: updatedUser,
+      time: Date.now()
+    });
+    setTimeout(() => {
+      setAuthBannerNotice(null);
+    }, 12000);
 
     // Keep user in current portal unless they are a dedicated merchant or rider
     // Master admins have access across all portals (including customer food ordering), so never boot them away from customer ordering
@@ -1034,57 +1057,144 @@ export default function App() {
   };
 
   // Keep a ref to the latest handleLoginSuccess so the Supabase auth listener
-  // never captures a stale closure (avoids lost usersList on OAuth redirect).
+  // never captures a stale closure (avoids lost usersList or stale callbacks).
+  // CRITICAL FIX: Update synchronously in render body so ANY microtask or early
+  // event (like Supabase INITIAL_SESSION) sees the fresh handleLoginSuccess immediately.
   const handleLoginSuccessRef = React.useRef(handleLoginSuccess);
+  handleLoginSuccessRef.current = handleLoginSuccess;
+
   useEffect(() => {
     handleLoginSuccessRef.current = handleLoginSuccess;
   });
 
+  // Track the last processed access token / session so duplicate events don't re-trigger,
+  // but reset on logout so future logins always succeed.
+  const lastProcessedTokenRef = React.useRef(null);
+
   // Listen to Supabase Google OAuth session changes on redirect
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        // Don't overwrite a WhatsApp/OTP login that just happened (within last 5s)
-        if (Date.now() - lastManualLoginRef.current < 5000) return;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const hasOAuthTokens = hash.includes('access_token') || hash.includes('refresh_token');
+    const hasOAuthCode = search.includes('code=');
 
-        const supaUser = session.user;
-        const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
-        const googleEmail = supaUser.email;
-
-        handleLoginSuccessRef.current({
-          name: googleName,
-          email: googleEmail,
-          phone: supaUser.phone || '',
-          authProvider: 'google',
-          isVerified: true
-        });
-
-        // Clean up OAuth tokens from URL after successful session restoration
-        if (typeof window !== 'undefined' && window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))) {
-          window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
-      }
+    console.log('[Supabase Auth Setup] Initializing auth listener.', {
+      currentHash: hash.slice(0, 30) + '...',
+      hasOAuthTokens,
+      hasOAuthCode,
+      hasExistingLocalUser: !!user
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // INITIAL_SESSION fires for all users on load — only process real sign-in events
-      if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
-        const supaUser = session.user;
-        const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
-        const googleEmail = supaUser.email;
+    // Helper to process a Supabase session into our app's login
+    const processSupabaseSession = (session, source) => {
+      console.log(`[Supabase Auth] processSupabaseSession called from "${source}"`, {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        email: session?.user?.email,
+        accessTokenPrefix: session?.access_token ? session.access_token.slice(0, 10) + '...' : null
+      });
 
+      if (!session?.user) {
+        console.log(`[Supabase Auth] No user session found from "${source}", skipping.`);
+        return;
+      }
+
+      // Prevent double-fire: skip if this exact access token was already processed and user is logged in
+      if (lastProcessedTokenRef.current === session.access_token && user) {
+        console.log(`[Supabase Auth] Access token already processed for current active user, skipping duplicate from "${source}".`);
+        return;
+      }
+
+      // Don't overwrite a recent WhatsApp/OTP login (within last 5s)
+      const timeSinceManual = Date.now() - lastManualLoginRef.current;
+      if (timeSinceManual < 5000) {
+        console.log(`[Supabase Auth] Skipping "${source}" because manual login occurred ${timeSinceManual}ms ago.`);
+        return;
+      }
+
+      lastProcessedTokenRef.current = session.access_token;
+      const supaUser = session.user;
+      const googleName = supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email?.split('@')[0];
+      const googleEmail = supaUser.email;
+
+      console.log(`[Supabase Auth] Processing login via ${source} for:`, { googleName, googleEmail });
+
+      if (typeof handleLoginSuccessRef.current === 'function') {
         handleLoginSuccessRef.current({
+          id: supaUser.id ? `usr-g-${supaUser.id.slice(0, 8)}` : undefined,
           name: googleName,
           email: googleEmail,
           phone: supaUser.phone || '',
           authProvider: 'google',
           isVerified: true
         });
+      } else {
+        console.error('[Supabase Auth] handleLoginSuccessRef.current is not a function!', handleLoginSuccessRef.current);
+      }
 
-        // Clean up OAuth tokens from URL
-        if (typeof window !== 'undefined' && window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))) {
+      // Clean up OAuth tokens from URL after successful session processing
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location.hash &&
+            (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))) {
+          console.log('[Supabase Auth] Cleaning up OAuth tokens from URL hash');
           window.history.replaceState(null, '', window.location.pathname + window.location.search);
         }
+      }, 300);
+    };
+
+    // 0. Handle PKCE authorization code if returned in search params (?code=...)
+    const searchParams = new URLSearchParams(window.location.search);
+    const oauthCode = searchParams.get('code');
+    if (oauthCode) {
+      console.log('[Supabase Auth] PKCE authorization code detected in query string. Exchanging for session...', oauthCode);
+      supabase.auth.exchangeCodeForSession(oauthCode).then(({ data, error }) => {
+        if (error) {
+          console.warn('[Supabase Auth] exchangeCodeForSession notice:', error.message);
+        } else if (data?.session) {
+          console.log('[Supabase Auth] exchangeCodeForSession successful for:', data.session.user?.email);
+          processSupabaseSession(data.session, 'exchangeCodeForSession');
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('code');
+          window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + cleanUrl.hash);
+        }
+      }).catch(err => {
+        console.error('[Supabase Auth] exchangeCodeForSession exception:', err);
+      });
+    }
+
+    // 1. Eagerly check for existing session (handles OAuth redirect with tokens in URL)
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('[Supabase Auth] getSession error:', error.message);
+      } else {
+        console.log('[Supabase Auth] getSession resolved:', session ? `User ${session.user?.email}` : 'No session');
+        if (session) {
+          processSupabaseSession(session, 'getSession');
+        }
+      }
+    }).catch(err => {
+      console.error('[Supabase Auth] getSession exception:', err);
+    });
+
+    // 2. Listen for auth state changes:
+    // INITIAL_SESSION: In Supabase v2, fires FIRST on load. When OAuth redirect happens with tokens in URL,
+    //                  Supabase parses them and fires INITIAL_SESSION with the newly created session.
+    // SIGNED_IN: Fires when user signs in or when token exchange finishes.
+    // USER_UPDATED: Fires on user metadata update.
+    // SIGNED_OUT: Clears tracked token so next login is allowed.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`[Supabase Auth Listener] Event: "${event}"`, {
+        hasSession: !!session,
+        email: session?.user?.email
+      });
+
+      if (event === 'SIGNED_OUT') {
+        lastProcessedTokenRef.current = null;
+        return;
+      }
+
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        processSupabaseSession(session, 'onAuthStateChange:' + event);
       }
     });
 
@@ -1572,6 +1682,108 @@ export default function App() {
         onLogout={handleLogout}
         onOpenAuth={() => handleOpenAuth('login')}
       />
+
+      {/* Real-time Interactive Login Confirmation Banner */}
+      {authBannerNotice && (
+        <div className="auth-welcome-banner animate-fade" style={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          borderBottom: '2px solid #10b981',
+          color: '#ffffff',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          flexWrap: 'wrap',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 9999
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '22px' }}>{authBannerNotice.user?.avatar || '🎉'}</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#10b981' }}>
+                ✓ Logged in as {authBannerNotice.user?.name || 'Customer'}
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                {authBannerNotice.user?.email || authBannerNotice.user?.phone} · Role: <strong style={{ color: '#f8fafc' }}>{authBannerNotice.user?.role?.toUpperCase()}</strong>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {authBannerNotice.user?.role === 'admin' && currentPortal !== 'admin' && (
+              <button
+                type="button"
+                onClick={() => { setCurrentPortal('admin'); setAuthBannerNotice(null); }}
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                👑 Open Admin Console
+              </button>
+            )}
+            {authBannerNotice.user?.role === 'restaurant' && currentPortal !== 'hotel' && (
+              <button
+                type="button"
+                onClick={() => { setCurrentPortal('hotel'); setAuthBannerNotice(null); }}
+                style={{
+                  background: '#f97316',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                👨‍🍳 Open Kitchen Portal
+              </button>
+            )}
+            {authBannerNotice.user?.role === 'rider' && currentPortal !== 'rider' && (
+              <button
+                type="button"
+                onClick={() => { setCurrentPortal('rider'); setAuthBannerNotice(null); }}
+                style={{
+                  background: '#8b5cf6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🛵 Open Rider Radar
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setAuthBannerNotice(null)}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                color: '#94a3b8',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '5px 11px',
+                fontSize: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              ✕ Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 1. CUSTOMER PORTAL */}
       {currentPortal === 'customer' && (
