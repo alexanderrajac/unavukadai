@@ -454,8 +454,28 @@ export default function RiderPortal({
             </div>
             <div className="collect-otp-order-summary">
               <div className="otp-summary-row"><span>Order ID:</span><strong>#{otpModalTrip.orderId}</strong></div>
-              <div className="otp-summary-row"><span>Customer:</span><strong>{otpModalTrip.customerPhone || '+91 98401 23456'}</strong></div>
+              <div className="otp-summary-row"><span>Customer:</span><strong>{otpModalTrip.customerName || 'Customer'} ({otpModalTrip.customerPhone || '+91 98401 23456'})</strong></div>
               <div className="otp-summary-row"><span>Address:</span><span>{otpModalTrip.customerAddress || otpModalTrip.address}</span></div>
+              {otpModalTrip.items && otpModalTrip.items.length > 0 && (
+                <div className="otp-summary-items-box" style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 10px', borderRadius: '8px', marginTop: '4px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Package size={12} /> Items to Handover ({otpModalTrip.items.reduce((s, i) => s + (i.quantity || 1), 0)} pcs)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {otpModalTrip.items.map((it, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0' }}>
+                        <span>• {it.quantity}x {it.name}</span>
+                        <span style={{ color: '#94a3b8' }}>₹{(it.price || 0) * (it.quantity || 1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {otpModalTrip.cookingNote && (
+                <div style={{ fontSize: '11.5px', color: '#fbbf24', background: 'rgba(245,158,11,0.1)', padding: '6px 8px', borderRadius: '6px', marginTop: '2px' }}>
+                  📝 Note: {otpModalTrip.cookingNote.replace(/\[email:[^\]]+\]/g, '').trim()}
+                </div>
+              )}
               <div className="otp-summary-row highlight"><span>Your Payout:</span><strong className="text-green">+₹{otpModalTrip.riderEarnings || 65}</strong></div>
             </div>
             <form onSubmit={handleVerifyOtpAndDeliver} className="collect-otp-form">
@@ -688,6 +708,31 @@ export default function RiderPortal({
                     </div>
                   </div>
                 </div>
+
+                {/* Items & Cooking Note */}
+                {myActiveTrips[0].items && myActiveTrips[0].items.length > 0 && (
+                  <div style={{ margin: '0 16px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Package size={13} /> Order Items ({myActiveTrips[0].items.reduce((s, i) => s + (i.quantity || 1), 0)} items)
+                      </span>
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: '#10b981' }}>₹{myActiveTrips[0].grandTotal}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {myActiveTrips[0].items.map((it, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#e2e8f0' }}>
+                          <span><strong>{it.quantity}x</strong> {it.name}</span>
+                          <span style={{ color: '#94a3b8' }}>₹{(it.price || 0) * (it.quantity || 1)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {myActiveTrips[0].cookingNote && (
+                      <div style={{ fontSize: '11.5px', color: '#fbbf24', background: 'rgba(245,158,11,0.1)', padding: '6px 10px', borderRadius: '6px', marginTop: '8px' }}>
+                        📝 Note: {myActiveTrips[0].cookingNote.replace(/\[email:[^\]]+\]/g, '').trim()}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="rp-trip-actions">
@@ -1020,6 +1065,11 @@ export default function RiderPortal({
                       <div>
                         <strong>#{t.orderId} — {t.restaurantName}</strong>
                         <span>{t.customerAddress || t.address}</span>
+                        {t.items && t.items.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px' }}>
+                            {t.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                          </div>
+                        )}
                         <small>OTP verified · ₹{t.grandTotal} bill</small>
                       </div>
                     </div>
