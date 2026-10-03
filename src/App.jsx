@@ -47,23 +47,31 @@ import './App.css';
 
 export default function App() {
   // Helper to determine portal from URL
+  // Helper to determine portal from URL and user role
   const getPortalFromUrl = () => {
-    // If returning from Google OAuth, keep portal as customer while Supabase reads tokens
-    if (typeof window !== 'undefined' && (
-      window.location.hash.includes('access_token') || 
-      window.location.hash.includes('refresh_token') || 
-      window.location.hash.includes('error=') ||
-      window.location.search.includes('code=')
-    )) {
-      return 'customer';
-    }
-    const hash = window.location.hash.toLowerCase().replace('#/', '').replace('#', '');
-    const params = new URLSearchParams(window.location.search);
+    const hash = typeof window !== 'undefined' ? window.location.hash.toLowerCase().replace('#/', '').replace('#', '') : '';
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     const queryPortal = params.get('portal');
     const target = queryPortal || hash;
     if (['hotel', 'rider', 'admin', 'customer'].includes(target)) {
       return target;
     }
+    // If returning with code/tokens and user is known admin, default to admin
+    try {
+      const saved = localStorage.getItem('unavu_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        const normEmail = u?.email?.toLowerCase().trim();
+        const isAdmin = 
+          normEmail === 'alexanderrajac@gmail.com' ||
+          normEmail === 'rajacofficial369@gmail.com' ||
+          normEmail === 'admin@unavukadai.com' ||
+          u?.role === 'admin';
+        if (isAdmin && (hash === 'admin' || !hash || hash === '')) return 'admin';
+        if (u?.role === 'restaurant' && (hash === 'hotel' || !hash)) return 'hotel';
+        if (u?.role === 'rider' && (hash === 'rider' || !hash)) return 'rider';
+      }
+    } catch {}
     return 'customer';
   };
 
@@ -1066,17 +1074,24 @@ export default function App() {
       setAuthBannerNotice(null);
     }, 12000);
 
-    // Immediately open My Account & Orders page so user visually sees their logged-in account
-    if (effectiveRole !== 'restaurant' && effectiveRole !== 'rider') {
-      setActiveTab('orders');
-    }
-
-    // Keep user in current portal unless they are a dedicated merchant or rider
-    // Master admins have access across all portals (including customer food ordering), so never boot them away from customer ordering
-    if (effectiveRole === 'restaurant' && currentPortal !== 'hotel') {
+    // Automatic Role-Based Portal Redirection upon Login:
+    if (effectiveRole === 'admin') {
+      console.log('[Auth] Master Admin authenticated — redirecting directly to Admin Portal (/#/admin)');
+      setCurrentPortal('admin');
+      window.location.hash = '#/admin';
+    } else if (effectiveRole === 'restaurant') {
+      console.log('[Auth] Merchant authenticated — redirecting directly to Kitchen Portal (/#/hotel)');
       setCurrentPortal('hotel');
-    } else if (effectiveRole === 'rider' && currentPortal !== 'rider') {
+      window.location.hash = '#/hotel';
+    } else if (effectiveRole === 'rider') {
+      console.log('[Auth] Rider authenticated — redirecting directly to Rider Radar (/#/rider)');
       setCurrentPortal('rider');
+      window.location.hash = '#/rider';
+    } else {
+      console.log('[Auth] Customer authenticated — navigating to My Orders (/#/orders)');
+      setCurrentPortal('customer');
+      setActiveTab('orders');
+      window.location.hash = '#/orders';
     }
   };
 
@@ -1167,8 +1182,12 @@ export default function App() {
           const hasCode = url.searchParams.has('code');
           if (hasTokens || hasCode) {
             url.searchParams.delete('code');
-            if (hasTokens) url.hash = '';
-            console.log('[Supabase Auth] Cleaning up OAuth tokens/code from URL');
+            const normEmail = googleEmail?.toLowerCase().trim();
+            const isAdmin = normEmail === 'alexanderrajac@gmail.com' || normEmail === 'rajacofficial369@gmail.com' || normEmail === 'admin@unavukadai.com';
+            if (hasTokens || !url.hash || url.hash === '#') {
+              url.hash = isAdmin ? '#/admin' : '#/orders';
+            }
+            console.log('[Supabase Auth] Cleaned OAuth query params from URL, target portal hash:', url.hash);
             window.history.replaceState(null, '', url.pathname + (url.search ? url.search : '') + url.hash);
           }
         }
